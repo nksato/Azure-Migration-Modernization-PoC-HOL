@@ -1,13 +1,13 @@
-# 03. 疑似オンプレ環境の動作確認
+# 00c. 疑似オンプレ環境の動作確認
 
 この手順では、デプロイ済みの疑似オンプレ環境が**想定通り閉域かつ正常動作**していることを確認します。
 
 ## 1. パブリック IP が付いていないことを確認
 
 ```powershell
-az network nic show --resource-group rg-onpre --name OnPrem-AD-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
-az network nic show --resource-group rg-onpre --name OnPrem-SQL-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
-az network nic show --resource-group rg-onpre --name OnPrem-Web-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name OnPrem-AD-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name OnPrem-SQL-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name OnPrem-Web-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
 ```
 
 **期待結果:** いずれも出力なし

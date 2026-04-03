@@ -1,4 +1,4 @@
-# 01. 疑似オンプレ環境のデプロイ
+# 00a. 疑似オンプレ環境のデプロイ
 
 この手順では、Azure 上に**移行元として使う疑似オンプレ環境**を構築します。
 
@@ -13,20 +13,20 @@
 
 | テンプレート | 用途 |
 |---|---|
-| `tmp/onprem/infra/main.bicep` | 標準ラボ構成 |
+| `infra/onprem/main.bicep` | 標準ラボ構成 |
 
 ---
 
 ## 方法 1: PowerShell スクリプトでデプロイ（推奨）
 
-`tmp/onprem/Deploy-Lab.ps1` を使うと、テンプレートの切り替えや再実行がしやすくなります。
+`infra/onprem/Deploy-Lab.ps1` を使うと、テンプレートの切り替えや再実行がしやすくなります。
 
 ```powershell
-Set-Location .\tmp\onprem
+Set-Location .\infra\onprem
 
 # 標準ラボ構成
 .\Deploy-Lab.ps1 `
-  -ResourceGroupName "rg-onpre" `
+  -ResourceGroupName "rg-onprem" `
   -Location "japaneast" `
   -TemplateFile "infra/main.bicep"
 ```
@@ -36,11 +36,11 @@ Set-Location .\tmp\onprem
 ## 方法 2: Bicep を直接デプロイ
 
 ```powershell
-az group create --name rg-onpre --location japaneast
+az group create --name rg-onprem --location japaneast
 
 az deployment group create `
-  --resource-group rg-onpre `
-  --template-file tmp/onprem/infra/main.bicep `
+  --resource-group rg-onprem `
+  --template-file infra/onprem/main.bicep `
   --parameters adminPassword='<管理者パスワード>' vpnSharedKey='<共有キー>'
 ```
 
@@ -59,4 +59,4 @@ az deployment group create `
 
 デプロイが完了したら、次に Parts Unlimited をセットアップします。
 
-➡ [`02-onprem-parts-unlimited.md`](./02-onprem-parts-unlimited.md)
+➡ [`00b-onprem-parts-unlimited.md`](./00b-onprem-parts-unlimited.md)

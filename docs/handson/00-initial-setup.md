@@ -25,7 +25,7 @@
 
 ## 方法 A: 一度に環境を作る方法
 
-`tmp/cloud/docs/handson/00-deploy.md` の考え方に合わせて、**環境全体を一括で作成**する方法です。  
+従来の一括デプロイの流れに合わせて、**環境全体をまとめて作成**する方法です。  
 全体の初期セットアップをまとめて実施したい場合は、この方法を使います。
 
 ### 実行例（Azure CLI / Bicep）
@@ -34,7 +34,7 @@
 az deployment sub create `
   --name hol-initial-setup `
   --location japaneast `
-  --template-file tmp/cloud/infra/main.bicep `
+  --template-file infra/cloud/main.bicep `
   --parameters location='japaneast' `
                adminUsername='azureadmin' `
                adminPassword='<管理者パスワード>'
@@ -65,7 +65,7 @@ az deployment sub create `
 az deployment sub create `
   --name hol-cloud-network `
   --location japaneast `
-  --template-file tmp/cloud/infra/cloud/main.bicep `
+  --template-file infra/cloud/cloud/main.bicep `
   --parameters location='japaneast' `
                deployFirewall=true `
                deployBastion=true `
@@ -77,7 +77,7 @@ az deployment sub create `
 - Hub VNet / Spoke VNet
 - Azure Firewall / Bastion / Hub 側 VPN Gateway
 
-詳細は [`04-cloud-deploy.md`](./04-cloud-deploy.md) を参照してください。
+詳細は [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) を参照してください。
 
 ---
 
@@ -91,7 +91,7 @@ az group create --name rg-onprem --location japaneast
 az deployment group create `
   --name hol-onprem-base `
   --resource-group rg-onprem `
-  --template-file tmp/onprem/infra/main.bicep `
+  --template-file infra/onprem/main.bicep `
   --parameters adminPassword='<管理者パスワード>' `
                vpnSharedKey='<共有キー>'
 ```
@@ -102,7 +102,7 @@ az deployment group create `
 - On-Prem 側 Bastion
 - On-Prem 側 Azure VPN Gateway
 
-詳細は [`01-onprem-deploy.md`](./01-onprem-deploy.md) を参照してください。
+詳細は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) を参照してください。
 
 ---
 
@@ -119,7 +119,7 @@ $hubGatewayIp = az network public-ip show `
 az deployment group create `
   --name hol-onprem-vpn-connection `
   --resource-group rg-onprem `
-  --template-file tmp/onprem/infra/main.bicep `
+  --template-file infra/onprem/main.bicep `
   --parameters adminPassword='<管理者パスワード>' `
                vpnSharedKey='<共有キー>' `
                remoteGatewayIp=$hubGatewayIp `
@@ -148,6 +148,6 @@ az deployment group create `
 
 初期環境の準備ができたら、以下の順に進めます。
 
-1. [`01-onprem-deploy.md`](./01-onprem-deploy.md) または [`04-cloud-deploy.md`](./04-cloud-deploy.md) で個別手順を確認
-2. [`02-onprem-parts-unlimited.md`](./02-onprem-parts-unlimited.md) でアプリをセットアップ
-3. [`05-cloud-explore-onprem.md`](./05-cloud-explore-onprem.md) 以降で移行ハンズオンを開始
+1. [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) または [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) で個別手順を確認
+2. [`00b-onprem-parts-unlimited.md`](./00b-onprem-parts-unlimited.md) でアプリをセットアップ
+3. [`00e-cloud-explore-onprem.md`](./00e-cloud-explore-onprem.md) 以降で移行ハンズオンを開始

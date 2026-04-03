@@ -97,17 +97,17 @@ Azure Arc によって、移行前のサーバーも Azure 管理面に統合し
 
 クラウド側の Bicep / ARM 参照元は以下です。
 
-- `tmp/cloud/infra/main.bicep`
-- `tmp/cloud/infra/cloud/main.bicep`
-- `tmp/cloud/infra/cloud/azuredeploy.json`
-- `tmp/cloud/infra/modules/**`
+- `infra/cloud/main.bicep`
+- `infra/cloud/cloud/main.bicep`
+- `infra/cloud/cloud/azuredeploy.json`
+- `infra/cloud/modules/**`
 
 Spoke ごとの追加リソースは以下を利用します。
 
-- `tmp/cloud/infra/modules/spoke-resources/spoke1-rehost.bicep`
-- `tmp/cloud/infra/modules/spoke-resources/spoke2-db-paas.bicep`
-- `tmp/cloud/infra/modules/spoke-resources/spoke3-container.bicep`
-- `tmp/cloud/infra/modules/spoke-resources/spoke4-full-paas.bicep`
+- `infra/cloud/modules/spoke-resources/spoke1-rehost.bicep`
+- `infra/cloud/modules/spoke-resources/spoke2-db-paas.bicep`
+- `infra/cloud/modules/spoke-resources/spoke3-container.bicep`
+- `infra/cloud/modules/spoke-resources/spoke4-full-paas.bicep`
 
 ---
 
@@ -116,4 +116,4 @@ Spoke ごとの追加リソースは以下を利用します。
 - 移行元（オンプレ設計）: [`./architecture-onprem-design.md`](./architecture-onprem-design.md)
 - 移行元（オンプレ図解）: [`./architecture-onprem-diagrams.md`](./architecture-onprem-diagrams.md)
 - クラウド図解: [`./architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md)
-- クラウド手順: [`./handson/04-cloud-deploy.md`](./handson/04-cloud-deploy.md)
+- クラウド手順: [`./handson/00d-cloud-deploy.md`](./handson/00d-cloud-deploy.md)

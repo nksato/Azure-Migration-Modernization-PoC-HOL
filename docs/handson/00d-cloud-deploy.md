@@ -1,4 +1,4 @@
-# 04. クラウド基盤のデプロイ
+# 00d. クラウド基盤のデプロイ
 
 このフェーズでは、**移行先となる Azure 側の Hub & Spoke 基盤**を構築します。
 
@@ -15,7 +15,7 @@
 - Azure サブスクリプション
 - クラウド環境を作成する権限
 - 可能であれば移行元環境のドキュメントも確認済み
-  - [`01-onprem-deploy.md`](./01-onprem-deploy.md)
+  - [`00a-onprem-deploy.md`](./00a-onprem-deploy.md)
 
 ---
 
@@ -23,10 +23,10 @@
 
 | ファイル | 用途 |
 |---|---|
-| `tmp/cloud/infra/cloud/azuredeploy.json` | Deploy to Azure 用 ARM テンプレート |
-| `tmp/cloud/infra/cloud/main.bicep` | クラウド側メイン Bicep |
-| `tmp/cloud/infra/modules/network/*` | Hub / Spoke / VPN / ルーティング |
-| `tmp/cloud/infra/modules/governance/*` | Log Analytics / Policy / Defender |
+| `infra/cloud/cloud/azuredeploy.json` | Deploy to Azure 用 ARM テンプレート |
+| `infra/cloud/cloud/main.bicep` | クラウド側メイン Bicep |
+| `infra/cloud/modules/network/*` | Hub / Spoke / VPN / ルーティング |
+| `infra/cloud/modules/governance/*` | Log Analytics / Policy / Defender |
 
 ---
 
@@ -43,7 +43,7 @@ az group create --name rg-hub --location japaneast
 
 az deployment group create `
   --resource-group rg-hub `
-  --template-file tmp/cloud/infra/cloud/main.bicep
+  --template-file infra/cloud/cloud/main.bicep
 ```
 
 > 実際には Hub / Spoke ごとに複数のリソースグループを作る構成を想定しています。
@@ -59,4 +59,4 @@ az deployment group create `
 
 ## 次のステップ
 
-➡ [`05-cloud-explore-onprem.md`](./05-cloud-explore-onprem.md)
+➡ [`00e-cloud-explore-onprem.md`](./00e-cloud-explore-onprem.md)

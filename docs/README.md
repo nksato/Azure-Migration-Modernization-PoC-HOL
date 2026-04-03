@@ -18,9 +18,9 @@
 |---|---|
 | [`architecture-onprem-design.md`](./architecture-onprem-design.md) | 疑似オンプレ環境の設計方針・構成要素・テンプレート差分 |
 | [`architecture-onprem-diagrams.md`](./architecture-onprem-diagrams.md) | Mermaid による移行元構成図・セットアップフロー |
-| [`handson/01-onprem-deploy.md`](./handson/01-onprem-deploy.md) | 移行元インフラのデプロイ手順 |
-| [`handson/02-onprem-parts-unlimited.md`](./handson/02-onprem-parts-unlimited.md) | `DB01` / `APP01` のセットアップ手順 |
-| [`handson/03-onprem-verification.md`](./handson/03-onprem-verification.md) | 動作確認・疎通確認手順 |
+| [`handson/00a-onprem-deploy.md`](./handson/00a-onprem-deploy.md) | 移行元インフラのデプロイ手順 |
+| [`handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md) | `DB01` / `APP01` のセットアップ手順 |
+| [`handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md) | 動作確認・疎通確認手順 |
 
 ### 2. 移行先: クラウド移行 HOL
 
@@ -28,13 +28,16 @@
 |---|---|
 | [`architecture-cloud-design.md`](./architecture-cloud-design.md) | Hub & Spoke / 移行パターン設計 |
 | [`architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md) | クラウド構成図・移行フロー図 |
-| [`handson/04-cloud-deploy.md`](./handson/04-cloud-deploy.md) | クラウド基盤のデプロイ |
-| [`handson/05-cloud-explore-onprem.md`](./handson/05-cloud-explore-onprem.md) | 移行元環境の確認 |
-| [`handson/06-cloud-arc-onboard.md`](./handson/06-cloud-arc-onboard.md) | Azure Arc 登録 |
-| [`handson/07-cloud-hybrid-mgmt.md`](./handson/07-cloud-hybrid-mgmt.md) | ハイブリッド管理 |
-| [`handson/08-cloud-assessment.md`](./handson/08-cloud-assessment.md) | 移行アセスメント |
-| [`handson/09-cloud-rehost.md`](./handson/09-cloud-rehost.md) ～ [`handson/12-cloud-full-paas.md`](./handson/12-cloud-full-paas.md) | 4 つの移行パターン |
-| [`handson/13-cloud-compare.md`](./handson/13-cloud-compare.md) | 比較・まとめ |
+| [`handson/00d-cloud-deploy.md`](./handson/00d-cloud-deploy.md) | クラウド基盤のデプロイ |
+| [`handson/00e-cloud-explore-onprem.md`](./handson/00e-cloud-explore-onprem.md) | 移行元環境の確認 |
+| [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md) | Azure Arc 登録 |
+| [`handson/03-cloud-hybrid-mgmt.md`](./handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理 |
+| [`handson/04-cloud-assessment.md`](./handson/04-cloud-assessment.md) | 移行アセスメント |
+| [`handson/05a-cloud-rehost.md`](./handson/05a-cloud-rehost.md) | Rehost |
+| [`handson/05b-cloud-db-paas.md`](./handson/05b-cloud-db-paas.md) | DB PaaS 化 |
+| [`handson/05c-cloud-containerize.md`](./handson/05c-cloud-containerize.md) | コンテナ化 |
+| [`handson/05d-cloud-full-paas.md`](./handson/05d-cloud-full-paas.md) | フル PaaS 化 |
+| [`handson/06-cloud-compare.md`](./handson/06-cloud-compare.md) | 比較・まとめ |
 
 ---
 
@@ -51,17 +54,20 @@
 0. **初期環境をセットアップ**
    - [`handson/00-initial-setup.md`](./handson/00-initial-setup.md)
 1. **移行元を準備**
-   - [`handson/01-onprem-deploy.md`](./handson/01-onprem-deploy.md)
-   - [`handson/02-onprem-parts-unlimited.md`](./handson/02-onprem-parts-unlimited.md)
-   - [`handson/03-onprem-verification.md`](./handson/03-onprem-verification.md)
+   - [`handson/00a-onprem-deploy.md`](./handson/00a-onprem-deploy.md)
+   - [`handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md)
+   - [`handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md)
 2. **クラウド移行 HOL を開始**
-   - [`handson/04-cloud-deploy.md`](./handson/04-cloud-deploy.md)
-   - [`handson/05-cloud-explore-onprem.md`](./handson/05-cloud-explore-onprem.md)
-   - [`handson/06-cloud-arc-onboard.md`](./handson/06-cloud-arc-onboard.md)
-   - [`handson/07-cloud-hybrid-mgmt.md`](./handson/07-cloud-hybrid-mgmt.md)
-   - [`handson/08-cloud-assessment.md`](./handson/08-cloud-assessment.md)
-   - [`handson/09-cloud-rehost.md`](./handson/09-cloud-rehost.md) ～ [`handson/12-cloud-full-paas.md`](./handson/12-cloud-full-paas.md)
-   - [`handson/13-cloud-compare.md`](./handson/13-cloud-compare.md)
+   - [`handson/00d-cloud-deploy.md`](./handson/00d-cloud-deploy.md)
+   - [`handson/00e-cloud-explore-onprem.md`](./handson/00e-cloud-explore-onprem.md)
+   - [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md)
+   - [`handson/03-cloud-hybrid-mgmt.md`](./handson/03-cloud-hybrid-mgmt.md)
+   - [`handson/04-cloud-assessment.md`](./handson/04-cloud-assessment.md)
+   - [`handson/05a-cloud-rehost.md`](./handson/05a-cloud-rehost.md)
+   - [`handson/05b-cloud-db-paas.md`](./handson/05b-cloud-db-paas.md)
+   - [`handson/05c-cloud-containerize.md`](./handson/05c-cloud-containerize.md)
+   - [`handson/05d-cloud-full-paas.md`](./handson/05d-cloud-full-paas.md)
+   - [`handson/06-cloud-compare.md`](./handson/06-cloud-compare.md)
 
 ---
 

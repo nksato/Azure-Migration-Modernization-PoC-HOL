@@ -1,4 +1,4 @@
-# 10. DB PaaS 化（Spoke2）
+# 05b. DB PaaS 化（Spoke2）
 
 Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Database** に移行するパターンです。
 
@@ -17,7 +17,7 @@ Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Data
 
 ## 参照テンプレート
 
-- `tmp/cloud/infra/modules/spoke-resources/spoke2-db-paas.bicep`
+- `infra/cloud/modules/spoke-resources/spoke2-db-paas.bicep`
 
 ## 実施内容
 
@@ -33,4 +33,4 @@ Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Data
 
 ## 次のステップ
 
-➡ [`13-cloud-compare.md`](./13-cloud-compare.md)
+➡ [`06-cloud-compare.md`](./06-cloud-compare.md)

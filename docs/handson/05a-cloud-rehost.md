@@ -1,4 +1,4 @@
-# 09. Rehost（Spoke1）
+# 05a. Rehost（Spoke1）
 
 最小限の変更で、`APP01` と `DB01` を Azure VM に移行するパターンです。
 
@@ -16,7 +16,7 @@
 
 ## 参照テンプレート
 
-- `tmp/cloud/infra/modules/spoke-resources/spoke1-rehost.bicep`
+- `infra/cloud/modules/spoke-resources/spoke1-rehost.bicep`
 
 ## 手順イメージ
 
@@ -32,4 +32,4 @@
 
 ## 次のステップ
 
-➡ [`13-cloud-compare.md`](./13-cloud-compare.md)
+➡ [`06-cloud-compare.md`](./06-cloud-compare.md)

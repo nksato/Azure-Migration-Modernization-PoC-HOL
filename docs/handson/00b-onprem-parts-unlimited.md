@@ -1,10 +1,10 @@
-# 02. Parts Unlimited セットアップ
+# 00b. Parts Unlimited セットアップ
 
 この手順では、疑似オンプレ環境の `DB01` と `APP01` に **Parts Unlimited** をセットアップします。
 
 ## 前提条件
 
-- `00-deploy.md` の手順で環境作成済み
+- `00a-onprem-deploy.md` の手順で環境作成済み
 - `Azure Bastion` 経由で `DB01` / `APP01` に接続できる
 - `DB01` / `APP01` でセットアップ スクリプトを実行できる
 
@@ -15,7 +15,7 @@
 Bastion で `OnPrem-SQL (DB01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
-$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/tmp/onprem/scripts'
+$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/infra/onprem/scripts'
 New-Item -Path C:\scripts -ItemType Directory -Force | Out-Null
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -Uri "$repo/Setup-SqlServer.ps1" -OutFile 'C:\scripts\Setup-SqlServer.ps1' -UseBasicParsing
@@ -38,7 +38,7 @@ C:\scripts\Setup-SqlServer.ps1 -SqlPassword '<任意の強いパスワード>'
 Bastion で `OnPrem-Web (APP01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
-$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/tmp/onprem/scripts'
+$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/infra/onprem/scripts'
 New-Item -Path C:\scripts -ItemType Directory -Force | Out-Null
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -Uri "$repo/Setup-PartsUnlimited.ps1" -OutFile 'C:\scripts\Setup-PartsUnlimited.ps1' -UseBasicParsing
@@ -61,24 +61,24 @@ C:\scripts\Setup-PartsUnlimited.ps1 -SqlPassword '<DB01 と同じパスワード
 
 Bastion で VM にログインせず、手元の PC から Azure CLI を使って `DB01` / `APP01` のセットアップを実行することもできます。
 
-> `--name` に指定するのはホスト名ではなく Azure VM リソース名です。ここでは `OnPrem-SQL` と `OnPrem-Web` を使います。必要に応じて `az vm list --resource-group rg-onpre --query "[].name" -o tsv` で確認してください。
+> `--name` に指定するのはホスト名ではなく Azure VM リソース名です。ここでは `OnPrem-SQL` と `OnPrem-Web` を使います。必要に応じて `az vm list --resource-group rg-onprem --query "[].name" -o tsv` で確認してください。
 
 ```powershell
 # DB01 (OnPrem-SQL) — SQL Server セットアップ
 az vm run-command invoke `
-  --resource-group rg-onpre `
+  --resource-group rg-onprem `
   --name OnPrem-SQL `
   --command-id RunPowerShellScript `
-  --scripts @tmp/onprem/scripts/Setup-SqlServer-en.ps1 `
+  --scripts @infra/onprem/scripts/Setup-SqlServer-en.ps1 `
   --parameters "SqlPassword=<任意の強いパスワード>" `
   --query "value[].message" -o tsv
 
 # APP01 (OnPrem-Web) — Parts Unlimited デプロイ
 az vm run-command invoke `
-  --resource-group rg-onpre `
+  --resource-group rg-onprem `
   --name OnPrem-Web `
   --command-id RunPowerShellScript `
-  --scripts @tmp/onprem/scripts/Setup-PartsUnlimited-en.ps1 `
+  --scripts @infra/onprem/scripts/Setup-PartsUnlimited-en.ps1 `
   --parameters "SqlPassword=<DB01 と同じパスワード>" `
   --query "value[].message" -o tsv
 ```
@@ -120,4 +120,4 @@ http://localhost
 
 詳しい確認は次の手順を参照してください。
 
-➡ [`03-onprem-verification.md`](./03-onprem-verification.md)
+➡ [`00c-onprem-verification.md`](./00c-onprem-verification.md)

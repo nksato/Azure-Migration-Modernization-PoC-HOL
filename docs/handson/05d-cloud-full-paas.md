@@ -1,4 +1,4 @@
-# 12. フル PaaS 化（Spoke4）
+# 05d. フル PaaS 化（Spoke4）
 
 `APP01` のアプリを .NET 8 化し、**Azure App Service + Azure SQL** に載せ替えるパターンです。
 
@@ -17,7 +17,7 @@
 
 ## 参照テンプレート
 
-- `tmp/cloud/infra/modules/spoke-resources/spoke4-full-paas.bicep`
+- `infra/cloud/modules/spoke-resources/spoke4-full-paas.bicep`
 
 ## 実施内容
 
@@ -34,4 +34,4 @@
 
 ## 次のステップ
 
-➡ [`13-cloud-compare.md`](./13-cloud-compare.md)
+➡ [`06-cloud-compare.md`](./06-cloud-compare.md)

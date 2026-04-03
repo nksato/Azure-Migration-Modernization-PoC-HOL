@@ -1,4 +1,4 @@
-# 08. 移行アセスメント
+# 04. 移行アセスメント
 
 このフェーズでは、Azure Migrate を用いて移行元システムの**評価・方針整理**を行います。
 
@@ -33,7 +33,7 @@
 
 ## 次のステップ
 
-- ➡ [`09-cloud-rehost.md`](./09-cloud-rehost.md)
-- ➡ [`10-cloud-db-paas.md`](./10-cloud-db-paas.md)
-- ➡ [`11-cloud-containerize.md`](./11-cloud-containerize.md)
-- ➡ [`12-cloud-full-paas.md`](./12-cloud-full-paas.md)
+- ➡ [`05a-cloud-rehost.md`](./05a-cloud-rehost.md)
+- ➡ [`05b-cloud-db-paas.md`](./05b-cloud-db-paas.md)
+- ➡ [`05c-cloud-containerize.md`](./05c-cloud-containerize.md)
+- ➡ [`05d-cloud-full-paas.md`](./05d-cloud-full-paas.md)

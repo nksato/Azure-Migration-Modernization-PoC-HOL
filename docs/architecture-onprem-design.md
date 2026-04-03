@@ -69,7 +69,7 @@
 
 ## 5. 使用テンプレート
 
-ハンズオンでは、`tmp/onprem/infra/main.bicep` を標準構成として利用します。
+ハンズオンでは、`infra/onprem/main.bicep` を標準構成として利用します。
 
 | テンプレート | 特徴 | 用途 |
 |---|---|---|
@@ -88,9 +88,9 @@
 
 詳細手順は以下を参照してください。
 
-- [`handson/01-onprem-deploy.md`](./handson/01-onprem-deploy.md)
-- [`handson/02-onprem-parts-unlimited.md`](./handson/02-onprem-parts-unlimited.md)
-- [`handson/03-onprem-verification.md`](./handson/03-onprem-verification.md)
+- [`handson/00a-onprem-deploy.md`](./handson/00a-onprem-deploy.md)
+- [`handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md)
+- [`handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md)
 
 ---
 
@@ -102,14 +102,16 @@
 |---|---|
 | 対象 | `DC01`, `DB01`, `APP01` |
 | 目的 | ハイブリッド管理 / ポリシー / 更新管理 / Defender 評価 |
-| 参照スクリプト | `tmp/onprem/Enable-ArcOnVMs.ps1` |
+| 参照スクリプト | `infra/onprem/Enable-ArcOnVMs.ps1` |
 
 ---
 
 ## 8. 参照ファイル
 
 - `tmp/onprem/README.md`
-- `tmp/onprem/Deploy-Lab.ps1`
-- `tmp/onprem/infra/main.bicep`
+- `infra/onprem/Deploy-Lab.ps1`
+- `infra/onprem/main.bicep`
+- `infra/onprem/Enable-ArcOnVMs.ps1`
+- `infra/onprem/scripts/*`
 
 > この設計書は、移行元環境に関する正式な `docs` 配下の初版です。今後はクラウド側や全体 HOL 設計書と並ぶ形で拡張していきます。
