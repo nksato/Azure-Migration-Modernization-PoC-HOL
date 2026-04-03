@@ -40,6 +40,10 @@ var hubAddressPrefix = '10.10.0.0/16'
 resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: onpremResourceGroupName
   location: location
+  tags: {
+    Environment: 'PoC'
+    Purpose: 'OnPrem-Simulation'
+  }
 }
 
 module cloudFoundation 'cloud/main.bicep' = {
@@ -58,7 +62,7 @@ resource rgHub 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
 
 resource hubVpnPublicIp 'Microsoft.Network/publicIPAddresses@2024-01-01' existing = if (deployVpnGateway) {
   scope: rgHub
-  name: 'pip-vgw-hub'
+  name: 'vpngw-hub-pip1'
 }
 
 var hubGatewayIp = deployVpnGateway ? reference(hubVpnPublicIp.id, '2024-01-01').ipAddress : ''

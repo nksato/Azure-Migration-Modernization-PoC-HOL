@@ -29,7 +29,7 @@
 |---|---|---|
 | Hub 側リソースグループ | `rg-hub` | クラウド側 VPN Gateway の参照先 |
 | 疑似オンプレ側リソースグループ | `rg-onprem` | 接続設定のデプロイ先 |
-| Hub 側公開 IP | `pip-vgw-hub` | `remoteGatewayIp` に指定 |
+| Hub 側公開 IP | `vpngw-hub-pip1` | `remoteGatewayIp` に指定 |
 | Azure 側アドレス空間 | `10.10.0.0/16` | `remoteAddressPrefix` に指定 |
 | 事前共有キー | `<共有キー>` | `vpnSharedKey` に指定（Step 1 と同じ値） |
 
@@ -42,7 +42,7 @@
 ```powershell
 $hubGatewayIp = az network public-ip show `
   --resource-group rg-hub `
-  --name pip-vgw-hub `
+  --name vpngw-hub-pip1 `
   --query ipAddress -o tsv
 
 $hubGatewayIp
