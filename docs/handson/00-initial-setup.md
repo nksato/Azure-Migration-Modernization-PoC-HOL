@@ -55,35 +55,13 @@ az deployment sub create `
 
 ## 方法 B: 3 つのステップで構築する方法
 
-環境を段階的に確認しながら構築したい場合は、以下の 3 ステップで進めます。
+一括デプロイではなく、構成を確認しながら段階的に構築したい場合は、以下の 3 ステップで進めます。
+まず疑似オンプレ環境を作成し、次にクラウド側の共通基盤を用意し、最後に両者の VPN 接続を構成します。
 
-### 1) クラウド側のネットワーク接続の Hub / 各種 Spoke を作る
+### 1) 疑似オンプレを作り Azure VPN を作る
 
-クラウド側の共通基盤を先に構築します。
-
-```powershell
-az deployment sub create `
-  --name hol-cloud-network `
-  --location japaneast `
-  --template-file infra/cloud/cloud/main.bicep `
-  --parameters location='japaneast' `
-               deployFirewall=true `
-               deployBastion=true `
-               deployVpnGateway=true
-```
-
-**主な作成対象**
-- `rg-hub`, `rg-spoke1` ～ `rg-spoke4`
-- Hub VNet / Spoke VNet
-- Azure Firewall / Bastion / Hub 側 VPN Gateway
-
-詳細は [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) を参照してください。
-
----
-
-### 2) 疑似オンプレを作り Azure VPN を作る
-
-次に、移行元となる疑似オンプレ環境と On-Prem 側 Azure VPN Gateway を作成します。
+まず、移行元となる疑似オンプレ環境と、疑似オンプレ側の Azure VPN Gateway を作成します。
+このステップで、後続の接続試験や移行評価の対象となる `DC01` / `DB01` / `APP01` を準備します。
 
 ```powershell
 az group create --name rg-onprem --location japaneast
@@ -106,9 +84,34 @@ az deployment group create `
 
 ---
 
+### 2) クラウド側のネットワーク接続の Hub / 各種 Spoke を作る
+
+次に、クラウド側の Hub / Spoke 基盤と、Hub 側の Azure VPN Gateway を構築します。
+この時点では、クラウド側に「接続の受け口」を用意するところまでを行います。
+
+```powershell
+az deployment sub create `
+  --name hol-cloud-network `
+  --location japaneast `
+  --template-file infra/cloud/cloud/main.bicep `
+  --parameters location='japaneast' `
+               deployFirewall=true `
+               deployBastion=true `
+               deployVpnGateway=true
+```
+
+**主な作成対象**
+- `rg-hub`, `rg-spoke1` ～ `rg-spoke4`
+- Hub VNet / Spoke VNet
+- Azure Firewall / Bastion / Hub 側 Azure VPN Gateway
+
+詳細は [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) を参照してください。
+
+---
+
 ### 3) クラウドの Azure VPN と疑似オンプレの Azure VPN の設定を行う
 
-Hub 側 VPN Gateway のパブリック IP を取得し、疑似オンプレ側から接続設定を追加します。
+最後に、Hub 側 VPN Gateway のパブリック IP を取得し、疑似オンプレ側から接続設定を追加して VPN を成立させます。
 
 ```powershell
 $hubGatewayIp = az network public-ip show `
@@ -131,7 +134,11 @@ az deployment group create `
 - On-Prem 側 `Local Network Gateway` を作成
 - `OnPrem-to-Azure-S2S` 接続を構成
 
-> `vpnSharedKey` は Step 2 と Step 3 で **同じ値** を使用してください。
+> `vpnSharedKey` は **Step 1 で指定した値を、Step 3 でもそのまま再利用**してください。
+
+> 現在のテンプレート構成では、クラウド側の `infra/cloud/cloud/main.bicep` は **Step 2 で Hub 側 Azure VPN Gateway を作成するまで**を担当します。実際の接続先情報（Hub 側の公開 IP）と共有キーを使った接続設定は、**Step 3 で疑似オンプレ側に設定**する想定です。
+
+> そのため、この手順では **クラウド側で追加の共有キー入力や接続元 IP の手動設定は不要**です。Step 3 で `remoteGatewayIp` と `vpnSharedKey` を指定して接続を完了させます。
 
 ---
 
