@@ -1,12 +1,13 @@
 # 04. 移行アセスメント
 
-このフェーズでは、Azure Migrate を用いて移行元システムの**評価・方針整理**を行います。
+このフェーズでは、Azure Migrate アプライアンスをオンプレ環境にセットアップし、移行元システムの**検出・評価**を行います。
 
 ## 目的
 
-- 移行元のサーバー構成を棚卸しする
-- Azure VM / Azure SQL / App Service への適合性を確認する
-- Spoke1～4 のどのパターンが適切か比較する
+- Azure Migrate アプライアンスを疑似オンプレ環境にデプロイする
+- 移行元サーバー（DC01 / DB01 / APP01）を検出する
+- Azure VM / Azure SQL / App Service への適合性を評価する
+- 評価結果をもとに Spoke1～4 のどの移行パターンが適切か判断する
 
 ## 対象
 
@@ -16,24 +17,188 @@
 | `DB01` | SQL Server → Azure SQL の適性 |
 | `DC01` | 基盤系として残置または接続継続の検討 |
 
-## 実施イメージ
+## 前提条件
 
-- Azure Migrate プロジェクトを開く
-- サーバーを検出またはインベントリ登録する
-- 評価を実行する
+- `rg-onprem` の疑似オンプレ環境がデプロイ済み（[00a](./00a-onprem-deploy.md)）
+- Parts Unlimited のセットアップ済み（[00b](./00b-onprem-parts-unlimited.md)）
+- VPN 接続済み（[00e](./00e-cloud-vpn-connect.md)）
 
-## このフェーズで決めること
+---
 
-| パターン | 判断軸 |
+## Step 1: Azure Migrate プロジェクトの作成
+
+1. Azure Portal で **Azure Migrate** を検索して開く
+2. **[サーバー、データベース、Web アプリ]** を選択
+3. **[プロジェクトの作成]** をクリック
+4. 以下を入力:
+
+   | 項目 | 値 |
+   |---|---|
+   | サブスクリプション | 使用中のサブスクリプション |
+   | リソース グループ | `rg-hub` |
+   | プロジェクト名 | `migr-project` |
+   | 地域 | `東日本` |
+
+5. **[作成]** をクリック
+
+---
+
+## Step 2: アプライアンス VM の作成
+
+Azure Migrate アプライアンスは、検出対象と同じネットワーク上に配置する必要があります。  
+オンプレ VNet の `ServerSubnet` に VM を手動作成します。
+
+1. Azure Portal で **[仮想マシンの作成]** を開く
+2. 以下を入力:
+
+   | 項目 | 値 |
+   |---|---|
+   | リソース グループ | `rg-onprem` |
+   | 仮想マシン名 | `OnPrem-Migrate` |
+   | リージョン | `東日本` |
+   | イメージ | `Windows Server 2022 Datacenter: Azure Edition` |
+   | サイズ | `Standard_D4s_v5`（4 vCPU / 16 GB 推奨） |
+   | 管理者ユーザー名 | `labadmin` |
+   | 管理者パスワード | オンプレ環境と同じパスワード |
+   | パブリック IP | **なし** |
+   | 仮想ネットワーク | `OnPrem-VNet` |
+   | サブネット | `ServerSubnet (10.0.1.0/24)` |
+
+3. **[確認と作成]** → **[作成]** をクリック
+
+> **補足**: 実際の移行プロジェクトでは、お客様のオンプレミス環境（Hyper-V / VMware / 物理サーバー）上にアプライアンスを配置します。本 HOL では疑似オンプレ VNet 内の VM で代替します。
+
+---
+
+## Step 3: アプライアンスのセットアップ
+
+1. Azure Bastion 経由で `OnPrem-Migrate` に RDP 接続する
+2. Azure Portal の Azure Migrate プロジェクトで **[検出]** をクリック
+3. **[マシンは仮想化されていますか？]** → **[物理またはその他]** を選択
+4. **[アプライアンス名]** に `onprem-appliance` と入力
+5. **[キーの生成]** をクリックしてキーをコピー
+6. **[.zip ファイルのダウンロード]** でインストーラーをダウンロード
+7. ダウンロードした zip を展開し、`AzureMigrateInstaller.ps1` を管理者 PowerShell で実行:
+
+   ```powershell
+   .\AzureMigrateInstaller.ps1
+   ```
+
+8. インストール完了後、ブラウザでアプライアンス構成マネージャー (`https://localhost:44368`) が開く
+9. 画面の指示に従い:
+   - **前提条件の確認** を完了
+   - **アプライアンスの登録** で先ほどコピーしたキーを貼り付け、Azure にログイン
+   - **資格情報の管理** で以下を追加:
+
+     | 項目 | 値 |
+     |---|---|
+     | フレンドリ名 | `onprem-admin` |
+     | ユーザー名 | `lab\labadmin` |
+     | パスワード | オンプレ環境の管理者パスワード |
+
+---
+
+## Step 4: サーバーの検出
+
+1. アプライアンス構成マネージャーの **[検出の開始]** セクションで:
+   - **[検出ソースの追加]** をクリック
+   - 以下のサーバーを追加:
+
+     | IP アドレス | フレンドリ名 |
+     |---|---|
+     | `10.0.1.4` | `DC01` |
+     | `10.0.1.5` | `DB01` |
+     | `10.0.1.6` | `APP01` |
+
+   - 資格情報は先ほど作成した `onprem-admin` を選択
+
+2. **[検出の開始]** をクリック
+3. 検出が完了するまで数分待つ（Azure Portal の Azure Migrate ダッシュボードで進捗を確認可能）
+
+> **注意**: 検出されたサーバーが Azure Portal に反映されるまで最大 15 分程度かかる場合があります。
+
+---
+
+## Step 5: 評価の実行
+
+検出完了後、Azure Portal の Azure Migrate プロジェクトで評価を作成します。
+
+### 5-1. Azure VM 評価
+
+1. **[サーバー、データベース、Web アプリ]** → **[評価]** → **[Azure VM]** を選択
+2. 以下を設定:
+
+   | 項目 | 値 |
+   |---|---|
+   | 評価名 | `assess-vm` |
+   | ターゲットの場所 | `東日本` |
+   | ストレージの種類 | `Premium マネージド ディスク` |
+   | 対象サーバー | `DC01`, `DB01`, `APP01` |
+
+3. **[評価の作成]** をクリック
+
+### 5-2. Azure SQL 評価
+
+1. **[評価]** → **[Azure SQL]** を選択
+2. 以下を設定:
+
+   | 項目 | 値 |
+   |---|---|
+   | 評価名 | `assess-sql` |
+   | ターゲット | `Azure SQL Database` |
+   | 対象サーバー | `DB01` |
+
+3. **[評価の作成]** をクリック
+
+### 5-3. Azure App Service 評価（オプション）
+
+1. **[評価]** → **[Azure App Service]** を選択
+2. IIS で検出された Web アプリを対象に評価を作成
+
+---
+
+## Step 6: 評価結果の確認
+
+Azure Portal の Azure Migrate ダッシュボードで、各評価の結果を確認します。
+
+### 確認ポイント
+
+| 評価 | 確認すべき内容 |
 |---|---|
-| Rehost | とにかく早く移したいか |
-| DB PaaS 化 | DB だけ先行してモダナイズしたいか |
-| コンテナ化 | DevOps / 移植性 / スケール重視か |
-| フル PaaS 化 | 運用負荷を最小化したいか |
+| Azure VM 評価 | 推奨サイズ、準備状況、月額コスト見積もり |
+| Azure SQL 評価 | Azure SQL DB / Managed Instance の推奨、互換性の問題 |
+| App Service 評価 | Web アプリの .NET バージョン互換性、移行可能性 |
+
+### 結果を踏まえた移行パターンの選定
+
+| パターン | 判断軸 | 評価結果の見どころ |
+|---|---|---|
+| Rehost | とにかく早く移したい | VM 評価で推奨サイズとコストを確認 |
+| DB PaaS 化 | DB だけ先行してモダナイズしたい | SQL 評価で互換性の問題が少ないか |
+| コンテナ化 | DevOps / 移植性 / スケール重視 | App Service 評価で .NET バージョン確認 |
+| フル PaaS 化 | 運用負荷を最小化したい | SQL + App Service 評価の両方を確認 |
+
+---
+
+## クリーンアップ（オプション）
+
+アセスメント完了後、アプライアンス VM が不要であれば削除できます。
+
+```powershell
+az vm delete --resource-group rg-onprem --name OnPrem-Migrate --yes
+az disk delete --resource-group rg-onprem --name OnPrem-Migrate_OsDisk_1 --yes --no-wait
+az network nic delete --resource-group rg-onprem --name OnPrem-Migrate-nic --no-wait
+```
+
+> 移行実行（レプリケーション）フェーズでもアプライアンスを使う場合は削除しないでください。
+
+---
 
 ## 次のステップ
 
-- ➡ [`05a-cloud-rehost.md`](./05a-cloud-rehost.md)
-- ➡ [`05b-cloud-db-paas.md`](./05b-cloud-db-paas.md)
-- ➡ [`05c-cloud-containerize.md`](./05c-cloud-containerize.md)
-- ➡ [`05d-cloud-full-paas.md`](./05d-cloud-full-paas.md)
+評価結果を確認したら、1 つ以上の移行パターンを実施してください。
+
+- ➡ [`05a-cloud-rehost.md`](./05a-cloud-rehost.md) — Rehost (VM → VM)
+- ➡ [`05b-cloud-db-paas.md`](./05b-cloud-db-paas.md) — DB PaaS 化
+- ➡ [`05c-cloud-containerize.md`](./05c-cloud-containerize.md) — コンテナ化
+- ➡ [`05d-cloud-full-paas.md`](./05d-cloud-full-paas.md) — フル PaaS 化

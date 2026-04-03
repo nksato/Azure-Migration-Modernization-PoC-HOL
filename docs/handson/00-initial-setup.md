@@ -75,6 +75,9 @@ PocHol-VPN-2026!EastJp#SecureKey42
 - `DC01` / `DB01` / `APP01`
 - Hub 側 VPN Gateway / On-Prem 側 VPN Gateway
 - VNet 間接続に必要な VPN 接続設定
+- DNS Private Resolver / DNS Forwarding Ruleset（クラウド → オンプレ方向の DNS 転送）
+
+> **注意**: 疑似オンプレ側 DC01 の DNS 条件付きフォワーダー（オンプレ → クラウド方向）は、方法 A でも自動設定されません。デプロイ完了後に [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) の手順を実行してください。
 
 > デプロイ完了まで **60〜90 分程度** かかることがあります。特に VPN Gateway の作成に時間を要します。
 
@@ -186,6 +189,6 @@ az deployment group create `
 
 初期環境の準備ができたら、以下の順に進めます。
 
-1. [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) / [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) / [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md) で個別手順を確認
+1. [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) / [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) / [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md) / [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) で個別手順を確認
 2. [`00b-onprem-parts-unlimited.md`](./00b-onprem-parts-unlimited.md) でアプリをセットアップ
 3. [`01-cloud-explore-onprem.md`](./01-cloud-explore-onprem.md) 以降で移行ハンズオンを開始

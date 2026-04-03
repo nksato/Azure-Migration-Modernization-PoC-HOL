@@ -19,12 +19,16 @@
     Azure 側 VPN Gateway のパブリック IP (省略時は S2S 接続をスキップ)
 .PARAMETER RemoteAddressPrefix
     Azure 側のアドレス空間 (既定: 10.10.0.0/16)
+.PARAMETER DnsResolverInboundIp
+    Azure DNS Private Resolver のインバウンド エンドポイント IP (省略時は条件付きフォワーダー設定をスキップ)
 .PARAMETER SkipDomainJoin
     ドメイン参加をスキップする場合に指定
 .EXAMPLE
     .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
 .EXAMPLE
     .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast" -RemoteGatewayIp "<Hub側VPNの公開IP>"
+.EXAMPLE
+    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -RemoteGatewayIp "<Hub側VPNの公開IP>" -DnsResolverInboundIp "10.10.5.4"
 #>
 
 [CmdletBinding()]
@@ -38,6 +42,7 @@ param(
     [string]$DomainName = 'lab.local',
     [string]$RemoteGatewayIp = '',
     [string]$RemoteAddressPrefix = '10.10.0.0/16',
+    [string]$DnsResolverInboundIp = '',
     [switch]$SkipDomainJoin
 )
 
@@ -313,10 +318,55 @@ else {
 }
 
 # ============================================================
-# 4. デプロイ結果の表示
+# 4. DNS 条件付きフォワーダーの設定 (DC01)
 # ============================================================
 
-Write-Step "4. デプロイ完了 — 環境情報"
+if ($DnsResolverInboundIp) {
+    Write-Step "4. DC01 に DNS 条件付きフォワーダーを設定"
+
+    Write-Host "  privatelink.database.windows.net → $DnsResolverInboundIp" -ForegroundColor White
+
+    Wait-VmReady -ResourceGroup $ResourceGroupName -VmName 'OnPrem-AD' -TimeoutMinutes 5
+
+    $dnsScript = @"
+Import-Module DnsServer
+`$zone = 'privatelink.database.windows.net'
+`$existing = Get-DnsServerZone -Name `$zone -ErrorAction SilentlyContinue
+if (`$existing) {
+    Write-Host "  条件付きフォワーダー `$zone は既に存在します。スキップします。"
+} else {
+    Add-DnsServerConditionalForwarderZone -Name `$zone -MasterServers '$DnsResolverInboundIp' -ReplicationScope Forest
+    Write-Host "  条件付きフォワーダー `$zone → $DnsResolverInboundIp を追加しました。"
+}
+"@
+
+    $result = az vm run-command invoke `
+        --resource-group $ResourceGroupName `
+        --name 'OnPrem-AD' `
+        --command-id RunPowerShellScript `
+        --scripts $dnsScript `
+        -o json 2>&1
+
+    if ($LASTEXITCODE -eq 0) {
+        $output = ($result | ConvertFrom-Json).value | Where-Object { $_.code -like '*StdOut*' } | Select-Object -ExpandProperty message
+        Write-Host "  $output" -ForegroundColor Green
+    }
+    else {
+        Write-Host "  DNS 条件付きフォワーダーの設定に失敗しました。VPN 接続後に手動で設定してください。" -ForegroundColor Yellow
+        Write-Host "  $result" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Step "4. DNS 条件付きフォワーダーをスキップ (-DnsResolverInboundIp 未指定)"
+    Write-Host "  VPN 接続後に以下のコマンドで設定できます:" -ForegroundColor Yellow
+    Write-Host '  az vm run-command invoke --resource-group rg-onprem --name OnPrem-AD --command-id RunPowerShellScript --scripts "Add-DnsServerConditionalForwarderZone -Name privatelink.database.windows.net -MasterServers <DNS Resolver Inbound IP> -ReplicationScope Forest"' -ForegroundColor Gray
+}
+
+# ============================================================
+# 5. デプロイ結果の表示
+# ============================================================
+
+Write-Step "5. デプロイ完了 — 環境情報"
 
 $vpnGwPip = az network public-ip show `
     --resource-group $ResourceGroupName `
@@ -338,6 +388,11 @@ Write-Host "  [ネットワーク]" -ForegroundColor White
 Write-Host "    VPN Gateway PIP    : $vpnGwPip" -ForegroundColor White
 Write-Host "    Bastion            : OnPrem-Bastion (Azure Portal からアクセス)" -ForegroundColor White
 Write-Host ""
+if ($DnsResolverInboundIp) {
+    Write-Host "  [DNS]" -ForegroundColor White
+    Write-Host "    条件付きフォワーダー : privatelink.database.windows.net → $DnsResolverInboundIp" -ForegroundColor White
+    Write-Host ""
+}
 Write-Host "  接続方法: Azure Portal → OnPrem-Bastion → 各 VM に RDP" -ForegroundColor Green
 Write-Host ""
 

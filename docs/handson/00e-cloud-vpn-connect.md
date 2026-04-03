@@ -117,6 +117,6 @@ az network vpn-connection show `
 
 ## 次のステップ
 
-VPN 接続の設定が完了したら、移行元環境の確認に進みます。
+VPN 接続が確立したら、ハイブリッド DNS の構成に進みます。
 
-➡ [`01-cloud-explore-onprem.md`](./01-cloud-explore-onprem.md)
+➡ [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md)

@@ -88,7 +88,7 @@ az connectedmachine list `
 - ステータスが `Connected`
 - 必要に応じてタグが付与されている
 
-## 参考情報: 通常のオンプレサーバーを Arc 登録する場合
+## 備考: 通常のオンプレサーバーを Arc 登録する場合
 
 実際のオンプレミス サーバーや他クラウド上のサーバーを Azure Arc に登録する場合は、このハンズオンのような **Azure VM 向け評価手順** は不要です。
 通常は Azure Portal でオンボーディング スクリプトを生成し、対象サーバー上で Azure Connected Machine Agent をインストールして `azcmagent connect` を実行します。

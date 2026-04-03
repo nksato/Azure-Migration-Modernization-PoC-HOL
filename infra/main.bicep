@@ -84,3 +84,4 @@ output onpremResourceGroupName string = rgOnprem.name
 output hubResourceGroupName string = rgHub.name
 output hubGatewayPublicIp string = hubGatewayIp
 output onpremVpnGatewayName string = 'OnPrem-VpnGw'
+output dnsResolverInboundSubnet string = '10.10.5.0/28 (snet-dns-inbound)'

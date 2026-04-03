@@ -3,46 +3,49 @@
 ## 1. 全体ネットワーク構成
 
 ```mermaid
-architecture-beta
-    group onprem(cloud)[OnPrem VNet 10.0.0.0/16]
-    group hub(cloud)[Hub VNet 10.10.0.0/16]
-    group s1(cloud)[Spoke1 10.20.0.0/16]
-    group s2(cloud)[Spoke2 10.21.0.0/16]
-    group s3(cloud)[Spoke3 10.22.0.0/16]
-    group s4(cloud)[Spoke4 10.23.0.0/16]
+flowchart TB
+    subgraph onprem["OnPrem VNet 10.0.0.0/16"]
+        dc[DC01<br/>AD/DNS]
+        dbsrc[DB01<br/>SQL Server]
+        appsrc[APP01<br/>IIS/Web]
+        onpremvpn[VPN Gateway]
+    end
 
-    service dc(server)[DC01] in onprem
-    service dbsrc(database)[DB01] in onprem
-    service appsrc(server)[APP01] in onprem
+    subgraph hub["Hub VNet 10.10.0.0/16"]
+        hubvpn[VPN Gateway]
+        fw[Azure Firewall]
+        bastion[Azure Bastion]
+        dns[DNS Private Resolver]
+        law[Log Analytics]
+        migrate[Azure Migrate]
+    end
 
-    service fw(internet)[Azure Firewall] in hub
-    service vpngw(internet)[VPN Gateway] in hub
-    service bastion(server)[Azure Bastion] in hub
-    service law(database)[Log Analytics] in hub
-    service migrate(server)[Azure Migrate] in hub
+    subgraph s1["Spoke1 10.20.0.0/16<br/>05a Rehost"]
+        s1web[Web VM]
+        s1db[DB VM]
+    end
 
-    service s1web(server)[Web VM] in s1
-    service s1db(database)[DB VM] in s1
+    subgraph s2["Spoke2 10.21.0.0/16<br/>05b DB PaaS"]
+        s2web[Web VM]
+        s2db[(Azure SQL)]
+    end
 
-    service s2web(server)[Web VM] in s2
-    service s2db(database)[Azure SQL] in s2
+    subgraph s3["Spoke3 10.22.0.0/16<br/>05c Container"]
+        s3app[Container Apps]
+        s3db[(Azure SQL)]
+    end
 
-    service s3app(server)[Container Apps] in s3
-    service s3db(database)[Azure SQL] in s3
+    subgraph s4["Spoke4 10.23.0.0/16<br/>05d Full PaaS"]
+        s4app[App Service]
+        s4db[(Azure SQL)]
+    end
 
-    service s4app(server)[App Service] in s4
-    service s4db(database)[Azure SQL] in s4
-
-    dc:R -- L:dbsrc
-    dbsrc:R -- L:appsrc
-    appsrc:R --> L:vpngw
-    bastion:B --> T:s1web
-    bastion:B --> T:s2web
-    fw:R -- L:s1web
-    fw:R -- L:s2web
-    fw:R -- L:s3app
-    fw:R -- L:s4app
-    migrate:L --> R:appsrc
+    onpremvpn -- "S2S VPN" --> hubvpn
+    hubvpn --- fw
+    fw --- s1web & s2web & s3app & s4app
+    bastion -.-> s1web & s2web
+    migrate -.-> appsrc
+    hub --- dns
 ```
 
 ## 2. 移行パターン比較フロー

@@ -58,7 +58,11 @@ az deployment sub create `
 - `rg-hub` と各 `rg-spoke*` が存在する
 - `Hub VNet` と `Spoke1-4 VNet` が作成されている
 - `Azure Firewall`, `VPN Gateway`, `Azure Bastion` が作成されている
+- DNS Private Resolver（`dnspr-hub`）と DNS Forwarding Ruleset（`dnsrs-hub`）が作成されている
+- Private DNS Zone（`privatelink.database.windows.net`）が作成されている
 - Policy / Log Analytics / Defender の土台がある
+
+> DNS Forwarding Ruleset は、クラウド側から疑似オンプレ側の `lab.local` ドメインを名前解決するための転送ルールです。逆方向（疑似オンプレ → クラウド）の DNS 設定は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) で行います。
 
 ## 次のステップ
 

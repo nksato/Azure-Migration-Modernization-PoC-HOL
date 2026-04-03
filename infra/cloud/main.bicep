@@ -131,6 +131,21 @@ module privateDnsZoneSql 'br/public:avm/res/network/private-dns-zone:0.8.1' = {
   }
 }
 
+// DNS Forwarding Ruleset — lab.local をオンプレ DC01 へ転送
+module dnsForwardingRulesetModule 'modules/network/dns-forwarding-ruleset.bicep' = {
+  scope: rgHub
+  name: 'deploy-dns-forwarding-ruleset'
+  params: {
+    location: location
+    tags: commonTags
+    dnsResolverName: 'dnspr-hub'
+    hubVnetId: hubVnet.outputs.resourceId
+  }
+  dependsOn: [
+    dnsResolver
+  ]
+}
+
 // ============================================================
 // Azure Firewall + Policy (deployed before Route Table)
 // ============================================================
