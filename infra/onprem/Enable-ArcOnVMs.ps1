@@ -26,11 +26,11 @@
 .PARAMETER VmNames
     Arc 対応にする VM 名の配列 (既定: OnPrem-AD, OnPrem-SQL, OnPrem-Web)
 .EXAMPLE
-    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onpre"
+    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem"
 .EXAMPLE
-    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onpre" -VmNames @("OnPrem-Web")
+    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -VmNames @("OnPrem-Web")
 .EXAMPLE
-    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onpre" -ArcResourceGroupName "rg-arc" -ServicePrincipalId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -ArcResourceGroupName "rg-arc" -ServicePrincipalId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #>
 
 [CmdletBinding()]

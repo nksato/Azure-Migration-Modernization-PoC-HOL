@@ -4,18 +4,18 @@
 
 ## 構成
 
+- `infra/main.bicep`
+  - 初期環境を一括セットアップする正式エントリポイント
+  - `infra/cloud/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出す
+
 - `infra/cloud/`
   - クラウド側（Hub & Spoke / ガバナンス / スポーク用リソース）のテンプレート
-  - `main.bicep`, `main.bicepparam`, `cloud/azuredeploy.json`, `modules/`, `scripts/`
+  - `main.bicep`（互換性維持用ラッパー）, `main.bicepparam`, `cloud/azuredeploy.json`, `modules/`, `scripts/`
 
 - `infra/onprem/`
   - 疑似オンプレ側（DC01 / DB01 / APP01 / VPN Gateway）のテンプレートとセットアップ スクリプト
-  - `main.bicep`, `main.json`, `main-closed.*`, `main-nat.*`, `Deploy-Lab.ps1`, `Enable-ArcOnVMs.ps1`, `scripts/`
+  - `main.bicep`, `main.json`, `Deploy-Lab.ps1`, `Enable-ArcOnVMs.ps1`, `scripts/`
 
-## 参照元
+## 補足
 
-- `tmp/cloud/infra/**`
-- `tmp/onprem/infra/**`
-- `tmp/onprem/scripts/**`
-
-> `tmp/` 配下の資料をベースに、ルートから扱いやすいように整理してコピーした配置です。
+この `infra/` フォルダには、ハンズオンで直接利用するテンプレートと補助スクリプトを配置しています。

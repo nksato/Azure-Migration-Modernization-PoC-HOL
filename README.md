@@ -63,7 +63,7 @@
 | Step | ドキュメント | 内容 |
 |---|---|---|
 | 01 | [`docs/handson/01-cloud-explore-onprem.md`](./docs/handson/01-cloud-explore-onprem.md) | 移行元環境の現状確認 |
-| 02 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc へ接続 |
+| 02 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc 登録（評価 / オプション） |
 | 03 | [`docs/handson/03-cloud-hybrid-mgmt.md`](./docs/handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理を体験 |
 | 04 | [`docs/handson/04-cloud-assessment.md`](./docs/handson/04-cloud-assessment.md) | Azure Migrate で評価 |
 | 05a | [`docs/handson/05a-cloud-rehost.md`](./docs/handson/05a-cloud-rehost.md) | Rehost（Lift & Shift）を実施 |

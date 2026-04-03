@@ -36,7 +36,7 @@
 | ファイル | 内容 |
 |---|---|
 | [`handson/01-cloud-explore-onprem.md`](./handson/01-cloud-explore-onprem.md) | 移行元環境の確認 |
-| [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md) | Azure Arc 登録 |
+| [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md) | Azure Arc 登録（評価 / オプション） |
 | [`handson/03-cloud-hybrid-mgmt.md`](./handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理 |
 | [`handson/04-cloud-assessment.md`](./handson/04-cloud-assessment.md) | 移行アセスメント |
 | [`handson/05a-cloud-rehost.md`](./handson/05a-cloud-rehost.md) | Rehost |

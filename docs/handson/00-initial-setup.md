@@ -25,8 +25,8 @@
 
 ## 方法 A: 一度に環境を作る方法
 
-従来の一括デプロイの流れに合わせて、**環境全体をまとめて作成**する方法です。  
-全体の初期セットアップをまとめて実施したい場合は、この方法を使います。
+**一括セットアップ用エントリポイント** を使って、環境全体をまとめて作成する方法です。  
+現在の正式な配置は `infra/main.bicep` で、内部で `infra/cloud/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、**方法 B と同じ構成・命名** で初期セットアップを実施できます。
 
 ### 実行例（Azure CLI / Bicep）
 
@@ -34,11 +34,15 @@
 az deployment sub create `
   --name hol-initial-setup `
   --location japaneast `
-  --template-file infra/cloud/main.bicep `
+  --template-file infra/main.bicep `
   --parameters location='japaneast' `
-               adminUsername='azureadmin' `
-               adminPassword='<管理者パスワード>'
+               adminUsername='labadmin' `
+               adminPassword='<管理者パスワード>' `
+               domainName='lab.local' `
+               vpnSharedKey='<共有キー>'
 ```
+
+> 互換性のため `infra/cloud/main.bicep` からも実行できますが、今後は `infra/main.bicep` を利用する想定です。 
 
 ### この方法で一括作成されるもの
 

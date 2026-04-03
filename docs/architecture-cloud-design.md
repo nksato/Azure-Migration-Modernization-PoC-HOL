@@ -95,10 +95,11 @@ Azure Arc によって、移行前のサーバーも Azure 管理面に統合し
 
 ## 5. デプロイ単位
 
-クラウド側の Bicep / ARM 参照元は以下です。
+初期環境およびクラウド側の Bicep / ARM 参照元は以下です。
 
-- `infra/cloud/main.bicep`
-- `infra/cloud/cloud/main.bicep`
+- `infra/main.bicep`（初期環境の一括セットアップ用エントリポイント）
+- `infra/cloud/main.bicep`（互換性維持用ラッパー）
+- `infra/cloud/cloud/main.bicep`（クラウド側 Hub / Spoke 基盤）
 - `infra/cloud/cloud/azuredeploy.json`
 - `infra/cloud/modules/**`
 
