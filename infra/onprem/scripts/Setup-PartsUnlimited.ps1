@@ -4,7 +4,7 @@
 # Parts Unlimited (ASP.NET 4.8 MVC) をビルド・デプロイします
 # ============================================================
 # 前提条件:
-#   - main-nat.bicep でデプロイ済み (GitHub アクセスにインターネット送信が必要)
+#   - main.bicep でデプロイ済み (GitHub アクセスにインターネット送信が必要)
 #   - DB01 で Setup-SqlServer.ps1 を実行済み
 # 使い方: Bastion 経由で APP01 に RDP 接続し、管理者 PowerShell で実行
 #   .\Setup-PartsUnlimited.ps1 -SqlPassword 'P@ssw0rd1234'

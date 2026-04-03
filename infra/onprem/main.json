@@ -51,7 +51,7 @@
     },
     "remoteAddressPrefix": {
       "type": "string",
-      "defaultValue": "10.100.0.0/16",
+      "defaultValue": "10.10.0.0/16",
       "metadata": {
         "description": "接続先 Azure 側のアドレス空間"
       }

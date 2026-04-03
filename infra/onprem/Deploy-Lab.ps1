@@ -2,18 +2,15 @@
 .SYNOPSIS
     疑似オンプレミス環境をデプロイするスクリプト
 .DESCRIPTION
-    Bicep テンプレートを段階的にデプロイし、AD 再起動待機・ドメイン参加の
-    リトライ処理を行います。
-    使用テンプレートを -TemplateFile パラメータで切り替えられます。
+    標準テンプレート `main.bicep` を使って疑似オンプレ環境を段階的にデプロイし、
+    AD 再起動待機・ドメイン参加のリトライ処理を行います。
+    管理者パスワードや VPN 共有キーを対話的に入力しながら再実行しやすくした補助スクリプトです。
 .PARAMETER ResourceGroupName
     デプロイ先のリソースグループ名
 .PARAMETER Location
     リソースのリージョン (既定: japaneast)
 .PARAMETER TemplateFile
-    使用する Bicep テンプレート (既定: infra/main.bicep)
-    - infra/main.bicep        : 既定の送信 IP あり (アラート表示)
-    - infra/main-closed.bicep : 閉域構成 (送信ブロック)
-    - infra/main-nat.bicep    : NAT Gateway 付き (送信可能)
+    使用する Bicep テンプレート (既定: main.bicep)
 .PARAMETER AdminUsername
     VM の管理者ユーザー名 (既定: labadmin)
 .PARAMETER DomainName
@@ -21,15 +18,13 @@
 .PARAMETER RemoteGatewayIp
     Azure 側 VPN Gateway のパブリック IP (省略時は S2S 接続をスキップ)
 .PARAMETER RemoteAddressPrefix
-    Azure 側のアドレス空間 (既定: 10.100.0.0/16)
+    Azure 側のアドレス空間 (既定: 10.10.0.0/16)
 .PARAMETER SkipDomainJoin
     ドメイン参加をスキップする場合に指定
 .EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onpre" -Location "japaneast"
+    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
 .EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onpre" -TemplateFile "infra/main-closed.bicep"
-.EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onpre" -TemplateFile "infra/main-nat.bicep"
+    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast" -RemoteGatewayIp "<Hub側VPNの公開IP>"
 #>
 
 [CmdletBinding()]
@@ -38,12 +33,11 @@ param(
     [string]$ResourceGroupName,
 
     [string]$Location = 'japaneast',
-    [ValidateSet('infra/main.bicep', 'infra/main-closed.bicep', 'infra/main-nat.bicep')]
-    [string]$TemplateFile = 'infra/main.bicep',
+    [string]$TemplateFile = 'main.bicep',
     [string]$AdminUsername = 'labadmin',
     [string]$DomainName = 'lab.local',
     [string]$RemoteGatewayIp = '',
-    [string]$RemoteAddressPrefix = '10.100.0.0/16',
+    [string]$RemoteAddressPrefix = '10.10.0.0/16',
     [switch]$SkipDomainJoin
 )
 
@@ -197,11 +191,12 @@ az group create --name $ResourceGroupName --location $Location -o none
 
 Write-Step "1. Bicep テンプレートをデプロイ (インフラ + VM)"
 
-$templatePath = Join-Path $PSScriptRoot $TemplateFile
-if (-not (Test-Path $templatePath)) {
-    throw "テンプレートファイルが見つかりません: $templatePath"
+$templateCandidate = if (Test-Path $TemplateFile) { $TemplateFile } else { Join-Path $PSScriptRoot (Split-Path $TemplateFile -Leaf) }
+$templatePath = (Resolve-Path $templateCandidate -ErrorAction SilentlyContinue).Path
+if (-not $templatePath) {
+    throw "テンプレートファイルが見つかりません: $TemplateFile"
 }
-Write-Host "  テンプレート: $TemplateFile" -ForegroundColor White
+Write-Host "  テンプレート: $(Split-Path $templatePath -Leaf)" -ForegroundColor White
 
 $deployResult = az deployment group create `
     --resource-group $ResourceGroupName `

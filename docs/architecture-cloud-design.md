@@ -54,7 +54,7 @@
 | `DB01` | SQL Server |
 | `APP01` | IIS + Parts Unlimited |
 
-> `tmp/cloud` 側の説明は、先に作成した `docs/handson` のオンプレ環境説明に合わせて、`APP01` / `DB01` / `DC01` 基準に揃えています。
+> 本ドキュメントでは、`docs/handson` の移行元環境説明と整合するように、`APP01` / `DB01` / `DC01` 基準で記載を統一しています。
 
 ### 3.2 段階的モダナイズ
 

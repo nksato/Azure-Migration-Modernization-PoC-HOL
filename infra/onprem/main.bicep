@@ -27,7 +27,7 @@ param vpnSharedKey string
 param remoteGatewayIp string = ''
 
 @description('接続先 Azure 側のアドレス空間')
-param remoteAddressPrefix string = '10.100.0.0/16'
+param remoteAddressPrefix string = '10.10.0.0/16'
 
 // タグ定義
 var dcTags = { Role: 'DomainController' }

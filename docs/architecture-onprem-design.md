@@ -108,7 +108,8 @@
 
 ## 8. 参照ファイル
 
-- `tmp/onprem/README.md`
+- `README.md`
+- `docs/README.md`
 - `infra/onprem/Deploy-Lab.ps1`
 - `infra/onprem/main.bicep`
 - `infra/onprem/Enable-ArcOnVMs.ps1`

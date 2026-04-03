@@ -4,7 +4,7 @@
 # Builds and deploys Parts Unlimited (ASP.NET 4.8 MVC)
 # ============================================================
 # Prerequisites:
-#   - Deployed with main-nat.bicep (internet outbound required for GitHub access)
+#   - Deployed with main.bicep (internet outbound required for GitHub access)
 #   - Setup-SqlServer-en.ps1 already executed on DB01
 # Usage: Connect to APP01 via Bastion RDP and run in admin PowerShell
 #   .\Setup-PartsUnlimited-en.ps1 -SqlPassword 'P@ssw0rd1234'

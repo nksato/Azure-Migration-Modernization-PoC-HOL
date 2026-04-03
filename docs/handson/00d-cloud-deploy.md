@@ -34,7 +34,7 @@
 
 ### Deploy to Azure を使う場合
 
-`tmp/cloud/README.md` に記載のデプロイ導線を利用します。
+リポジトリの `README.md` や `docs/README.md` から、ハンズオン向けのデプロイ導線を利用します。
 
 ### Azure CLI / Bicep で実行する場合
 
