@@ -1,4 +1,4 @@
-# Phase 3: ハイブリッド管理
+# 07. ハイブリッド管理
 
 Azure Arc に接続した `DC01` / `DB01` / `APP01` に対して、Azure の管理・監視・セキュリティ機能を適用します。
 
@@ -33,4 +33,4 @@ az monitor log-analytics query `
 
 ## 次のステップ
 
-➡ [`cloud-04-assessment.md`](./cloud-04-assessment.md)
+➡ [`08-cloud-assessment.md`](./08-cloud-assessment.md)

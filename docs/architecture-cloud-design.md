@@ -116,4 +116,4 @@ Spoke ごとの追加リソースは以下を利用します。
 - 移行元（オンプレ設計）: [`./architecture-onprem-design.md`](./architecture-onprem-design.md)
 - 移行元（オンプレ図解）: [`./architecture-onprem-diagrams.md`](./architecture-onprem-diagrams.md)
 - クラウド図解: [`./architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md)
-- クラウド手順: [`./handson/cloud-00-deploy.md`](./handson/cloud-00-deploy.md)
+- クラウド手順: [`./handson/04-cloud-deploy.md`](./handson/04-cloud-deploy.md)

@@ -67,17 +67,13 @@
 
 ---
 
-## 5. テンプレート バリエーション
+## 5. 使用テンプレート
 
-`tmp/onprem/infra` には、送信アクセス方針の異なる 3 つの Bicep テンプレートがあります。
+ハンズオンでは、`tmp/onprem/infra/main.bicep` を標準構成として利用します。
 
 | テンプレート | 特徴 | 用途 |
 |---|---|---|
-| `main.bicep` | Azure 既定の送信アクセスを利用 | 手早い検証 |
-| `main-closed.bicep` | 送信を厳格に遮断 | 閉域構成の再現 |
-| `main-nat.bicep` | NAT Gateway で外部送信 | GitHub / 更新取得が必要な場合に推奨 |
-
-> ハンズオン用途では、Parts Unlimited の取得やセットアップのしやすさから **`main-nat.bicep`** を推奨します。
+| `main.bicep` | Azure 既定の送信アクセスを利用 | 標準ラボ構成 |
 
 ---
 
@@ -92,9 +88,9 @@
 
 詳細手順は以下を参照してください。
 
-- [`handson/00-deploy.md`](./handson/00-deploy.md)
-- [`handson/01-parts-unlimited.md`](./handson/01-parts-unlimited.md)
-- [`handson/02-verification.md`](./handson/02-verification.md)
+- [`handson/01-onprem-deploy.md`](./handson/01-onprem-deploy.md)
+- [`handson/02-onprem-parts-unlimited.md`](./handson/02-onprem-parts-unlimited.md)
+- [`handson/03-onprem-verification.md`](./handson/03-onprem-verification.md)
 
 ---
 
@@ -115,7 +111,5 @@
 - `tmp/onprem/README.md`
 - `tmp/onprem/Deploy-Lab.ps1`
 - `tmp/onprem/infra/main.bicep`
-- `tmp/onprem/infra/main-closed.bicep`
-- `tmp/onprem/infra/main-nat.bicep`
 
 > この設計書は、移行元環境に関する正式な `docs` 配下の初版です。今後はクラウド側や全体 HOL 設計書と並ぶ形で拡張していきます。

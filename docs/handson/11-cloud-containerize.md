@@ -1,4 +1,4 @@
-# Phase 5c: コンテナ化（Spoke3）
+# 11. コンテナ化（Spoke3）
 
 `APP01` のアプリを .NET 8 化し、**Azure Container Apps** に載せ替えるパターンです。
 
@@ -34,4 +34,4 @@
 
 ## 次のステップ
 
-➡ [`cloud-06-compare.md`](./cloud-06-compare.md)
+➡ [`13-cloud-compare.md`](./13-cloud-compare.md)

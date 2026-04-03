@@ -1,4 +1,4 @@
-# Phase 1: 移行元環境の確認
+# 05. 移行元環境の確認
 
 このフェーズでは、クラウド側の移行作業に入る前に、**移行元として使う疑似オンプレ環境**の状態を確認します。
 
@@ -14,8 +14,8 @@
 
 詳細なセットアップ・検証は、同じ `docs/handson` 配下のオンプレ向けドキュメントを参照してください。
 
-- [`01-parts-unlimited.md`](./01-parts-unlimited.md)
-- [`02-verification.md`](./02-verification.md)
+- [`02-onprem-parts-unlimited.md`](./02-onprem-parts-unlimited.md)
+- [`03-onprem-verification.md`](./03-onprem-verification.md)
 
 ## このフェーズで見るポイント
 
@@ -34,4 +34,4 @@
 
 ## 次のステップ
 
-➡ [`cloud-02-arc-onboard.md`](./cloud-02-arc-onboard.md)
+➡ [`06-cloud-arc-onboard.md`](./06-cloud-arc-onboard.md)

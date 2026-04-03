@@ -1,4 +1,4 @@
-# Phase 2: Azure Arc 接続
+# 06. Azure Arc 接続
 
 このフェーズでは、移行元サーバー `DC01` / `DB01` / `APP01` を **Azure Arc** に登録し、Azure の管理プレーンから一元管理できるようにします。
 
@@ -41,4 +41,4 @@ az ad sp create-for-rbac `
 
 ## 次のステップ
 
-➡ [`cloud-03-hybrid-mgmt.md`](./cloud-03-hybrid-mgmt.md)
+➡ [`07-cloud-hybrid-mgmt.md`](./07-cloud-hybrid-mgmt.md)

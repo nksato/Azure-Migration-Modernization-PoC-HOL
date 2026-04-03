@@ -1,4 +1,4 @@
-# Phase 5a: Rehost（Spoke1）
+# 09. Rehost（Spoke1）
 
 最小限の変更で、`APP01` と `DB01` を Azure VM に移行するパターンです。
 
@@ -32,4 +32,4 @@
 
 ## 次のステップ
 
-➡ [`cloud-06-compare.md`](./cloud-06-compare.md)
+➡ [`13-cloud-compare.md`](./13-cloud-compare.md)

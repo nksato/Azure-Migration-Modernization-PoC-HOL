@@ -1,4 +1,4 @@
-# Phase 0: クラウド基盤のデプロイ
+# 04. クラウド基盤のデプロイ
 
 このフェーズでは、**移行先となる Azure 側の Hub & Spoke 基盤**を構築します。
 
@@ -15,7 +15,7 @@
 - Azure サブスクリプション
 - クラウド環境を作成する権限
 - 可能であれば移行元環境のドキュメントも確認済み
-  - [`00-deploy.md`](./00-deploy.md)
+  - [`01-onprem-deploy.md`](./01-onprem-deploy.md)
 
 ---
 
@@ -59,4 +59,4 @@ az deployment group create `
 
 ## 次のステップ
 
-➡ [`cloud-01-explore-onprem.md`](./cloud-01-explore-onprem.md)
+➡ [`05-cloud-explore-onprem.md`](./05-cloud-explore-onprem.md)

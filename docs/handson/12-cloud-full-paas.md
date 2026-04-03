@@ -1,4 +1,4 @@
-# Phase 5d: フル PaaS 化（Spoke4）
+# 12. フル PaaS 化（Spoke4）
 
 `APP01` のアプリを .NET 8 化し、**Azure App Service + Azure SQL** に載せ替えるパターンです。
 
@@ -34,4 +34,4 @@
 
 ## 次のステップ
 
-➡ [`cloud-06-compare.md`](./cloud-06-compare.md)
+➡ [`13-cloud-compare.md`](./13-cloud-compare.md)

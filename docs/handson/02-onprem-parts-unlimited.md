@@ -1,4 +1,4 @@
-# 01. Parts Unlimited セットアップ
+# 02. Parts Unlimited セットアップ
 
 この手順では、疑似オンプレ環境の `DB01` と `APP01` に **Parts Unlimited** をセットアップします。
 
@@ -6,7 +6,7 @@
 
 - `00-deploy.md` の手順で環境作成済み
 - `Azure Bastion` 経由で `DB01` / `APP01` に接続できる
-- 外部からスクリプトを取得する場合は `main-nat.bicep` など送信可能な構成である
+- `DB01` / `APP01` でセットアップ スクリプトを実行できる
 
 ---
 
@@ -57,6 +57,38 @@ C:\scripts\Setup-PartsUnlimited.ps1 -SqlPassword '<DB01 と同じパスワード
 
 ---
 
+## 備考: リモート PC から `az vm run-command` で実行する場合
+
+Bastion で VM にログインせず、手元の PC から Azure CLI を使って `DB01` / `APP01` のセットアップを実行することもできます。
+
+> `--name` に指定するのはホスト名ではなく Azure VM リソース名です。ここでは `OnPrem-SQL` と `OnPrem-Web` を使います。必要に応じて `az vm list --resource-group rg-onpre --query "[].name" -o tsv` で確認してください。
+
+```powershell
+# DB01 (OnPrem-SQL) — SQL Server セットアップ
+az vm run-command invoke `
+  --resource-group rg-onpre `
+  --name OnPrem-SQL `
+  --command-id RunPowerShellScript `
+  --scripts @tmp/onprem/scripts/Setup-SqlServer-en.ps1 `
+  --parameters "SqlPassword=<任意の強いパスワード>" `
+  --query "value[].message" -o tsv
+
+# APP01 (OnPrem-Web) — Parts Unlimited デプロイ
+az vm run-command invoke `
+  --resource-group rg-onpre `
+  --name OnPrem-Web `
+  --command-id RunPowerShellScript `
+  --scripts @tmp/onprem/scripts/Setup-PartsUnlimited-en.ps1 `
+  --parameters "SqlPassword=<DB01 と同じパスワード>" `
+  --query "value[].message" -o tsv
+```
+
+> 日本語を含むスクリプトは文字コードの影響で実行エラーになることがあるため、VM Run Command では `*-en.ps1` を利用しています。
+
+> `Setup-PartsUnlimited-en.ps1` は完了まで 15〜20 分程度かかる場合があります。
+
+---
+
 ## 3. 動作確認
 
 APP01 の RDP セッション内でブラウザを開き、以下へアクセスします。
@@ -88,4 +120,4 @@ http://localhost
 
 詳しい確認は次の手順を参照してください。
 
-➡ [`02-verification.md`](./02-verification.md)
+➡ [`03-onprem-verification.md`](./03-onprem-verification.md)

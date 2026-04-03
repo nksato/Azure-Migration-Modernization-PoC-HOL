@@ -1,4 +1,4 @@
-# Phase 5b: DB PaaS 化（Spoke2）
+# 10. DB PaaS 化（Spoke2）
 
 Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Database** に移行するパターンです。
 
@@ -33,4 +33,4 @@ Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Data
 
 ## 次のステップ
 
-➡ [`cloud-06-compare.md`](./cloud-06-compare.md)
+➡ [`13-cloud-compare.md`](./13-cloud-compare.md)
