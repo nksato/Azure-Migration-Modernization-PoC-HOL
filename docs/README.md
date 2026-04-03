@@ -10,7 +10,7 @@
 
 | ファイル | 内容 |
 |---|---|
-| [`handson/00-initial-setup.md`](./handson/00-initial-setup.md) | 初期環境を一括または 3 ステップで構築する導入手順 |
+| [`handson/00-initial-setup.md`](./handson/00-initial-setup.md) | 初期環境を一括または 3 ステップで構築する導入手順（Deploy to Azure 対応） |
 
 ### 1. 移行元: 疑似オンプレ環境
 

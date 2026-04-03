@@ -56,6 +56,8 @@
 | 00d | [`docs/handson/00d-cloud-deploy.md`](./docs/handson/00d-cloud-deploy.md) | 移行先クラウド基盤をデプロイ |
 | 00e | [`docs/handson/00e-cloud-vpn-connect.md`](./docs/handson/00e-cloud-vpn-connect.md) | クラウド VPN 接続を構成 |
 
+> ワンクリックで初期環境を作成したい場合は、[`docs/handson/00-initial-setup.md`](./docs/handson/00-initial-setup.md) の **Deploy to Azure** ボタンを利用できます。
+
 ### フェーズ 2: クラウド移行 HOL
 
 初期環境の準備後、以下の手順で移行評価とモダナイズ比較を進めます。

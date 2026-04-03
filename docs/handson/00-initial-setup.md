@@ -28,6 +28,14 @@
 **一括セットアップ用エントリポイント** を使って、環境全体をまとめて作成する方法です。  
 現在の正式な配置は `infra/main.bicep` で、内部で `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、**方法 B と同じ構成・命名** で初期セットアップを実施できます。
 
+### Deploy to Azure ボタン
+
+ブラウザからまとめてデプロイする場合は、次のボタンを利用できます。
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fmain.json)
+
+> このボタンは `infra/main.json` を利用します。別の fork / mirror で使う場合は、リンク先 URL 内のリポジトリ パスを自身のものに置き換えてください。
+
 ### 実行例（Azure CLI / Bicep）
 
 ```powershell
