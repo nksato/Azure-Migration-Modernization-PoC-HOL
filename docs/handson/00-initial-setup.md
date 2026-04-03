@@ -26,7 +26,7 @@
 ## 方法 A: 一度に環境を作る方法
 
 **一括セットアップ用エントリポイント** を使って、環境全体をまとめて作成する方法です。  
-現在の正式な配置は `infra/main.bicep` で、内部で `infra/cloud/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、**方法 B と同じ構成・命名** で初期セットアップを実施できます。
+現在の正式な配置は `infra/main.bicep` で、内部で `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、**方法 B と同じ構成・命名** で初期セットアップを実施できます。
 
 ### 実行例（Azure CLI / Bicep）
 
@@ -42,7 +42,7 @@ az deployment sub create `
                vpnSharedKey='<共有キー>'
 ```
 
-> 互換性のため `infra/cloud/main.bicep` からも実行できますが、今後は `infra/main.bicep` を利用する想定です。 
+> `infra/main.bicep` は一括セットアップ用、`infra/cloud/main.bicep` はクラウド側のみを構築するテンプレートです。用途に応じて使い分けてください。
 
 ### この方法で一括作成されるもの
 
@@ -97,7 +97,7 @@ az deployment group create `
 az deployment sub create `
   --name hol-cloud-network `
   --location japaneast `
-  --template-file infra/cloud/cloud/main.bicep `
+  --template-file infra/cloud/main.bicep `
   --parameters location='japaneast' `
                deployFirewall=true `
                deployBastion=true `
@@ -142,7 +142,7 @@ az deployment group create `
 
 > `vpnSharedKey` は **Step 1 で指定した値を、Step 3 でもそのまま再利用**してください。
 
-> 現在のテンプレート構成では、クラウド側の `infra/cloud/cloud/main.bicep` は **Step 2 で Hub 側 Azure VPN Gateway を作成するまで**を担当します。実際の接続先情報（Hub 側の公開 IP）と共有キーを使った接続設定は、**Step 3 で疑似オンプレ側に設定**する想定です。
+> 現在のテンプレート構成では、クラウド側の `infra/cloud/main.bicep` は **Step 2 で Hub 側 Azure VPN Gateway を作成するまで**を担当します。実際の接続先情報（Hub 側の公開 IP）と共有キーを使った接続設定は、**Step 3 で疑似オンプレ側に設定**する想定です。
 
 > そのため、この手順では **クラウド側で追加の共有キー入力や接続元 IP の手動設定は不要**です。Step 3 で `remoteGatewayIp` と `vpnSharedKey` を指定して接続を完了させます。
 

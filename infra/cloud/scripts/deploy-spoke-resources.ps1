@@ -20,11 +20,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$templateRoot = Resolve-Path (Join-Path $PSScriptRoot '..\modules\spoke-resources')
+
 $templateMap = @{
-    'spoke1' = @{ rg = 'rg-spoke1'; template = 'infra/modules/spoke-resources/spoke1-rehost.bicep' }
-    'spoke2' = @{ rg = 'rg-spoke2'; template = 'infra/modules/spoke-resources/spoke2-db-paas.bicep' }
-    'spoke3' = @{ rg = 'rg-spoke3'; template = 'infra/modules/spoke-resources/spoke3-container.bicep' }
-    'spoke4' = @{ rg = 'rg-spoke4'; template = 'infra/modules/spoke-resources/spoke4-full-paas.bicep' }
+    'spoke1' = @{ rg = 'rg-spoke1'; template = (Join-Path $templateRoot 'spoke1-rehost.bicep') }
+    'spoke2' = @{ rg = 'rg-spoke2'; template = (Join-Path $templateRoot 'spoke2-db-paas.bicep') }
+    'spoke3' = @{ rg = 'rg-spoke3'; template = (Join-Path $templateRoot 'spoke3-container.bicep') }
+    'spoke4' = @{ rg = 'rg-spoke4'; template = (Join-Path $templateRoot 'spoke4-full-paas.bicep') }
 }
 
 $config = $templateMap[$Spoke]

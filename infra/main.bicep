@@ -2,7 +2,7 @@
 // Azure Migration & Modernization PoC - Unified Initial Setup
 // ============================================================
 // 一括デプロイ用の正式エントリポイント
-// `infra/cloud/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出し、
+// `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出し、
 // 段階実行（方法 B）と同じ構成・命名に揃えて初期環境を作成します。
 // ============================================================
 
@@ -42,7 +42,7 @@ resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   location: location
 }
 
-module cloudFoundation 'cloud/cloud/main.bicep' = {
+module cloudFoundation 'cloud/main.bicep' = {
   name: 'deploy-cloud-foundation'
   params: {
     location: location

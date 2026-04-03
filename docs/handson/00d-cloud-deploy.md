@@ -23,10 +23,10 @@
 
 | ファイル | 用途 |
 |---|---|
-| `infra/cloud/cloud/azuredeploy.json` | Deploy to Azure 用 ARM テンプレート |
-| `infra/cloud/cloud/main.bicep` | クラウド側メイン Bicep |
+| `infra/cloud/azuredeploy.json` | Deploy to Azure 用 ARM テンプレート |
+| `infra/cloud/main.bicep` | クラウド側メイン Bicep |
 | `infra/cloud/modules/network/*` | Hub / Spoke / VPN / ルーティング |
-| `infra/cloud/modules/governance/*` | Log Analytics / Policy / Defender |
+| `infra/cloud/modules/governance/*` | Log Analytics / Policy / Defender / Dashboard |
 
 ---
 
@@ -39,14 +39,17 @@
 ### Azure CLI / Bicep で実行する場合
 
 ```powershell
-az group create --name rg-hub --location japaneast
-
-az deployment group create `
-  --resource-group rg-hub `
-  --template-file infra/cloud/cloud/main.bicep
+az deployment sub create `
+  --name hol-cloud-network `
+  --location japaneast `
+  --template-file infra/cloud/main.bicep `
+  --parameters location='japaneast' `
+               deployFirewall=true `
+               deployBastion=true `
+               deployVpnGateway=true
 ```
 
-> 実際には Hub / Spoke ごとに複数のリソースグループを作る構成を想定しています。
+> このテンプレートは **subscription スコープ** で実行し、`rg-hub` と `rg-spoke1` ～ `rg-spoke4` をまとめて作成します。
 
 ---
 
