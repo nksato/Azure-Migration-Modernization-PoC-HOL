@@ -6,6 +6,12 @@
 
 ## 📚 ドキュメント構成
 
+### 0. 初期環境セットアップ
+
+| ファイル | 内容 |
+|---|---|
+| [`handson/00-initial-setup.md`](./handson/00-initial-setup.md) | 初期環境を一括または 3 ステップで構築する導入手順 |
+
 ### 1. 移行元: 疑似オンプレ環境
 
 | ファイル | 内容 |
@@ -42,6 +48,8 @@
 
 ## 🚀 推奨の読み順
 
+0. **初期環境をセットアップ**
+   - [`handson/00-initial-setup.md`](./handson/00-initial-setup.md)
 1. **移行元を準備**
    - [`handson/01-onprem-deploy.md`](./handson/01-onprem-deploy.md)
    - [`handson/02-onprem-parts-unlimited.md`](./handson/02-onprem-parts-unlimited.md)
