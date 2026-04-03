@@ -52,6 +52,12 @@ az deployment sub create `
 
 > `infra/main.bicep` は一括セットアップ用、`infra/cloud/main.bicep` はクラウド側のみを構築するテンプレートです。用途に応じて使い分けてください。
 
+### デプロイ後に必要な手動設定
+
+上記デプロイ完了後、疑似オンプレ側からクラウド側の Private Endpoint を名前解決するために、DC01 に **DNS 条件付きフォワーダー**を設定します。この設定は Bicep では自動化されないため、**必ず手動で実行してください**。
+
+詳細な手順は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) を参照してください。
+
 ### `vpnSharedKey` の決め方
 
 - **32 文字以上**（推奨: `32〜64` 文字）の十分に長い文字列を使用します
@@ -77,16 +83,16 @@ PocHol-VPN-2026!EastJp#SecureKey42
 - VNet 間接続に必要な VPN 接続設定
 - DNS Private Resolver / DNS Forwarding Ruleset（クラウド → オンプレ方向の DNS 転送）
 
-> **注意**: 疑似オンプレ側 DC01 の DNS 条件付きフォワーダー（オンプレ → クラウド方向）は、方法 A でも自動設定されません。デプロイ完了後に [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) の手順を実行してください。
+> **注意**: 疑似オンプレ側 DC01 の DNS 条件付きフォワーダー（オンプレ → クラウド方向）は、方法 A でも自動設定されません。上記「デプロイ後に必要な手動設定」を実行してください。
 
 > デプロイ完了まで **60〜90 分程度** かかることがあります。特に VPN Gateway の作成に時間を要します。
 
 ---
 
-## 方法 B: 3 つのステップで構築する方法
+## 方法 B: 4 つのステップで構築する方法
 
-一括デプロイではなく、構成を確認しながら段階的に構築したい場合は、以下の 3 ステップで進めます。
-まず疑似オンプレ環境を作成し、次にクラウド側の共通基盤を用意し、最後に両者の VPN 接続を構成します。
+一括デプロイではなく、構成を確認しながら段階的に構築したい場合は、以下の 4 ステップで進めます。
+まず疑似オンプレ環境を作成し、次にクラウド側の共通基盤を用意し、VPN 接続を構成したうえで、最後にハイブリッド DNS を設定します。
 
 ### 1) 疑似オンプレを作り Azure VPN を作る
 
@@ -141,7 +147,7 @@ az deployment sub create `
 
 ### 3) クラウドの Azure VPN と疑似オンプレの Azure VPN の設定を行う
 
-最後に、Hub 側 VPN Gateway のパブリック IP を取得し、疑似オンプレ側から接続設定を追加して VPN を成立させます。
+Hub 側 VPN Gateway のパブリック IP を取得し、疑似オンプレ側から接続設定を追加して VPN を成立させます。
 
 ```powershell
 $hubGatewayIp = az network public-ip show `
@@ -173,6 +179,34 @@ az deployment group create `
 > 現在のテンプレート構成では、クラウド側の `infra/cloud/main.bicep` は **Step 2 で Hub 側 Azure VPN Gateway を作成するまで**を担当します。実際の接続先情報（Hub 側の公開 IP）と共有キーを使った接続設定は、**Step 3 で疑似オンプレ側に設定**する想定です。
 
 > そのため、この手順では **クラウド側で追加の共有キー入力や接続元 IP の手動設定は不要**です。Step 3 で `remoteGatewayIp` と `vpnSharedKey` を指定して接続を完了させます。
+
+---
+
+### 4) ハイブリッド DNS を設定する
+
+VPN 接続が確立したら、疑似オンプレ側からクラウド側の Private Endpoint を名前解決できるよう、DC01 に DNS 条件付きフォワーダーを設定します。
+
+```powershell
+$dnsInboundIp = az dns-resolver inbound-endpoint show `
+  --resource-group rg-hub `
+  --dns-resolver-name dnspr-hub `
+  --name inbound `
+  --query "ipConfigurations[0].privateIpAddress" -o tsv
+
+az vm run-command invoke `
+  --resource-group rg-onprem `
+  --name OnPrem-AD `
+  --command-id RunPowerShellScript `
+  --scripts "Add-DnsServerConditionalForwarderZone -Name 'privatelink.database.windows.net' -MasterServers '$dnsInboundIp' -ReplicationScope Forest"
+```
+
+**このステップで行うこと**
+- DNS Private Resolver のインバウンド IP を取得
+- DC01 に `privatelink.database.windows.net` の条件付きフォワーダーを追加
+
+詳細な手順は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) を参照してください。
+
+> クラウド側の DNS Forwarding Ruleset（`lab.local` → DC01）は Step 2 の `infra/cloud/main.bicep` デプロイ時に自動作成済みです。ここでは逆方向（オンプレ → クラウド）のみ設定します。
 
 ---
 
