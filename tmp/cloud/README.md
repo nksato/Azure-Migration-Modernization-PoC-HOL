@@ -6,7 +6,9 @@
 
 Hub VNet（Firewall / VPN GW / Bastion / 管理サービス）+ Spoke VNet x 4 をデプロイします。
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fylearning86%2FAzure-Migration-Modernization-PoC-Handson%2Fmain%2Finfra%2Fcloud%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2F%3Cgithub-owner%3E%2F%3Crepo-name%3E%2Fmain%2Finfra%2Fcloud%2Fazuredeploy.json)
+
+> 上記ボタンを使う場合は、リンク内の `<github-owner>/<repo-name>` を自身の fork / mirror に置き換えてください。
 
 ### Step 2: 移行元オンプレ環境（複数 VM）
 

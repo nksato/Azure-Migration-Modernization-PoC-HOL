@@ -15,7 +15,8 @@
 Bastion で `OnPrem-SQL (DB01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
-$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/infra/onprem/scripts'
+# <github-owner>/<repo-name> は自身の fork / mirror に置き換えてください
+$repo = 'https://raw.githubusercontent.com/<github-owner>/<repo-name>/main/infra/onprem/scripts'
 New-Item -Path C:\scripts -ItemType Directory -Force | Out-Null
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -Uri "$repo/Setup-SqlServer.ps1" -OutFile 'C:\scripts\Setup-SqlServer.ps1' -UseBasicParsing
@@ -38,7 +39,8 @@ C:\scripts\Setup-SqlServer.ps1 -SqlPassword '<任意の強いパスワード>'
 Bastion で `OnPrem-Web (APP01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
-$repo = 'https://raw.githubusercontent.com/nksato/Azure-Migration-Modernization-PoC-HOL/main/infra/onprem/scripts'
+# <github-owner>/<repo-name> は自身の fork / mirror に置き換えてください
+$repo = 'https://raw.githubusercontent.com/<github-owner>/<repo-name>/main/infra/onprem/scripts'
 New-Item -Path C:\scripts -ItemType Directory -Force | Out-Null
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -Uri "$repo/Setup-PartsUnlimited.ps1" -OutFile 'C:\scripts\Setup-PartsUnlimited.ps1' -UseBasicParsing

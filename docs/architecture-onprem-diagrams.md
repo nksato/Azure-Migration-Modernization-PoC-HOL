@@ -3,24 +3,29 @@
 ## 1. 全体構成図
 
 ```mermaid
-architecture-beta
-    group onprem(cloud)[OnPrem VNet 10.0.0.0/16]
+flowchart TB
+    subgraph OnPremVNet[OnPrem VNet 10.0.0.0/16]
+        subgraph ServerSubnet[ServerSubnet 10.0.1.0/24]
+            DC[DC01<br/>Active Directory / DNS]
+            DB[DB01<br/>SQL Server]
+            APP[APP01<br/>IIS + ASP.NET]
+        end
 
-    group serverSub(server)[ServerSubnet 10.0.1.0/24] in onprem
-    group bastionSub(cloud)[AzureBastionSubnet 10.0.254.0/26] in onprem
-    group gatewaySub(internet)[GatewaySubnet 10.0.255.0/27] in onprem
+        subgraph BastionSubnet[AzureBastionSubnet 10.0.254.0/26]
+            Bastion[Azure Bastion]
+        end
 
-    service dc(server)[DC01 Active Directory / DNS] in serverSub
-    service db(database)[DB01 SQL Server] in serverSub
-    service app(server)[APP01 IIS + ASP.NET] in serverSub
-    service bastion(server)[Azure Bastion] in bastionSub
-    service vpngw(internet)[VPN Gateway] in gatewaySub
+        subgraph GatewaySubnet[GatewaySubnet 10.0.255.0/27]
+            VPNGW[VPN Gateway]
+        end
+    end
 
-    dc:R -- L:db
-    db:R -- L:app
-    bastion:B --> T:dc
-    bastion:B --> T:db
-    bastion:B --> T:app
+    DC --- DB
+    DB --- APP
+    Bastion --> DC
+    Bastion --> DB
+    Bastion --> APP
+    VPNGW -. 将来接続 .- ServerSubnet
 ```
 
 ## 2. デプロイ & セットアップ フロー
