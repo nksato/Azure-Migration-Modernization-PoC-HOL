@@ -1,0 +1,102 @@
+# 02. 疑似オンプレ環境の動作確認
+
+この手順では、デプロイ済みの疑似オンプレ環境が**想定通り閉域かつ正常動作**していることを確認します。
+
+## 1. パブリック IP が付いていないことを確認
+
+```powershell
+az network nic show --resource-group rg-onpre --name OnPrem-AD-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onpre --name OnPrem-SQL-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onpre --name OnPrem-Web-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+```
+
+**期待結果:** いずれも出力なし
+
+---
+
+## 2. Azure Bastion で接続できることを確認
+
+Azure Portal から以下 3 台に接続し、ログインできることを確認します。
+
+- `OnPrem-AD`
+- `OnPrem-SQL`
+- `OnPrem-Web`
+
+---
+
+## 3. 各サーバの役割確認
+
+### DC01
+
+```powershell
+(Get-ADDomain).DNSRoot
+Get-DnsServerZone | Select-Object ZoneName, ZoneType
+```
+
+**期待結果:** `lab.local` が確認できる
+
+### DB01
+
+```powershell
+Get-Service MSSQLSERVER | Select-Object Name, Status
+sqlcmd -S localhost -Q "SELECT @@SERVERNAME AS ServerName"
+```
+
+**期待結果:** SQL Server が `Running`
+
+### APP01
+
+```powershell
+Get-WindowsFeature Web-Server | Select-Object Name, InstallState
+Invoke-WebRequest -Uri http://localhost -UseBasicParsing | Select-Object StatusCode
+```
+
+**期待結果:** IIS がインストール済み、`StatusCode` が `200`
+
+---
+
+## 4. 内部疎通確認
+
+### APP01 → DB01
+
+```powershell
+Test-NetConnection -ComputerName 10.0.1.5 -Port 1433
+```
+
+### APP01 → DC01
+
+```powershell
+Test-NetConnection -ComputerName 10.0.1.4 -Port 3389
+Resolve-DnsName DC01.lab.local
+```
+
+**期待結果:** `TcpTestSucceeded : True`
+
+---
+
+## 5. Web アプリ表示確認
+
+APP01 上のブラウザで以下を開きます。
+
+```text
+http://localhost
+```
+
+**期待結果:**
+
+- `Parts Unlimited` のトップページが表示される
+- カテゴリや商品が表示される
+- エラーなく画面遷移できる
+
+---
+
+## 6. 完了条件
+
+以下が満たされていれば、疑似オンプレ環境の準備は完了です。
+
+- VM にパブリック IP が付いていない
+- Bastion で 3 台すべてに接続できる
+- AD / SQL / IIS が正常に動作している
+- Parts Unlimited が表示される
+
+> この状態になれば、以降の Azure Migration & Modernization HOL における**移行元環境**として利用できます。

@@ -1,0 +1,36 @@
+# Phase 3: ハイブリッド管理
+
+Azure Arc に接続した `DC01` / `DB01` / `APP01` に対して、Azure の管理・監視・セキュリティ機能を適用します。
+
+## 目的
+
+- Azure Policy によるガバナンス確認
+- Log Analytics / Azure Monitor による可視化
+- Defender for Cloud によるセキュリティ評価
+
+## 主な確認項目
+
+| 項目 | 内容 |
+|---|---|
+| Azure Policy | タグや準拠性の確認 |
+| Azure Monitor Agent | VM からのメトリクス収集 |
+| Log Analytics | ハートビート / イベントの確認 |
+| Defender for Cloud | 推奨事項・セキュアスコア確認 |
+
+## 例: ハートビート確認
+
+```powershell
+az monitor log-analytics query `
+  --workspace "<workspace-id>" `
+  --analytics-query "Heartbeat | summarize LastHeartbeat=max(TimeGenerated) by Computer"
+```
+
+## 期待される状態
+
+- 3 台の Arc サーバーからログが届いている
+- Defender for Cloud に推奨事項が表示される
+- ハイブリッド管理が Azure 上で一元化されている
+
+## 次のステップ
+
+➡ [`cloud-04-assessment.md`](./cloud-04-assessment.md)
