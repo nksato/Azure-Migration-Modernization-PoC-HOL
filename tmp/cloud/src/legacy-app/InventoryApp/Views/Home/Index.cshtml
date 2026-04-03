@@ -1,0 +1,31 @@
+@{
+    ViewBag.Title = "ホーム";
+}
+
+<div class="card">
+    <h2>在庫管理システム</h2>
+    <p>Contoso 社の在庫管理システムへようこそ。</p>
+    <p>このアプリケーションは ASP.NET MVC 5 (.NET Framework 4.8) で構築されています。</p>
+
+    <h3>機能</h3>
+    <ul>
+        <li>商品一覧の表示</li>
+        <li>新規商品の登録</li>
+        <li>商品情報の編集</li>
+        <li>商品の削除</li>
+    </ul>
+
+    <p>
+        @Html.ActionLink("商品一覧を見る", "Index", "Products", null, new { @class = "btn btn-primary" })
+    </p>
+</div>
+
+<div class="card">
+    <h3>環境情報</h3>
+    <table>
+        <tr><td><strong>サーバー名</strong></td><td>@Environment.MachineName</td></tr>
+        <tr><td><strong>OS バージョン</strong></td><td>@Environment.OSVersion</td></tr>
+        <tr><td><strong>フレームワーク</strong></td><td>@System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription</td></tr>
+        <tr><td><strong>現在時刻 (UTC)</strong></td><td>@DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+    </table>
+</div>

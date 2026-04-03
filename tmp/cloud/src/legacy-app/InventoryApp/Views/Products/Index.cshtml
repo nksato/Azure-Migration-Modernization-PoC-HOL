@@ -1,0 +1,39 @@
+@model IEnumerable<InventoryApp.Models.Product>
+
+@{
+    ViewBag.Title = "商品一覧";
+}
+
+<h2>商品一覧</h2>
+
+<p>
+    @Html.ActionLink("新規登録", "Create", null, new { @class = "btn btn-primary" })
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>商品名</th>
+            <th>カテゴリ</th>
+            <th>単価</th>
+            <th>在庫数</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model) {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.Name</td>
+                <td>@item.Category</td>
+                <td>@String.Format("¥{0:N0}", item.Price)</td>
+                <td>@item.Quantity</td>
+                <td>
+                    @Html.ActionLink("編集", "Edit", new { id = item.Id }, new { @class = "btn btn-warning" })
+                    @Html.ActionLink("削除", "Delete", new { id = item.Id }, new { @class = "btn btn-danger" })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
