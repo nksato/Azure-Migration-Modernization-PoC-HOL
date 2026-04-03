@@ -134,6 +134,8 @@ az deployment group create `
 - On-Prem 側 `Local Network Gateway` を作成
 - `OnPrem-to-Azure-S2S` 接続を構成
 
+詳細な手順は [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md) を参照してください。
+
 > `vpnSharedKey` は **Step 1 で指定した値を、Step 3 でもそのまま再利用**してください。
 
 > 現在のテンプレート構成では、クラウド側の `infra/cloud/cloud/main.bicep` は **Step 2 で Hub 側 Azure VPN Gateway を作成するまで**を担当します。実際の接続先情報（Hub 側の公開 IP）と共有キーを使った接続設定は、**Step 3 で疑似オンプレ側に設定**する想定です。
@@ -155,6 +157,6 @@ az deployment group create `
 
 初期環境の準備ができたら、以下の順に進めます。
 
-1. [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) または [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) で個別手順を確認
+1. [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) / [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) / [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md) で個別手順を確認
 2. [`00b-onprem-parts-unlimited.md`](./00b-onprem-parts-unlimited.md) でアプリをセットアップ
-3. [`00e-cloud-explore-onprem.md`](./00e-cloud-explore-onprem.md) 以降で移行ハンズオンを開始
+3. [`01-cloud-explore-onprem.md`](./01-cloud-explore-onprem.md) 以降で移行ハンズオンを開始

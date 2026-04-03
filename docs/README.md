@@ -22,14 +22,20 @@
 | [`handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md) | `DB01` / `APP01` のセットアップ手順 |
 | [`handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md) | 動作確認・疎通確認手順 |
 
-### 2. 移行先: クラウド移行 HOL
+### 2. 移行先: クラウド環境
 
 | ファイル | 内容 |
 |---|---|
 | [`architecture-cloud-design.md`](./architecture-cloud-design.md) | Hub & Spoke / 移行パターン設計 |
 | [`architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md) | クラウド構成図・移行フロー図 |
 | [`handson/00d-cloud-deploy.md`](./handson/00d-cloud-deploy.md) | クラウド基盤のデプロイ |
-| [`handson/00e-cloud-explore-onprem.md`](./handson/00e-cloud-explore-onprem.md) | 移行元環境の確認 |
+| [`handson/00e-cloud-vpn-connect.md`](./handson/00e-cloud-vpn-connect.md) | クラウド VPN 接続の構成 |
+
+### 3. クラウド移行 HOL
+
+| ファイル | 内容 |
+|---|---|
+| [`handson/01-cloud-explore-onprem.md`](./handson/01-cloud-explore-onprem.md) | 移行元環境の確認 |
 | [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md) | Azure Arc 登録 |
 | [`handson/03-cloud-hybrid-mgmt.md`](./handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理 |
 | [`handson/04-cloud-assessment.md`](./handson/04-cloud-assessment.md) | 移行アセスメント |
@@ -57,9 +63,11 @@
    - [`handson/00a-onprem-deploy.md`](./handson/00a-onprem-deploy.md)
    - [`handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md)
    - [`handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md)
-2. **クラウド移行 HOL を開始**
+2. **クラウド環境を準備**
    - [`handson/00d-cloud-deploy.md`](./handson/00d-cloud-deploy.md)
-   - [`handson/00e-cloud-explore-onprem.md`](./handson/00e-cloud-explore-onprem.md)
+   - [`handson/00e-cloud-vpn-connect.md`](./handson/00e-cloud-vpn-connect.md)
+3. **クラウド移行 HOL を開始**
+   - [`handson/01-cloud-explore-onprem.md`](./handson/01-cloud-explore-onprem.md)
    - [`handson/02-cloud-arc-onboard.md`](./handson/02-cloud-arc-onboard.md)
    - [`handson/03-cloud-hybrid-mgmt.md`](./handson/03-cloud-hybrid-mgmt.md)
    - [`handson/04-cloud-assessment.md`](./handson/04-cloud-assessment.md)
@@ -71,9 +79,8 @@
 
 ---
 
-## 🔗 参照元
+## 🔗 関連ドキュメント
 
-- `tmp/onprem/**`
-- `tmp/cloud/**`
-
-> ルート配下の `docs` は、`tmp` 内の参考ドキュメントをもとに、オンプレ/クラウドを同列の構成で再整理した正式版です。
+- [`../README.md`](../README.md)
+- [`./architecture-onprem-design.md`](./architecture-onprem-design.md)
+- [`./architecture-cloud-design.md`](./architecture-cloud-design.md)

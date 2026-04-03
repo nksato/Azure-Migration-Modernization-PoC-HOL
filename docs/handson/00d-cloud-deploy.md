@@ -59,4 +59,6 @@ az deployment group create `
 
 ## 次のステップ
 
-➡ [`00e-cloud-explore-onprem.md`](./00e-cloud-explore-onprem.md)
+クラウド基盤の作成が完了したら、次に VPN 接続を構成します。
+
+➡ [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md)

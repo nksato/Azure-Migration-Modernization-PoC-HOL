@@ -19,7 +19,7 @@
 
 ## 方法 1: PowerShell スクリプトでデプロイ（推奨）
 
-`infra/onprem/Deploy-Lab.ps1` を使うと、テンプレートの切り替えや再実行がしやすくなります。
+`infra/onprem/Deploy-Lab.ps1` を使うと、管理者パスワードや VPN 共有キーを対話的に入力しながら、再実行しやすくなります。
 
 ```powershell
 Set-Location .\infra\onprem
@@ -27,8 +27,7 @@ Set-Location .\infra\onprem
 # 標準ラボ構成
 .\Deploy-Lab.ps1 `
   -ResourceGroupName "rg-onprem" `
-  -Location "japaneast" `
-  -TemplateFile "infra/main.bicep"
+  -Location "japaneast"
 ```
 
 ---

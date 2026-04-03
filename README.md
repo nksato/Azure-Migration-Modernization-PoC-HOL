@@ -54,22 +54,32 @@
 | 00b | [`docs/handson/00b-onprem-parts-unlimited.md`](./docs/handson/00b-onprem-parts-unlimited.md) | `DB01` / `APP01` に Parts Unlimited をセットアップ |
 | 00c | [`docs/handson/00c-onprem-verification.md`](./docs/handson/00c-onprem-verification.md) | アプリと通信を確認 |
 | 00d | [`docs/handson/00d-cloud-deploy.md`](./docs/handson/00d-cloud-deploy.md) | 移行先クラウド基盤をデプロイ |
-| 00e | [`docs/handson/00e-cloud-explore-onprem.md`](./docs/handson/00e-cloud-explore-onprem.md) | 移行元環境の現状確認 |
+| 01 | [`docs/handson/01-cloud-explore-onprem.md`](./docs/handson/01-cloud-explore-onprem.md) | 移行元環境の現状確認 |
 
-### フェーズ 2: 移行・モダナイズ実施
+### フェーズ 2: 移行先クラウド環境の準備
 
-初期環境の準備後、以下の手順で移行評価とモダナイズ比較を進めます。
+初期環境の準備後、まずは移行先として利用するクラウド基盤を整えます。
 
 | Step | ドキュメント | 内容 |
 |---|---|---|
-| 02 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc へ接続 |
-| 03 | [`docs/handson/03-cloud-hybrid-mgmt.md`](./docs/handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理を体験 |
-| 04 | [`docs/handson/04-cloud-assessment.md`](./docs/handson/04-cloud-assessment.md) | Azure Migrate で評価 |
-| 05a | [`docs/handson/05a-cloud-rehost.md`](./docs/handson/05a-cloud-rehost.md) | Rehost（Lift & Shift）を実施 |
-| 05b | [`docs/handson/05b-cloud-db-paas.md`](./docs/handson/05b-cloud-db-paas.md) | DB PaaS 化を実施 |
-| 05c | [`docs/handson/05c-cloud-containerize.md`](./docs/handson/05c-cloud-containerize.md) | コンテナ化を実施 |
-| 05d | [`docs/handson/05d-cloud-full-paas.md`](./docs/handson/05d-cloud-full-paas.md) | フル PaaS 化を実施 |
-| 06 | [`docs/handson/06-cloud-compare.md`](./docs/handson/06-cloud-compare.md) | 結果の比較とまとめ |
+| 02a | [`docs/handson/00d-cloud-deploy.md`](./docs/handson/00d-cloud-deploy.md) | 移行先クラウド基盤をデプロイ |
+| 02b | [`docs/handson/00e-cloud-vpn-connect.md`](./docs/handson/00e-cloud-vpn-connect.md) | クラウド VPN 接続を構成 |
+
+### フェーズ 3: クラウド移行 HOL
+
+移行先クラウド環境の準備後、以下の手順で移行評価とモダナイズ比較を進めます。
+
+| Step | ドキュメント | 内容 |
+|---|---|---|
+| 03 | [`docs/handson/01-cloud-explore-onprem.md`](./docs/handson/01-cloud-explore-onprem.md) | 移行元環境の現状確認 |
+| 04 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc へ接続 |
+| 05 | [`docs/handson/03-cloud-hybrid-mgmt.md`](./docs/handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理を体験 |
+| 06 | [`docs/handson/04-cloud-assessment.md`](./docs/handson/04-cloud-assessment.md) | Azure Migrate で評価 |
+| 07a | [`docs/handson/05a-cloud-rehost.md`](./docs/handson/05a-cloud-rehost.md) | Rehost（Lift & Shift）を実施 |
+| 07b | [`docs/handson/05b-cloud-db-paas.md`](./docs/handson/05b-cloud-db-paas.md) | DB PaaS 化を実施 |
+| 07c | [`docs/handson/05c-cloud-containerize.md`](./docs/handson/05c-cloud-containerize.md) | コンテナ化を実施 |
+| 07d | [`docs/handson/05d-cloud-full-paas.md`](./docs/handson/05d-cloud-full-paas.md) | フル PaaS 化を実施 |
+| 08 | [`docs/handson/06-cloud-compare.md`](./docs/handson/06-cloud-compare.md) | 結果の比較とまとめ |
 
 ---
 
@@ -114,7 +124,3 @@
 
 - `docs/` : 正式なハンズオン ドキュメント
 - `infra/` : ハンズオンで利用する Bicep / ARM / パラメータ / PowerShell 資産
-- `tmp/onprem/` : 移行元（疑似オンプレ）側の元資料
-- `tmp/cloud/` : クラウド移行側の元資料
-
-> 本リポジトリの `docs/` は、`tmp` 配下の参考資料をもとに再整理した、参加者向けの正式版ドキュメントです。
