@@ -94,9 +94,9 @@
 
 ---
 
-## 7. Azure Arc（オプション）
+## 7. Azure Arc
 
-この環境は、必要に応じて Azure Arc の評価対象としても利用できます。
+この環境は、Azure Arc の評価対象としても利用できます。
 
 | 項目 | 内容 |
 |---|---|
@@ -114,5 +114,3 @@
 - `infra/onprem/main.bicep`
 - `infra/onprem/Enable-ArcOnVMs.ps1`
 - `infra/onprem/scripts/*`
-
-> この設計書は、移行元環境に関する正式な `docs` 配下の初版です。今後はクラウド側や全体 HOL 設計書と並ぶ形で拡張していきます。

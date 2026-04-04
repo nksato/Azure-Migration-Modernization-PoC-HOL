@@ -7,6 +7,11 @@ Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Data
 - DB を先にマネージド化する
 - アプリ変更を比較的小さく保ちながら運用負荷を下げる
 
+## 前提条件
+
+- [`04-cloud-assessment.md`](./04-cloud-assessment.md) の評価が完了している
+- `rg-spoke2` が作成されている
+
 ## 移行先構成
 
 | コンポーネント | 移行先 |
@@ -15,16 +20,21 @@ Web アプリは VM のまま、`DB01` のデータベースを **Azure SQL Data
 | DB | `sqldb-spoke2` |
 | 接続方式 | Private Endpoint |
 
-## 参照テンプレート
+## 備考
 
-- `infra/cloud/modules/spoke-resources/spoke2-db-paas.bicep`
+- 参照テンプレート: `infra/cloud/modules/spoke-resources/spoke2-db-paas.bicep`
 
-## 実施内容
+## 手順
 
 1. Spoke2 の受け皿をデプロイ
 2. DMS などで `DB01` から Azure SQL へ移行
 3. アプリの接続文字列を Azure SQL 向けに変更
 4. `vm-spoke2-web` で動作確認
+
+## 完了確認
+
+- `vm-spoke2-web` から Azure SQL Database へ接続できる
+- Parts Unlimited がブラウザで表示できる
 
 ## 特徴
 

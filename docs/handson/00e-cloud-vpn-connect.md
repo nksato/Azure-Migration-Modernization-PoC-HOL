@@ -1,6 +1,6 @@
 # 00e. クラウド VPN 接続の構成
 
-この手順では、`00a` で作成した**疑似オンプレ側 Azure VPN Gateway** と、`00d` で作成した **Hub 側 Azure VPN Gateway** を接続し、ハンズオンで利用する **S2S VPN** を成立させます。
+`00a` で作成した疑似オンプレ側 VPN Gateway と、`00d` で作成した Hub 側 VPN Gateway を接続し、**S2S VPN** を成立させます。
 
 ## 目的
 
@@ -10,20 +10,16 @@
 
 ---
 
-## 前提
+## 前提条件
 
 - [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) が完了している
 - [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) が完了している
 - `OnPrem-VpnGw` と `vgw-hub` の作成が完了している
 - Step 1 で指定した `vpnSharedKey` を控えている
 
-> **VPN 共有キーの注意**: `vpnSharedKey` には **32 文字以上** の十分にランダムな文字列を使い、クラウド側 / 疑似オンプレ側で**完全に同じ値**を指定してください。サンプル値や推測しやすい文字列は避けてください。
-
 > VPN Gateway のデプロイ完了には時間がかかるため、作成直後は数十分待ってから次に進んでください。
 
----
-
-## 事前に確認する値
+### 事前に確認する値
 
 | 項目 | 値の例 | 用途 |
 |---|---|---|
@@ -35,7 +31,9 @@
 
 ---
 
-## 方法 1: Bicep で接続設定を追加
+## 手順
+
+### 方法 1: Bicep で接続設定を追加
 
 ### 1) Hub 側 VPN Gateway の公開 IP を取得
 
@@ -68,7 +66,7 @@ az deployment group create `
 
 ---
 
-## 方法 2: `Deploy-Lab.ps1` を再実行する場合
+### 方法 2: `Deploy-Lab.ps1` を再実行する場合
 
 ```powershell
 Set-Location .\infra\onprem
@@ -80,11 +78,11 @@ Set-Location .\infra\onprem
   -RemoteAddressPrefix "10.10.0.0/16"
 ```
 
-> `vpnSharedKey` には、Step 1 で指定したものと**同じ値**を入力してください。
+> `vpnSharedKey` は Step 1 で指定した値と同じ値を入力してください。
 
 ---
 
-## 完了後に確認すること
+## 完了確認
 
 ```powershell
 az network vpn-connection show `
@@ -109,8 +107,7 @@ az network vpn-connection show `
 
 ## 補足
 
-- 現在のテンプレート構成では、接続先情報と共有キーを使った **S2S 接続の作成は疑似オンプレ側の再デプロイで完了**します。
-- そのため、`00d` 実施後にクラウド側で追加の手動設定を行う必要はありません。
+- 現在のテンプレート構成では、S2S 接続の作成は疑似オンプレ側の再デプロイで完結します。`00d` 実施後にクラウド側で追加の手動設定は不要です。
 - 接続状態が `Connected` にならない場合は、`vpnSharedKey` と `remoteGatewayIp` の値を再確認してください。
 
 ---

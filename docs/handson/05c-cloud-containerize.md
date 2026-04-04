@@ -7,6 +7,11 @@
 - アプリをモダナイズしてコンテナ運用に移行する
 - スケーラビリティとデプロイ柔軟性を高める
 
+## 前提条件
+
+- [`04-cloud-assessment.md`](./04-cloud-assessment.md) の評価が完了している
+- `rg-spoke3` が作成されている
+
 ## 移行先構成
 
 | コンポーネント | 移行先 |
@@ -15,17 +20,22 @@
 | イメージ格納 | `Azure Container Registry` |
 | DB | `Azure SQL Database` |
 
-## 参照テンプレート
+## 備考
 
-- `infra/cloud/modules/spoke-resources/spoke3-container.bicep`
+- 参照テンプレート: `infra/cloud/modules/spoke-resources/spoke3-container.bicep`
 
-## 実施内容
+## 手順
 
 1. Spoke3 の基盤をデプロイ
 2. `APP01` のアプリを .NET 8 へ変換
 3. Docker イメージを作成して ACR にプッシュ
 4. Container Apps にデプロイ
 5. Azure SQL へ接続
+
+## 完了確認
+
+- Container Apps 上で Parts Unlimited が稼働している
+- Azure SQL Database への接続が正常である
 
 ## 特徴
 

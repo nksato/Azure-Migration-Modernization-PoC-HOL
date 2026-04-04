@@ -1,6 +1,6 @@
 # 00d. クラウド基盤のデプロイ
 
-このフェーズでは、**移行先となる Azure 側の Hub & Spoke 基盤**を構築します。
+**移行先となる Azure 側の Hub & Spoke 基盤**を構築します。
 
 ## 目的
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 前提
+## 前提条件
 
 - Azure サブスクリプション
 - クラウド環境を作成する権限
@@ -19,18 +19,7 @@
 
 ---
 
-## 参照テンプレート
-
-| ファイル | 用途 |
-|---|---|
-| `infra/cloud/azuredeploy.json` | Deploy to Azure 用 ARM テンプレート |
-| `infra/cloud/main.bicep` | クラウド側メイン Bicep |
-| `infra/cloud/modules/network/*` | Hub / Spoke / VPN / ルーティング |
-| `infra/cloud/modules/governance/*` | Log Analytics / Policy / Defender / Dashboard |
-
----
-
-## 手順例
+## 手順
 
 ### Deploy to Azure を使う場合
 
@@ -53,7 +42,7 @@ az deployment sub create `
 
 ---
 
-## 完了後に確認すること
+## 完了確認
 
 - `rg-hub` と各 `rg-spoke*` が存在する
 - `Hub VNet` と `Spoke1-4 VNet` が作成されている
@@ -62,7 +51,14 @@ az deployment sub create `
 - Private DNS Zone（`privatelink.database.windows.net`）が作成されている
 - Policy / Log Analytics / Defender の土台がある
 
-> DNS Forwarding Ruleset は、クラウド側から疑似オンプレ側の `lab.local` ドメインを名前解決するための転送ルールです。逆方向（疑似オンプレ → クラウド）の DNS 設定は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) で行います。
+## 備考
+
+- 参照テンプレート:
+  - `infra/cloud/azuredeploy.json` — Deploy to Azure 用 ARM テンプレート
+  - `infra/cloud/main.bicep` — クラウド側メイン Bicep
+  - `infra/cloud/modules/network/*` — Hub / Spoke / VPN / ルーティング
+  - `infra/cloud/modules/governance/*` — Log Analytics / Policy / Defender / Dashboard
+- DNS Forwarding Ruleset は、クラウド側から疑似オンプレ側の `lab.local` ドメインを名前解決するための転送ルールです。逆方向（疑似オンプレ → クラウド）の DNS 設定は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) で行います。
 
 ## 次のステップ
 

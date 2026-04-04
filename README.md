@@ -1,6 +1,6 @@
 # Azure Migration & Modernization PoC ハンズオンラボ
 
-オンプレミス環境を模した Windows ベースの 3 層アプリケーションを題材に、**Azure への移行**と**モダナイゼーション**を段階的に体験できるハンズオンラボです。  
+オンプレミス環境を模した Windows Server、SQL Server、.NET Framework ワークロードの Web 3 層アプリケーションを題材に、**Azure への移行**と**モダナイゼーション**を段階的に体験できるハンズオンラボです。  
 疑似オンプレ環境（`DC01` / `DB01` / `APP01`）を準備し、Azure Arc・Azure Migrate・各種 PaaS を使いながら、複数の移行パターンを比較できます。
 
 ---
@@ -65,7 +65,7 @@
 | Step | ドキュメント | 内容 |
 |---|---|---|
 | 01 | [`docs/handson/01-cloud-explore-onprem.md`](./docs/handson/01-cloud-explore-onprem.md) | 移行元環境の現状確認 |
-| 02 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc 登録（評価 / オプション） |
+| 02 | [`docs/handson/02-cloud-arc-onboard.md`](./docs/handson/02-cloud-arc-onboard.md) | Azure Arc 登録 |
 | 03 | [`docs/handson/03-cloud-hybrid-mgmt.md`](./docs/handson/03-cloud-hybrid-mgmt.md) | ハイブリッド管理を体験 |
 | 04 | [`docs/handson/04-cloud-assessment.md`](./docs/handson/04-cloud-assessment.md) | Azure Migrate で評価 |
 | 05a | [`docs/handson/05a-cloud-rehost.md`](./docs/handson/05a-cloud-rehost.md) | Rehost（Lift & Shift）を実施 |

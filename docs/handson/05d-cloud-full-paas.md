@@ -7,6 +7,11 @@
 - Web / DB ともに Azure のマネージドサービスへ寄せる
 - インフラ運用の負荷を最小化する
 
+## 前提条件
+
+- [`04-cloud-assessment.md`](./04-cloud-assessment.md) の評価が完了している
+- `rg-spoke4` が作成されている
+
 ## 移行先構成
 
 | コンポーネント | 移行先 |
@@ -15,17 +20,22 @@
 | DB | `sqldb-spoke4` (Azure SQL) |
 | 接続 | VNet Integration + Private Endpoint |
 
-## 参照テンプレート
+## 備考
 
-- `infra/cloud/modules/spoke-resources/spoke4-full-paas.bicep`
+- 参照テンプレート: `infra/cloud/modules/spoke-resources/spoke4-full-paas.bicep`
 
-## 実施内容
+## 手順
 
 1. Spoke4 の基盤をデプロイ
 2. `APP01` のアプリを .NET 8 へ変換
 3. App Service にデプロイ
 4. Azure SQL に接続
 5. ブラウザで URL を確認
+
+## 完了確認
+
+- App Service 上で Parts Unlimited が稼働している
+- Azure SQL Database への接続が正常である
 
 ## 特徴
 
