@@ -6,7 +6,7 @@
 
 - Hub 側 VPN Gateway の公開 IP を取得する
 - 疑似オンプレ側に `Local Network Gateway` を作成する
-- `OnPrem-to-Azure-S2S` 接続を構成する
+- `cn-onprem-to-hub` 接続を構成する
 
 ---
 
@@ -14,7 +14,7 @@
 
 - [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) が完了している
 - [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) が完了している
-- `OnPrem-VpnGw` と `vgw-hub` の作成が完了している
+- `vgw-onprem` と `vgw-hub` の作成が完了している
 - `vpnSharedKey` を控えている
 
 > VPN Gateway のデプロイ完了には時間がかかるため、作成直後は数十分待ってから次に進んでください。
@@ -59,8 +59,8 @@ az deployment group create `
 
 この再デプロイでは、主に以下を追加・更新します。
 
-- `Azure-LocalGw`
-- `OnPrem-to-Azure-S2S`
+- `lgw-hub`
+- `cn-onprem-to-hub`
 
 ---
 
@@ -85,7 +85,7 @@ Set-Location .\infra\onprem
 ```powershell
 az network vpn-connection show `
   --resource-group rg-onprem `
-  --name OnPrem-to-Azure-S2S `
+  --name cn-onprem-to-hub `
   --query "{name:name, provisioningState:provisioningState, connectionStatus:connectionStatus}" `
   -o table
 ```
@@ -97,8 +97,8 @@ az network vpn-connection show `
 
 あわせて以下も確認してください。
 
-- `Azure-LocalGw` が作成されている
-- `OnPrem-VpnGw` / `vgw-hub` が存在している
+- `lgw-hub` が作成されている
+- `vgw-onprem` / `vgw-hub` が存在している
 - 疑似オンプレ側から Hub 側アドレス空間への接続設定ができている
 
 ---

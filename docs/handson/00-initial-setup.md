@@ -25,7 +25,7 @@
 | 領域 | 主な構成 |
 |---|---|
 | クラウド側 | `rg-hub`, `rg-spoke1` ～ `rg-spoke4`, Hub VNet, Spoke VNet, Azure Firewall, Bastion, VPN Gateway |
-| 疑似オンプレ側 | `rg-onprem`, `OnPrem-VNet`, `DC01`, `DB01`, `APP01`, Azure Bastion, Azure VPN Gateway |
+| 疑似オンプレ側 | `rg-onprem`, `vnet-onprem`, `DC01`, `DB01`, `APP01`, Azure Bastion, Azure VPN Gateway |
 | 接続 | クラウド側 VPN と疑似オンプレ側 VPN の接続 |
 
 ---
@@ -102,7 +102,7 @@ az deployment group create `
 ```
 
 **主な作成対象**
-- `OnPrem-VNet`
+- `vnet-onprem`
 - `DC01`, `DB01`, `APP01`
 - On-Prem 側 Bastion
 - On-Prem 側 Azure VPN Gateway
@@ -158,7 +158,7 @@ az deployment group create `
 **このステップで行うこと**
 - Hub 側 VPN Gateway の接続先情報を取得
 - On-Prem 側 `Local Network Gateway` を作成
-- `OnPrem-to-Azure-S2S` 接続を構成
+- `cn-onprem-to-hub` 接続を構成
 
 詳細な手順は [`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md) を参照してください。
 
@@ -181,7 +181,7 @@ $dnsInboundIp = az dns-resolver inbound-endpoint show `
 
 az vm run-command invoke `
   --resource-group rg-onprem `
-  --name OnPrem-AD `
+  --name vm-onprem-ad `
   --command-id RunPowerShellScript `
   --scripts "Add-DnsServerConditionalForwarderZone -Name 'privatelink.database.windows.net' -MasterServers '$dnsInboundIp' -ReplicationScope Forest"
 ```
@@ -199,7 +199,7 @@ az vm run-command invoke `
 ## 完了確認
 
 - `rg-hub`, `rg-spoke1` ～ `rg-spoke4`, `rg-onprem` が存在する
-- `vgw-hub` と `OnPrem-VpnGw` が作成されている
+- `vgw-hub` と `vgw-onprem` が作成されている
 - `DC01` / `DB01` / `APP01` が作成されている
 - 疑似オンプレ側から Hub 側アドレス空間への接続設定が存在する
 

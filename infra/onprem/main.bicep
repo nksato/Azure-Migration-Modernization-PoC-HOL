@@ -37,7 +37,7 @@ var sharedTags = { Role: 'Shared' }
 
 // NSG: 閉域ネットワーク — VNet 内通信のみ許可 (Inbound のみ制限)
 resource serverNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
-  name: 'OnPrem-Server-NSG'
+  name: 'nsg-server'
   location: location
   tags: sharedTags
   properties: {
@@ -74,7 +74,7 @@ resource serverNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
 
 // 疑似オンプレミス VNet
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
-  name: 'OnPrem-VNet'
+  name: 'vnet-onprem'
   location: location
   tags: sharedTags
   properties: {
@@ -131,7 +131,7 @@ resource bastionSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' ex
 
 // Azure Bastion — 閉域ネットワークへの管理アクセス
 resource bastionPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
-  name: 'OnPrem-Bastion-PIP'
+  name: 'pip-bas-onprem'
   location: location
   tags: sharedTags
   sku: {
@@ -143,7 +143,7 @@ resource bastionPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
 }
 
 resource bastion 'Microsoft.Network/bastionHosts@2024-05-01' = {
-  name: 'OnPrem-Bastion'
+  name: 'bas-onprem'
   location: location
   tags: sharedTags
   sku: {
@@ -171,7 +171,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2024-05-01' = {
 // ============================================================
 
 resource adNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
-  name: 'OnPrem-AD-NIC'
+  name: 'nic-vm-onprem-ad'
   location: location
   tags: dcTags
   properties: {
@@ -191,7 +191,7 @@ resource adNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
 }
 
 resource adVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
-  name: 'OnPrem-AD'
+  name: 'vm-onprem-ad'
   location: location
   tags: dcTags
   properties: {
@@ -252,7 +252,7 @@ resource adSetupExtension 'Microsoft.Compute/virtualMachines/extensions@2024-07-
 // ============================================================
 
 resource sqlNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
-  name: 'OnPrem-SQL-NIC'
+  name: 'nic-vm-onprem-sql'
   location: location
   tags: dbTags
   properties: {
@@ -272,7 +272,7 @@ resource sqlNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
 }
 
 resource sqlVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
-  name: 'OnPrem-SQL'
+  name: 'vm-onprem-sql'
   location: location
   tags: dbTags
   properties: {
@@ -374,7 +374,7 @@ resource sqlDomainJoin 'Microsoft.Compute/virtualMachines/extensions@2024-07-01'
 // ============================================================
 
 resource webNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
-  name: 'OnPrem-Web-NIC'
+  name: 'nic-vm-onprem-web'
   location: location
   tags: webTags
   properties: {
@@ -394,7 +394,7 @@ resource webNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {
 }
 
 resource webVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
-  name: 'OnPrem-Web'
+  name: 'vm-onprem-web'
   location: location
   tags: webTags
   properties: {
@@ -481,7 +481,7 @@ resource webDomainJoin 'Microsoft.Compute/virtualMachines/extensions@2024-07-01'
 // ============================================================
 
 resource vpnGatewayPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
-  name: 'OnPrem-VpnGw-PIP'
+  name: 'vgw-onprem-pip1'
   location: location
   tags: sharedTags
   sku: {
@@ -493,7 +493,7 @@ resource vpnGatewayPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
 }
 
 resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = {
-  name: 'OnPrem-VpnGw'
+  name: 'vgw-onprem'
   location: location
   tags: sharedTags
   properties: {
@@ -521,7 +521,7 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = {
 
 // S2S 接続先 (Azure 側) を表す Local Network Gateway
 resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2024-05-01' = if (remoteGatewayIp != '') {
-  name: 'Azure-LocalGw'
+  name: 'lgw-hub'
   location: location
   tags: sharedTags
   properties: {
@@ -536,7 +536,7 @@ resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2024-05-01'
 
 // S2S VPN 接続
 resource vpnConnection 'Microsoft.Network/connections@2024-05-01' = if (remoteGatewayIp != '') {
-  name: 'OnPrem-to-Azure-S2S'
+  name: 'cn-onprem-to-hub'
   location: location
   tags: sharedTags
   properties: {

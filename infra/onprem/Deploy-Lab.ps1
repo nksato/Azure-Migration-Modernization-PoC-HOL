@@ -236,12 +236,12 @@ else {
 # 2. AD サーバの再起動完了を待機
 # ============================================================
 
-Write-Step "2. AD サーバ (OnPrem-AD) の再起動完了を待機"
+Write-Step "2. AD サーバ (vm-onprem-ad) の再起動完了を待機"
 
 Write-Host "  AD フォレスト構築後の再起動を待っています (最大 10 分)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 90  # shutdown /r /t 60 + 起動時間の余裕
 
-Wait-VmReady -ResourceGroup $ResourceGroupName -VmName 'OnPrem-AD' -TimeoutMinutes 10
+Wait-VmReady -ResourceGroup $ResourceGroupName -VmName 'vm-onprem-ad' -TimeoutMinutes 10
 
 # AD DS サービスの起動を追加で待機
 Write-Host "  AD DS サービスの初期化を待機中 (120秒)..." -ForegroundColor Yellow
@@ -266,7 +266,7 @@ if (-not $SkipDomainJoin) {
     } | ConvertTo-Json -Compress
 
     # 既存の失敗した拡張機能を削除してからリトライ
-    foreach ($vmName in @('OnPrem-SQL', 'OnPrem-Web')) {
+    foreach ($vmName in @('vm-onprem-sql', 'vm-onprem-web')) {
         Write-Host "  $vmName の既存 DomainJoin 拡張機能を確認中..."
         $existingExt = az vm extension show `
             --resource-group $ResourceGroupName `
@@ -309,7 +309,7 @@ if (-not $SkipDomainJoin) {
     Write-Host "  ドメイン参加後の再起動を待機中 (60秒)..." -ForegroundColor Yellow
     Start-Sleep -Seconds 60
 
-    foreach ($vmName in @('OnPrem-SQL', 'OnPrem-Web')) {
+    foreach ($vmName in @('vm-onprem-sql', 'vm-onprem-web')) {
         Wait-VmReady -ResourceGroup $ResourceGroupName -VmName $vmName -TimeoutMinutes 10
     }
 }
@@ -326,7 +326,7 @@ if ($DnsResolverInboundIp) {
 
     Write-Host "  privatelink.database.windows.net → $DnsResolverInboundIp" -ForegroundColor White
 
-    Wait-VmReady -ResourceGroup $ResourceGroupName -VmName 'OnPrem-AD' -TimeoutMinutes 5
+    Wait-VmReady -ResourceGroup $ResourceGroupName -VmName 'vm-onprem-ad' -TimeoutMinutes 5
 
     $dnsScript = @"
 Import-Module DnsServer
@@ -342,7 +342,7 @@ if (`$existing) {
 
     $result = az vm run-command invoke `
         --resource-group $ResourceGroupName `
-        --name 'OnPrem-AD' `
+        --name 'vm-onprem-ad' `
         --command-id RunPowerShellScript `
         --scripts $dnsScript `
         -o json 2>&1
@@ -359,7 +359,7 @@ if (`$existing) {
 else {
     Write-Step "4. DNS 条件付きフォワーダーをスキップ (-DnsResolverInboundIp 未指定)"
     Write-Host "  VPN 接続後に以下のコマンドで設定できます:" -ForegroundColor Yellow
-    Write-Host '  az vm run-command invoke --resource-group rg-onprem --name OnPrem-AD --command-id RunPowerShellScript --scripts "Add-DnsServerConditionalForwarderZone -Name privatelink.database.windows.net -MasterServers <DNS Resolver Inbound IP> -ReplicationScope Forest"' -ForegroundColor Gray
+    Write-Host '  az vm run-command invoke --resource-group rg-onprem --name vm-onprem-ad --command-id RunPowerShellScript --scripts "Add-DnsServerConditionalForwarderZone -Name privatelink.database.windows.net -MasterServers <DNS Resolver Inbound IP> -ReplicationScope Forest"' -ForegroundColor Gray
 }
 
 # ============================================================
@@ -370,7 +370,7 @@ Write-Step "5. デプロイ完了 — 環境情報"
 
 $vpnGwPip = az network public-ip show `
     --resource-group $ResourceGroupName `
-    --name 'OnPrem-VpnGw-PIP' `
+    --name 'vgw-onprem-pip1' `
     --query "ipAddress" -o tsv 2>$null
 
 Write-Host ""
@@ -380,20 +380,20 @@ Write-Host "  ドメイン名       : $DomainName" -ForegroundColor White
 Write-Host "  管理者ユーザー   : $AdminUsername" -ForegroundColor White
 Write-Host ""
 Write-Host "  [サーバ]" -ForegroundColor White
-Write-Host "    DC01  (OnPrem-AD)  : 10.0.1.4" -ForegroundColor White
-Write-Host "    DB01  (OnPrem-SQL) : 10.0.1.5" -ForegroundColor White
-Write-Host "    APP01 (OnPrem-Web) : 10.0.1.6" -ForegroundColor White
+Write-Host "    DC01  (vm-onprem-ad)  : 10.0.1.4" -ForegroundColor White
+Write-Host "    DB01  (vm-onprem-sql) : 10.0.1.5" -ForegroundColor White
+Write-Host "    APP01 (vm-onprem-web) : 10.0.1.6" -ForegroundColor White
 Write-Host ""
 Write-Host "  [ネットワーク]" -ForegroundColor White
 Write-Host "    VPN Gateway PIP    : $vpnGwPip" -ForegroundColor White
-Write-Host "    Bastion            : OnPrem-Bastion (Azure Portal からアクセス)" -ForegroundColor White
+Write-Host "    Bastion            : bas-onprem (Azure Portal からアクセス)" -ForegroundColor White
 Write-Host ""
 if ($DnsResolverInboundIp) {
     Write-Host "  [DNS]" -ForegroundColor White
     Write-Host "    条件付きフォワーダー : privatelink.database.windows.net → $DnsResolverInboundIp" -ForegroundColor White
     Write-Host ""
 }
-Write-Host "  接続方法: Azure Portal → OnPrem-Bastion → 各 VM に RDP" -ForegroundColor Green
+Write-Host "  接続方法: Azure Portal → bas-onprem → 各 VM に RDP" -ForegroundColor Green
 Write-Host ""
 
 # パスワードをメモリからクリア

@@ -55,7 +55,7 @@ az deployment group create `
 
 ## 完了確認
 
-- `OnPrem-AD` / `OnPrem-SQL` / `OnPrem-Web` が作成されている
+- `vm-onprem-ad` / `vm-onprem-sql` / `vm-onprem-web` が作成されている
 - `Azure Bastion` が作成されている
 - `VPN Gateway` が作成されている
 - VM 3 台にパブリック IP が付いていない

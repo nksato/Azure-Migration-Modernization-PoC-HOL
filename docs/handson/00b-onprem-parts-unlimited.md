@@ -17,7 +17,7 @@
 
 ## 1. DB01 で SQL Server を準備
 
-Bastion で `OnPrem-SQL (DB01)` に接続し、管理者 PowerShell を開きます。
+Bastion で `vm-onprem-sql (DB01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
 # <github-owner>/<repo-name> は自身の fork / mirror に置き換えてください
@@ -41,7 +41,7 @@ C:\scripts\Setup-SqlServer.ps1 -SqlPassword '<任意の強いパスワード>'
 
 ## 2. APP01 に Web アプリを配置
 
-Bastion で `OnPrem-Web (APP01)` に接続し、管理者 PowerShell を開きます。
+Bastion で `vm-onprem-web (APP01)` に接続し、管理者 PowerShell を開きます。
 
 ```powershell
 # <github-owner>/<repo-name> は自身の fork / mirror に置き換えてください
@@ -68,22 +68,22 @@ C:\scripts\Setup-PartsUnlimited.ps1 -SqlPassword '<DB01 と同じパスワード
 
 Bastion で VM にログインせず、手元の PC から Azure CLI を使って `DB01` / `APP01` のセットアップを実行することもできます。
 
-> `--name` に指定するのはホスト名ではなく Azure VM リソース名です。ここでは `OnPrem-SQL` と `OnPrem-Web` を使います。必要に応じて `az vm list --resource-group rg-onprem --query "[].name" -o tsv` で確認してください。
+> `--name` に指定するのはホスト名ではなく Azure VM リソース名です。ここでは `vm-onprem-sql` と `vm-onprem-web` を使います。必要に応じて `az vm list --resource-group rg-onprem --query "[].name" -o tsv` で確認してください。
 
 ```powershell
-# DB01 (OnPrem-SQL) — SQL Server セットアップ
+# DB01 (vm-onprem-sql) — SQL Server セットアップ
 az vm run-command invoke `
   --resource-group rg-onprem `
-  --name OnPrem-SQL `
+  --name vm-onprem-sql `
   --command-id RunPowerShellScript `
   --scripts @infra/onprem/scripts/Setup-SqlServer-en.ps1 `
   --parameters "SqlPassword=<任意の強いパスワード>" `
   --query "value[].message" -o tsv
 
-# APP01 (OnPrem-Web) — Parts Unlimited デプロイ
+# APP01 (vm-onprem-web) — Parts Unlimited デプロイ
 az vm run-command invoke `
   --resource-group rg-onprem `
-  --name OnPrem-Web `
+  --name vm-onprem-web `
   --command-id RunPowerShellScript `
   --scripts @infra/onprem/scripts/Setup-PartsUnlimited-en.ps1 `
   --parameters "SqlPassword=<DB01 と同じパスワード>" `

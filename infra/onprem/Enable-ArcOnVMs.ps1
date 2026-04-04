@@ -24,11 +24,11 @@
 .PARAMETER ServicePrincipalId
     Azure Connected Machine Onboarding ロールを持つサービス プリンシパルのアプリケーション ID
 .PARAMETER VmNames
-    Arc 対応にする VM 名の配列 (既定: OnPrem-AD, OnPrem-SQL, OnPrem-Web)
+    Arc 対応にする VM 名の配列 (既定: vm-onprem-ad, vm-onprem-sql, vm-onprem-web)
 .EXAMPLE
     .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem"
 .EXAMPLE
-    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -VmNames @("OnPrem-Web")
+    .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -VmNames @("vm-onprem-web")
 .EXAMPLE
     .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -ArcResourceGroupName "rg-arc" -ServicePrincipalId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #>
@@ -44,7 +44,7 @@ param(
     [string]$SubscriptionId = '',
     [string]$ServicePrincipalId = '',
 
-    [string[]]$VmNames = @('OnPrem-AD', 'OnPrem-SQL', 'OnPrem-Web')
+    [string[]]$VmNames = @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')
 )
 
 Set-StrictMode -Version Latest

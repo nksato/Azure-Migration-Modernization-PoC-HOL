@@ -20,9 +20,9 @@
 ### 1. パブリック IP が付いていないことを確認
 
 ```powershell
-az network nic show --resource-group rg-onprem --name OnPrem-AD-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
-az network nic show --resource-group rg-onprem --name OnPrem-SQL-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
-az network nic show --resource-group rg-onprem --name OnPrem-Web-NIC --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name nic-vm-onprem-ad --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name nic-vm-onprem-sql --query "ipConfigurations[].publicIPAddress" -o tsv
+az network nic show --resource-group rg-onprem --name nic-vm-onprem-web --query "ipConfigurations[].publicIPAddress" -o tsv
 ```
 
 **期待結果:** いずれも出力なし
@@ -33,9 +33,9 @@ az network nic show --resource-group rg-onprem --name OnPrem-Web-NIC --query "ip
 
 Azure Portal から以下 3 台に接続し、ログインできることを確認します。
 
-- `OnPrem-AD`
-- `OnPrem-SQL`
-- `OnPrem-Web`
+- `vm-onprem-ad`
+- `vm-onprem-sql`
+- `vm-onprem-web`
 
 ---
 

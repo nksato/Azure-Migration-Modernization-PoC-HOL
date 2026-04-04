@@ -86,7 +86,7 @@ $dnsInboundIp
 ```powershell
 az vm run-command invoke `
   --resource-group rg-onprem `
-  --name OnPrem-AD `
+  --name vm-onprem-ad `
   --command-id RunPowerShellScript `
   --scripts "Add-DnsServerConditionalForwarderZone -Name 'privatelink.database.windows.net' -MasterServers '$dnsInboundIp' -ReplicationScope Forest"
 ```
@@ -96,7 +96,7 @@ az vm run-command invoke `
 ```powershell
 az vm run-command invoke `
   --resource-group rg-onprem `
-  --name OnPrem-AD `
+  --name vm-onprem-ad `
   --command-id RunPowerShellScript `
   --scripts "Get-DnsServerZone -Name 'privatelink.database.windows.net' | Format-List ZoneName,ZoneType,MasterServers"
 ```

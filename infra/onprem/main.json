@@ -75,7 +75,7 @@
     {
       "type": "Microsoft.Network/networkSecurityGroups",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-Server-NSG",
+      "name": "nsg-server",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "properties": {
@@ -112,7 +112,7 @@
     {
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-VNet",
+      "name": "vnet-onprem",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "properties": {
@@ -132,7 +132,7 @@
             "properties": {
               "addressPrefix": "10.0.1.0/24",
               "networkSecurityGroup": {
-                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'OnPrem-Server-NSG')]"
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
               }
             }
           },
@@ -151,13 +151,13 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkSecurityGroups', 'OnPrem-Server-NSG')]"
+        "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
       ]
     },
     {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-Bastion-PIP",
+      "name": "pip-bas-onprem",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "sku": {
@@ -170,7 +170,7 @@
     {
       "type": "Microsoft.Network/bastionHosts",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-Bastion",
+      "name": "bas-onprem",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "sku": {
@@ -182,24 +182,24 @@
             "name": "bastionIpConfig",
             "properties": {
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'OnPrem-Bastion-PIP')]"
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-bas-onprem')]"
               },
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'OnPrem-VNet', 'AzureBastionSubnet')]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'AzureBastionSubnet')]"
               }
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses', 'OnPrem-Bastion-PIP')]",
-        "[resourceId('Microsoft.Network/virtualNetworks', 'OnPrem-VNet')]"
+        "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-bas-onprem')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
       ]
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-AD-NIC",
+      "name": "nic-vm-onprem-ad",
       "location": "[parameters('location')]",
       "tags": "[variables('dcTags')]",
       "properties": {
@@ -208,7 +208,7 @@
             "name": "ipconfig1",
             "properties": {
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'OnPrem-VNet', 'ServerSubnet')]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
               },
               "privateIPAllocationMethod": "Static",
               "privateIPAddress": "10.0.1.4"
@@ -217,13 +217,13 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', 'OnPrem-VNet')]"
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2024-07-01",
-      "name": "OnPrem-AD",
+      "name": "vm-onprem-ad",
       "location": "[parameters('location')]",
       "tags": "[variables('dcTags')]",
       "properties": {
@@ -256,19 +256,19 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-AD-NIC')]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-ad')]"
             }
           ]
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-AD-NIC')]"
+        "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-ad')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2024-07-01",
-      "name": "[format('{0}/{1}', 'OnPrem-AD', 'ADSetup')]",
+      "name": "[format('{0}/{1}', 'vm-onprem-ad', 'ADSetup')]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -280,13 +280,13 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-AD')]"
+        "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-ad')]"
       ]
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-SQL-NIC",
+      "name": "nic-vm-onprem-sql",
       "location": "[parameters('location')]",
       "tags": "[variables('dbTags')]",
       "properties": {
@@ -295,7 +295,7 @@
             "name": "ipconfig1",
             "properties": {
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'OnPrem-VNet', 'ServerSubnet')]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
               },
               "privateIPAllocationMethod": "Static",
               "privateIPAddress": "10.0.1.5"
@@ -304,13 +304,13 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', 'OnPrem-VNet')]"
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2024-07-01",
-      "name": "OnPrem-SQL",
+      "name": "vm-onprem-sql",
       "location": "[parameters('location')]",
       "tags": "[variables('dbTags')]",
       "properties": {
@@ -353,23 +353,23 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-SQL-NIC')]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-sql')]"
             }
           ]
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-SQL-NIC')]"
+        "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-sql')]"
       ]
     },
     {
       "type": "Microsoft.SqlVirtualMachine/sqlVirtualMachines",
       "apiVersion": "2023-10-01",
-      "name": "OnPrem-SQL",
+      "name": "vm-onprem-sql",
       "location": "[parameters('location')]",
       "tags": "[variables('dbTags')]",
       "properties": {
-        "virtualMachineResourceId": "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-SQL')]",
+        "virtualMachineResourceId": "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]",
         "sqlServerLicenseType": "PAYG",
         "storageConfigurationSettings": {
           "diskConfigurationType": "NEW",
@@ -388,13 +388,13 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-SQL')]"
+        "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2024-07-01",
-      "name": "[format('{0}/{1}', 'OnPrem-SQL', 'DomainJoin')]",
+      "name": "[format('{0}/{1}', 'vm-onprem-sql', 'DomainJoin')]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -412,14 +412,14 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'OnPrem-AD', 'ADSetup')]",
-        "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-SQL')]"
+        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-ad', 'ADSetup')]",
+        "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]"
       ]
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-Web-NIC",
+      "name": "nic-vm-onprem-web",
       "location": "[parameters('location')]",
       "tags": "[variables('webTags')]",
       "properties": {
@@ -428,7 +428,7 @@
             "name": "ipconfig1",
             "properties": {
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'OnPrem-VNet', 'ServerSubnet')]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
               },
               "privateIPAllocationMethod": "Static",
               "privateIPAddress": "10.0.1.6"
@@ -437,13 +437,13 @@
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', 'OnPrem-VNet')]"
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2024-07-01",
-      "name": "OnPrem-Web",
+      "name": "vm-onprem-web",
       "location": "[parameters('location')]",
       "tags": "[variables('webTags')]",
       "properties": {
@@ -476,19 +476,19 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-Web-NIC')]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-web')]"
             }
           ]
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/networkInterfaces', 'OnPrem-Web-NIC')]"
+        "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-web')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2024-07-01",
-      "name": "[format('{0}/{1}', 'OnPrem-Web', 'IISSetup')]",
+      "name": "[format('{0}/{1}', 'vm-onprem-web', 'IISSetup')]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -500,13 +500,13 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-Web')]"
+        "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-web')]"
       ]
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "apiVersion": "2024-07-01",
-      "name": "[format('{0}/{1}', 'OnPrem-Web', 'DomainJoin')]",
+      "name": "[format('{0}/{1}', 'vm-onprem-web', 'DomainJoin')]",
       "location": "[parameters('location')]",
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -524,15 +524,15 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'OnPrem-AD', 'ADSetup')]",
-        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'OnPrem-Web', 'IISSetup')]",
-        "[resourceId('Microsoft.Compute/virtualMachines', 'OnPrem-Web')]"
+        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-ad', 'ADSetup')]",
+        "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-web', 'IISSetup')]",
+        "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-web')]"
       ]
     },
     {
       "type": "Microsoft.Network/publicIPAddresses",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-VpnGw-PIP",
+      "name": "vgw-onprem-pip1",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "sku": {
@@ -545,7 +545,7 @@
     {
       "type": "Microsoft.Network/virtualNetworkGateways",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-VpnGw",
+      "name": "vgw-onprem",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "properties": {
@@ -560,25 +560,25 @@
             "name": "vpnGwIpConfig",
             "properties": {
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'OnPrem-VpnGw-PIP')]"
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
               },
               "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'OnPrem-VNet', 'GatewaySubnet')]"
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'GatewaySubnet')]"
               }
             }
           }
         ]
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', 'OnPrem-VNet')]",
-        "[resourceId('Microsoft.Network/publicIPAddresses', 'OnPrem-VpnGw-PIP')]"
+        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
       ]
     },
     {
       "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
       "type": "Microsoft.Network/localNetworkGateways",
       "apiVersion": "2024-05-01",
-      "name": "Azure-LocalGw",
+      "name": "lgw-hub",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "properties": {
@@ -594,36 +594,36 @@
       "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
       "type": "Microsoft.Network/connections",
       "apiVersion": "2024-05-01",
-      "name": "OnPrem-to-Azure-S2S",
+      "name": "cn-onprem-to-hub",
       "location": "[parameters('location')]",
       "tags": "[variables('sharedTags')]",
       "properties": {
         "connectionType": "IPsec",
         "virtualNetworkGateway1": {
-          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', 'OnPrem-VpnGw')]",
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]",
           "properties": {}
         },
         "localNetworkGateway2": {
-          "id": "[resourceId('Microsoft.Network/localNetworkGateways', 'Azure-LocalGw')]",
+          "id": "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
           "properties": {}
         },
         "sharedKey": "[parameters('vpnSharedKey')]",
         "connectionProtocol": "IKEv2"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Network/localNetworkGateways', 'Azure-LocalGw')]",
-        "[resourceId('Microsoft.Network/virtualNetworkGateways', 'OnPrem-VpnGw')]"
+        "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
+        "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]"
       ]
     }
   ],
   "outputs": {
     "vpnGatewayPublicIp": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', 'OnPrem-VpnGw-PIP'), '2024-05-01').ipAddress]"
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1'), '2024-05-01').ipAddress]"
     },
     "bastionName": {
       "type": "string",
-      "value": "OnPrem-Bastion"
+      "value": "bas-onprem"
     },
     "adServerPrivateIp": {
       "type": "string",

@@ -16,9 +16,9 @@
 
 | サーバー | 役割 | Azure VM リソース名 |
 |---|---|---|
-| `DC01` | Active Directory / DNS | `OnPrem-AD` |
-| `DB01` | SQL Server | `OnPrem-SQL` |
-| `APP01` | Web アプリ | `OnPrem-Web` |
+| `DC01` | Active Directory / DNS | `vm-onprem-ad` |
+| `DB01` | SQL Server | `vm-onprem-sql` |
+| `APP01` | Web アプリ | `vm-onprem-web` |
 
 ## 前提条件
 
@@ -38,11 +38,11 @@
 ```powershell
 Set-Location .\infra\onprem
 
-# 全 VM (OnPrem-AD / OnPrem-SQL / OnPrem-Web) を Arc 対応にする
+# 全 VM (vm-onprem-ad / vm-onprem-sql / vm-onprem-web) を Arc 対応にする
 .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem"
 
 # 特定の VM のみ対象にする場合
-.\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -VmNames @("OnPrem-Web")
+.\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -VmNames @("vm-onprem-web")
 
 # Arc リソースを別のリソースグループに登録する場合
 .\Enable-ArcOnVMs.ps1 -ResourceGroupName "rg-onprem" -ArcResourceGroupName "rg-arc"

@@ -32,9 +32,9 @@
 
 | Azure リソース名 | ホスト名 | 主な役割 | 代表 IP |
 |---|---|---|---|
-| `OnPrem-AD` | `DC01` | Active Directory / DNS | `10.0.1.4` |
-| `OnPrem-SQL` | `DB01` | SQL Server | `10.0.1.5` |
-| `OnPrem-Web` | `APP01` | IIS + ASP.NET 4.x | `10.0.1.6` |
+| `vm-onprem-ad` | `DC01` | Active Directory / DNS | `10.0.1.4` |
+| `vm-onprem-sql` | `DB01` | SQL Server | `10.0.1.5` |
+| `vm-onprem-web` | `APP01` | IIS + ASP.NET 4.x | `10.0.1.6` |
 
 ### アプリケーション構成
 
