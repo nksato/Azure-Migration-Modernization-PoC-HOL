@@ -1,5 +1,8 @@
 # 00e. クラウド VPN 接続の構成
 
+> **Note**  
+> [`00-initial-setup.md`](./00-initial-setup.md) の **Deploy to Azure** でセットアップ済みの場合、VPN 接続設定も含まれているため、このページの手順は不要です。
+
 `00a` で作成した疑似オンプレ側 VPN Gateway と、`00d` で作成した Hub 側 VPN Gateway を接続し、**S2S VPN** を成立させます。
 
 ## 目的

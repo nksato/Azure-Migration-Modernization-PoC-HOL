@@ -1,5 +1,8 @@
 # 00d. クラウド基盤のデプロイ
 
+> **Note**  
+> [`00-initial-setup.md`](./00-initial-setup.md) の **Deploy to Azure** でセットアップ済みの場合、このページの手順は不要です。
+
 **移行先となる Azure 側の Hub & Spoke 基盤**を構築します。
 
 ## 目的

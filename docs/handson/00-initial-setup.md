@@ -16,7 +16,8 @@
 
 - Azure サブスクリプション
 - リソースグループ作成権限
-- Azure CLI / PowerShell を利用できる環境
+- Azure CLI / PowerShell を利用できる環境（[作業環境の準備](./prerequisites.md)）
+- このリポジトリをクローン済みであること
 
 ---
 

@@ -10,6 +10,7 @@
 
 | ファイル | 内容 | 作業時間 | 備考 |
 |---|---|---|---|
+| [`handson/prerequisites.md`](./handson/prerequisites.md) | 作業環境の準備（Azure CLI / Git / クローン） | 5〜10 分 | ローカル PC / Codespaces / Cloud Shell の選択 |
 | [`handson/00-initial-setup.md`](./handson/00-initial-setup.md) | 初期環境を一括または 3 ステップで構築する導入手順（Deploy to Azure 対応） | 操作 5 分 + 待ち 60〜90 分 | 方法 A の場合。VPN Gateway 作成に時間を要する |
 
 ### 1. 移行元: 疑似オンプレ環境

@@ -1,0 +1,122 @@
+# 作業環境の準備
+
+ハンズオンで使用する **az CLI コマンドやスクリプトの実行環境** を準備します。
+
+---
+
+## 実行環境の選択肢
+
+| 環境 | 対応範囲 | 備考 |
+|---|---|---|
+| **ローカル PC（推奨）** | すべてのステップ | Azure CLI + PowerShell + Git が必要 |
+| **GitHub Codespaces（推奨）** | すべてのステップ | ブラウザだけで開始できる。Docker / .NET SDK も利用可 |
+| **Azure Cloud Shell** | Step 00〜04 | Docker / .NET SDK が必要な 05c・05d は非対応 |
+
+> 05c（コンテナ化）や 05d（フル PaaS 化）まで実施する場合は、**ローカル PC** または **Codespaces** を推奨します。
+
+---
+
+## 方法 1: ローカル PC
+
+### 必要なツール
+
+| ツール | 用途 | インストール |
+|---|---|---|
+| **Azure CLI** | Azure リソースの操作 | [インストール手順](https://learn.microsoft.com/cli/azure/install-azure-cli) |
+| **PowerShell 7.x** | スクリプト実行 | [インストール手順](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) |
+| **Git** | リポジトリの取得 | [インストール手順](https://git-scm.com/downloads) |
+| **Docker**（05c で必要） | コンテナイメージのビルド | [Docker Desktop](https://docs.docker.com/get-docker/) |
+| **.NET 8 SDK**（05c・05d で必要） | アプリのビルド・発行 | [インストール手順](https://dotnet.microsoft.com/download/dotnet/8.0) |
+| **Visual Studio Code**（推奨） | コード編集・ターミナル操作 | [ダウンロード](https://code.visualstudio.com/) |
+
+### セットアップ手順
+
+```powershell
+# 1. リポジトリをクローン
+git clone https://github.com/nksato/Azure-Migration-Modernization-PoC-HOL.git
+cd Azure-Migration-Modernization-PoC-HOL
+
+# 2. Azure にサインイン
+az login
+
+# 3. サブスクリプションを確認・設定
+az account show --query "{name:name, id:id}" -o table
+# 必要に応じて切り替え
+# az account set --subscription <サブスクリプション ID>
+
+# 4. Bicep CLI を最新に更新
+az bicep upgrade
+```
+
+---
+
+## 方法 2: GitHub Codespaces
+
+リポジトリを Codespaces で開くだけで、Azure CLI / PowerShell / Git / Docker / .NET SDK がすべて利用可能です。
+
+### セットアップ手順
+
+1. [リポジトリ](https://github.com/nksato/Azure-Migration-Modernization-PoC-HOL) を GitHub で開く
+2. **Code** → **Codespaces** → **Create codespace on main** をクリック
+3. ターミナルで Azure にサインイン
+
+```bash
+az login --use-device-code
+az account show --query "{name:name, id:id}" -o table
+```
+
+> Codespaces ではブラウザ認証が使えないため、`--use-device-code` を指定します。
+
+---
+
+## 方法 3: Azure Cloud Shell
+
+Azure Portal からすぐに利用できますが、一部のステップに制限があります。
+
+### 制限事項
+
+| 制限 | 影響するステップ | 代替手段 |
+|---|---|---|
+| Docker が使えない | 05c（コンテナ化） | `az acr build` でリモートビルド、または別環境を使用 |
+| .NET SDK の制限 | 05d（フル PaaS 化） | 別環境を使用 |
+| ストレージ 5 GB | 大量ファイル操作 | 不要ファイルの削除 |
+
+### セットアップ手順
+
+1. [Azure Portal](https://portal.azure.com) を開く
+2. ツールバーの **Cloud Shell** アイコン（`>_`）をクリック
+3. **PowerShell** を選択
+
+```powershell
+# Cloud Shell 内でリポジトリをクローン
+git clone https://github.com/nksato/Azure-Migration-Modernization-PoC-HOL.git
+cd Azure-Migration-Modernization-PoC-HOL
+
+# Bicep CLI を最新に更新
+az bicep upgrade
+```
+
+> Cloud Shell の `$HOME` 以下のファイルはセッション終了後も残ります。ハンズオン完了後は `rm -rf ~/Azure-Migration-Modernization-PoC-HOL` で削除してください。
+
+---
+
+## VM 内での操作について
+
+一部のステップでは、Azure Bastion 経由で VM に RDP 接続し、**VM 内の PowerShell** でコマンドを実行します。  
+この操作に追加のツールインストールは不要です（ブラウザから Bastion 経由で接続します）。
+
+| 対象ステップ | VM | 内容 |
+|---|---|---|
+| 00b | DB01 / APP01 | Parts Unlimited のセットアップスクリプト実行 |
+| 00c | DC01 / DB01 / APP01 | 疎通確認・DNS 確認 |
+| 04 | アプライアンス VM | Azure Migrate アプライアンスの構成 |
+
+> `az vm run-command` を使えば、RDP 接続なしで上記の一部を実行することもできます。詳細は各ステップのドキュメントを参照してください。
+
+---
+
+## 次のステップ
+
+作業環境の準備ができたら、初期環境のセットアップに進みます。
+
+➡ [`handson/00-initial-setup.md`](./handson/00-initial-setup.md)
