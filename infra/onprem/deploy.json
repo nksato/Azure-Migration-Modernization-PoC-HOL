@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "8944377818626023386"
+      "templateHash": "7946952315859393275"
     }
   },
   "parameters": {
@@ -115,7 +115,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "10881091834453915667"
+              "templateHash": "5180255493202892166"
             }
           },
           "parameters": {
@@ -439,8 +439,8 @@
                 "storageProfile": {
                   "imageReference": {
                     "publisher": "MicrosoftSQLServer",
-                    "offer": "sql2022-ws2022",
-                    "sku": "sqldev-gen2",
+                    "offer": "sql2019-ws2019",
+                    "sku": "sqldev",
                     "version": "latest"
                   },
                   "osDisk": {
@@ -573,7 +573,7 @@
                   "imageReference": {
                     "publisher": "MicrosoftWindowsServer",
                     "offer": "WindowsServer",
-                    "sku": "2022-Datacenter",
+                    "sku": "2019-Datacenter",
                     "version": "latest"
                   },
                   "osDisk": {
@@ -648,6 +648,11 @@
               "sku": {
                 "name": "Standard"
               },
+              "zones": [
+                "1",
+                "2",
+                "3"
+              ],
               "properties": {
                 "publicIPAllocationMethod": "Static"
               }
@@ -662,8 +667,8 @@
                 "gatewayType": "Vpn",
                 "vpnType": "RouteBased",
                 "sku": {
-                  "name": "VpnGw1",
-                  "tier": "VpnGw1"
+                  "name": "VpnGw1AZ",
+                  "tier": "VpnGw1AZ"
                 },
                 "ipConfigurations": [
                   {

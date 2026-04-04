@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "5319175637904872547"
+      "templateHash": "4123949499790211031"
     }
   },
   "parameters": {
@@ -126,11 +126,13 @@
               },
               {
                 "name": "snet-dns-inbound",
-                "addressPrefix": "10.10.5.0/28"
+                "addressPrefix": "10.10.5.0/28",
+                "delegation": "Microsoft.Network/dnsResolvers"
               },
               {
                 "name": "snet-dns-outbound",
-                "addressPrefix": "10.10.5.16/28"
+                "addressPrefix": "10.10.5.16/28",
+                "delegation": "Microsoft.Network/dnsResolvers"
               }
             ]
           }
