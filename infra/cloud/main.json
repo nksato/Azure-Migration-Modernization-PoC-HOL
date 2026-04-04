@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "12700265684436331616"
+      "templateHash": "5319175637904872547"
     }
   },
   "parameters": {
@@ -28954,7 +28954,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "16967420909175136051"
+              "templateHash": "4074942590950783895"
             }
           },
           "parameters": {
@@ -29027,7 +29027,7 @@
                           "settings": {
                             "content": {
                               "settings": {
-                                "content": "[format('## Hub Resources (rg-hub)\n\n| Resource | Type |\n|----------|------|\n| [afw-hub]({0}/resourceGroups/rg-hub/providers/Microsoft.Network/azureFirewalls/afw-hub/overview) | Firewall Basic |\n| [bas-hub]({1}/resourceGroups/rg-hub/providers/Microsoft.Network/bastionHosts/bas-hub/overview) | Bastion Basic |\n| [vpngw-hub]({2}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworkGateways/vpngw-hub/overview) | VPN GW VpnGw1 |\n| [dnspr-hub]({3}/resourceGroups/rg-hub/providers/Microsoft.Network/dnsResolvers/dnspr-hub/overview) | DNS Private Resolver |\n| [privatelink.database.windows.net]({4}/resourceGroups/rg-hub/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/overview) | Private DNS Zone |\n| [law-hub]({5}/resourceGroups/rg-hub/providers/Microsoft.OperationalInsights/workspaces/law-hub/overview) | Log Analytics |\n| [rt-spokes-to-fw]({6}/resourceGroups/rg-hub/providers/Microsoft.Network/routeTables/rt-spokes-to-fw/overview) | Route Table |', variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'))]",
+                                "content": "[format('## Hub Resources (rg-hub)\n\n| Resource | Type |\n|----------|------|\n| [afw-hub]({0}/resourceGroups/rg-hub/providers/Microsoft.Network/azureFirewalls/afw-hub/overview) | Firewall Basic |\n| [bas-hub]({1}/resourceGroups/rg-hub/providers/Microsoft.Network/bastionHosts/bas-hub/overview) | Bastion Basic |\n| [vpngw-hub]({2}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworkGateways/vpngw-hub/overview) | VPN GW VpnGw1AZ |\n| [dnspr-hub]({3}/resourceGroups/rg-hub/providers/Microsoft.Network/dnsResolvers/dnspr-hub/overview) | DNS Private Resolver |\n| [privatelink.database.windows.net]({4}/resourceGroups/rg-hub/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/overview) | Private DNS Zone |\n| [law-hub]({5}/resourceGroups/rg-hub/providers/Microsoft.OperationalInsights/workspaces/law-hub/overview) | Log Analytics |\n| [rt-spokes-to-fw]({6}/resourceGroups/rg-hub/providers/Microsoft.Network/routeTables/rt-spokes-to-fw/overview) | Route Table |', variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'))]",
                                 "title": "",
                                 "subtitle": "",
                                 "markdownSource": 1

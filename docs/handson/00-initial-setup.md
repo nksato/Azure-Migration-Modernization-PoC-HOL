@@ -19,6 +19,8 @@
 - Azure CLI / PowerShell を利用できる環境（[作業環境の準備](./prerequisites.md)）
 - このリポジトリをクローン済みであること
 
+> **リージョン制約**: クラウド側のテンプレートには、リソース作成先を **`japaneast`** と **`japanwest`** に限定する Azure Policy が含まれています。これ以外のリージョンにデプロイすると、Policy 違反でリソース作成が拒否されます。別のリージョンを使用したい場合は、`infra/cloud/main.bicep` の `listOfAllowedLocations` パラメータと `infra/cloud/modules/governance/policy.bicep` の既定値を変更してください。
+
 ---
 
 ## 作成される主なリソース

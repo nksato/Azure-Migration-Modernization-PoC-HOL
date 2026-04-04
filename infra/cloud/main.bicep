@@ -70,8 +70,16 @@ module hubVnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
       { name: 'AzureFirewallManagementSubnet', addressPrefix: '10.10.4.0/26' }
       { name: 'AzureBastionSubnet', addressPrefix: '10.10.2.0/26' }
       { name: 'GatewaySubnet', addressPrefix: '10.10.255.0/27' }
-      { name: 'snet-dns-inbound', addressPrefix: '10.10.5.0/28' }
-      { name: 'snet-dns-outbound', addressPrefix: '10.10.5.16/28' }
+      {
+        name: 'snet-dns-inbound'
+        addressPrefix: '10.10.5.0/28'
+        delegation: 'Microsoft.Network/dnsResolvers'
+      }
+      {
+        name: 'snet-dns-outbound'
+        addressPrefix: '10.10.5.16/28'
+        delegation: 'Microsoft.Network/dnsResolvers'
+      }
     ]
   }
 }
