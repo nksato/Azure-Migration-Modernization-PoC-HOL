@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "3178394577565161801"
+      "templateHash": "8944377818626023386"
     }
   },
   "parameters": {
@@ -115,7 +115,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9354618202140366241"
+              "templateHash": "10881091834453915667"
             }
           },
           "parameters": {
@@ -338,7 +338,7 @@
               "tags": "[variables('dcTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2as_v2"
+                  "vmSize": "Standard_B2s_v2"
                 },
                 "osProfile": {
                   "computerName": "DC01",
@@ -425,7 +425,7 @@
               "tags": "[variables('dbTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2as_v2"
+                  "vmSize": "Standard_B2s_v2"
                 },
                 "osProfile": {
                   "computerName": "DB01",
@@ -558,7 +558,7 @@
               "tags": "[variables('webTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2as_v2"
+                  "vmSize": "Standard_B2s_v2"
                 },
                 "osProfile": {
                   "computerName": "APP01",
