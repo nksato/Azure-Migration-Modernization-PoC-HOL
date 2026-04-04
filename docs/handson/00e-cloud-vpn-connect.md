@@ -15,7 +15,7 @@
 - [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) が完了している
 - [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) が完了している
 - `OnPrem-VpnGw` と `vgw-hub` の作成が完了している
-- Step 1 で指定した `vpnSharedKey` を控えている
+- `vpnSharedKey` を控えている
 
 > VPN Gateway のデプロイ完了には時間がかかるため、作成直後は数十分待ってから次に進んでください。
 
@@ -27,7 +27,9 @@
 | 疑似オンプレ側リソースグループ | `rg-onprem` | 接続設定のデプロイ先 |
 | Hub 側公開 IP | `vpngw-hub-pip1` | `remoteGatewayIp` に指定 |
 | Azure 側アドレス空間 | `10.10.0.0/16` | `remoteAddressPrefix` に指定 |
-| 事前共有キー | `<共有キー>` | `vpnSharedKey` に指定（Step 1 と同じ値） |
+| 事前共有キー | `<共有キー>` | `vpnSharedKey` に指定 |
+
+> `vpnSharedKey` は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) のデプロイ時に指定した値と同じものを使用してください。
 
 ---
 
@@ -35,20 +37,16 @@
 
 ### 方法 1: Bicep で接続設定を追加
 
-### 1) Hub 側 VPN Gateway の公開 IP を取得
-
 ```powershell
+# 1. Hub 側 VPN Gateway の公開 IP を取得
 $hubGatewayIp = az network public-ip show `
   --resource-group rg-hub `
   --name vpngw-hub-pip1 `
   --query ipAddress -o tsv
 
 $hubGatewayIp
-```
 
-### 2) 疑似オンプレ側から接続設定を追加
-
-```powershell
+# 2. 疑似オンプレ側から接続設定を追加（既存 VM は再作成されない）
 az deployment group create `
   --name hol-onprem-vpn-connection `
   --resource-group rg-onprem `
@@ -59,7 +57,7 @@ az deployment group create `
                remoteAddressPrefix='10.10.0.0/16'
 ```
 
-この再デプロイでは既存 VM を作り直すのではなく、主に以下を追加・更新します。
+この再デプロイでは、主に以下を追加・更新します。
 
 - `Azure-LocalGw`
 - `OnPrem-to-Azure-S2S`
@@ -78,7 +76,7 @@ Set-Location .\infra\onprem
   -RemoteAddressPrefix "10.10.0.0/16"
 ```
 
-> `vpnSharedKey` は Step 1 で指定した値と同じ値を入力してください。
+> `vpnSharedKey` は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) で指定した値と同じものを入力してください。
 
 ---
 

@@ -86,7 +86,7 @@ az deployment sub create `
 一括デプロイではなく、構成を確認しながら段階的に構築したい場合は、以下の 4 ステップで進めます。
 まず疑似オンプレ環境を作成し、次にクラウド側の共通基盤を用意し、VPN 接続を構成したうえで、ハイブリッド DNS を設定します。
 
-### 1) 疑似オンプレを作り Azure VPN を作る
+### Step 1: 疑似オンプレを作り Azure VPN を作る
 
 移行元となる疑似オンプレ環境と、疑似オンプレ側の Azure VPN Gateway を作成します。
 
@@ -111,7 +111,7 @@ az deployment group create `
 
 ---
 
-### 2) クラウド側のネットワーク接続の Hub / 各種 Spoke を作る
+### Step 2: クラウド側のネットワーク接続の Hub / 各種 Spoke を作る
 
 クラウド側の Hub / Spoke 基盤と、Hub 側の Azure VPN Gateway を構築します。
 
@@ -135,7 +135,7 @@ az deployment sub create `
 
 ---
 
-### 3) クラウドの Azure VPN と疑似オンプレの Azure VPN の設定を行う
+### Step 3: クラウドの Azure VPN と疑似オンプレの Azure VPN の設定を行う
 
 Hub 側 VPN Gateway のパブリック IP を取得し、疑似オンプレ側から接続設定を追加して VPN を成立させます。
 
@@ -168,7 +168,7 @@ az deployment group create `
 
 ---
 
-### 4) ハイブリッド DNS を設定する
+### Step 4: ハイブリッド DNS を設定する
 
 VPN 接続が確立したら、疑似オンプレ側からクラウド側の Private Endpoint を名前解決できるよう、DC01 に DNS 条件付きフォワーダーを設定します。
 
