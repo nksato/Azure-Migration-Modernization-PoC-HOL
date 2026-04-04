@@ -401,6 +401,7 @@ module vpnGatewayHub 'br/public:avm/res/network/virtual-network-gateway:0.10.1' 
     tags: commonTags
     virtualNetworkResourceId: hubVnet.outputs.resourceId
     clusterSettings: { clusterMode: 'activePassiveNoBgp' }
+    domainNameLabel: ['vpngw-hub-${uniqueString(subscription().subscriptionId)}']
   }
 }
 

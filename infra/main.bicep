@@ -46,6 +46,9 @@ resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   }
 }
 
+// Phase 1: クラウド基盤とオンプレ基盤を並列デプロイ
+// onpremBase は remoteGatewayIp='' で VPN 接続リソースをスキップし、
+// VNet / VM / Bastion / VPN GW のみ作成する
 module cloudFoundation 'cloud/main.bicep' = {
   name: 'deploy-cloud-foundation'
   params: {
@@ -56,11 +59,27 @@ module cloudFoundation 'cloud/main.bicep' = {
   }
 }
 
+module onpremBase 'onprem/main.bicep' = {
+  name: 'deploy-onprem-base'
+  scope: rgOnprem
+  params: {
+    location: location
+    adminUsername: adminUsername
+    adminPassword: adminPassword
+    domainName: domainName
+    vpnSharedKey: vpnSharedKey
+    remoteGatewayIp: ''
+    remoteAddressPrefix: hubAddressPrefix
+  }
+}
+
+// Phase 2: 両方の VPN GW が揃った後に接続リソースを追加
 var hubGatewayIp = deployVpnGateway ? cloudFoundation.outputs.vpnGatewayPublicIp : ''
 
-module onpremEnvironment 'onprem/main.bicep' = {
-  name: 'deploy-onprem-environment'
+module onpremVpnConnect 'onprem/main.bicep' = if (deployVpnGateway) {
+  name: 'deploy-onprem-vpn-connect'
   scope: rgOnprem
+  dependsOn: [onpremBase]
   params: {
     location: location
     adminUsername: adminUsername

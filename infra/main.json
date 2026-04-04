@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "4006456531280115294"
+      "version": "0.42.1.51946",
+      "templateHash": "1706984203576441417"
     }
   },
   "parameters": {
@@ -110,8 +110,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "9861542663793528681"
+              "version": "0.42.1.51946",
+              "templateHash": "12700265684436331616"
             }
           },
           "parameters": {
@@ -9232,8 +9232,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.41.2.15936",
-                      "templateHash": "10059751467241234980"
+                      "version": "0.42.1.51946",
+                      "templateHash": "15120402376366542262"
                     }
                   },
                   "parameters": {
@@ -19487,6 +19487,11 @@
                     "value": {
                       "clusterMode": "activePassiveNoBgp"
                     }
+                  },
+                  "domainNameLabel": {
+                    "value": [
+                      "[format('vpngw-hub-{0}', uniqueString(subscription().subscriptionId))]"
+                    ]
                   }
                 },
                 "template": {
@@ -29053,8 +29058,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.41.2.15936",
-                      "templateHash": "9864338605294194963"
+                      "version": "0.42.1.51946",
+                      "templateHash": "16967420909175136051"
                     }
                   },
                   "parameters": {
@@ -29352,8 +29357,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.41.2.15936",
-                      "templateHash": "812696033890024292"
+                      "version": "0.42.1.51946",
+                      "templateHash": "5071381444643259006"
                     }
                   },
                   "parameters": {
@@ -29420,7 +29425,687 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "deploy-onprem-environment",
+      "name": "deploy-onprem-base",
+      "resourceGroup": "[variables('onpremResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "domainName": {
+            "value": "[parameters('domainName')]"
+          },
+          "vpnSharedKey": {
+            "value": "[parameters('vpnSharedKey')]"
+          },
+          "remoteGatewayIp": {
+            "value": ""
+          },
+          "remoteAddressPrefix": {
+            "value": "[variables('hubAddressPrefix')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "17124821297943670658"
+            }
+          },
+          "parameters": {
+            "adminUsername": {
+              "type": "string",
+              "defaultValue": "labadmin",
+              "metadata": {
+                "description": "管理者ユーザー名"
+              }
+            },
+            "adminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "管理者パスワード"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "リソースの場所"
+              }
+            },
+            "domainName": {
+              "type": "string",
+              "defaultValue": "lab.local",
+              "metadata": {
+                "description": "Active Directory ドメイン名"
+              }
+            },
+            "vpnSharedKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "VPN 共有キー (S2S 接続用)"
+              }
+            },
+            "remoteGatewayIp": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "接続先 Azure VPN Gateway のパブリック IP アドレス (空の場合 S2S 接続リソースはスキップ)"
+              }
+            },
+            "remoteAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.10.0.0/16",
+              "metadata": {
+                "description": "接続先 Azure 側のアドレス空間"
+              }
+            }
+          },
+          "variables": {
+            "dcTags": {
+              "Role": "DomainController"
+            },
+            "dbTags": {
+              "Role": "Database"
+            },
+            "webTags": {
+              "Role": "WebServer"
+            },
+            "sharedTags": {
+              "Role": "Shared"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2024-05-01",
+              "name": "nsg-server",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowVNetInbound",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "DenyInternetInbound",
+                    "properties": {
+                      "priority": 4000,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "Internet",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-05-01",
+              "name": "vnet-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.0.0.0/16"
+                  ]
+                },
+                "dhcpOptions": {
+                  "dnsServers": [
+                    "10.0.1.4"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "ServerSubnet",
+                    "properties": {
+                      "addressPrefix": "10.0.1.0/24",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
+                      }
+                    }
+                  },
+                  {
+                    "name": "GatewaySubnet",
+                    "properties": {
+                      "addressPrefix": "10.0.255.0/27"
+                    }
+                  },
+                  {
+                    "name": "AzureBastionSubnet",
+                    "properties": {
+                      "addressPrefix": "10.0.254.0/26"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-05-01",
+              "name": "pip-bas-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/bastionHosts",
+              "apiVersion": "2024-05-01",
+              "name": "bas-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "bastionIpConfig",
+                    "properties": {
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-bas-onprem')]"
+                      },
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'AzureBastionSubnet')]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-bas-onprem')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2024-05-01",
+              "name": "nic-vm-onprem-ad",
+              "location": "[parameters('location')]",
+              "tags": "[variables('dcTags')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                      },
+                      "privateIPAllocationMethod": "Static",
+                      "privateIPAddress": "10.0.1.4"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-07-01",
+              "name": "vm-onprem-ad",
+              "location": "[parameters('location')]",
+              "tags": "[variables('dcTags')]",
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "Standard_B2ms"
+                },
+                "osProfile": {
+                  "computerName": "DC01",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "windowsConfiguration": {
+                    "provisionVMAgent": true,
+                    "enableAutomaticUpdates": true
+                  }
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "MicrosoftWindowsServer",
+                    "offer": "WindowsServer",
+                    "sku": "2022-Datacenter",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "StandardSSD_LRS"
+                    }
+                  }
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-ad')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-ad')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines/extensions",
+              "apiVersion": "2024-07-01",
+              "name": "[format('{0}/{1}', 'vm-onprem-ad', 'ADSetup')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.10",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {
+                  "commandToExecute": "[format('powershell -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name AD-Domain-Services,DNS -IncludeManagementTools; Import-Module ADDSDeployment; Install-ADDSForest -DomainName {0} -SafeModeAdministratorPassword (ConvertTo-SecureString ''{1}'' -AsPlainText -Force) -DomainNetbiosName ''LAB'' -InstallDNS -Force -NoRebootOnCompletion; shutdown /r /t 60\"', parameters('domainName'), parameters('adminPassword'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-ad')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2024-05-01",
+              "name": "nic-vm-onprem-sql",
+              "location": "[parameters('location')]",
+              "tags": "[variables('dbTags')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                      },
+                      "privateIPAllocationMethod": "Static",
+                      "privateIPAddress": "10.0.1.5"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-07-01",
+              "name": "vm-onprem-sql",
+              "location": "[parameters('location')]",
+              "tags": "[variables('dbTags')]",
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "Standard_B2ms"
+                },
+                "osProfile": {
+                  "computerName": "DB01",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "windowsConfiguration": {
+                    "provisionVMAgent": true,
+                    "enableAutomaticUpdates": true
+                  }
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "MicrosoftSQLServer",
+                    "offer": "sql2022-ws2022",
+                    "sku": "sqldev-gen2",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "StandardSSD_LRS"
+                    }
+                  },
+                  "dataDisks": [
+                    {
+                      "lun": 0,
+                      "diskSizeGB": 128,
+                      "createOption": "Empty",
+                      "managedDisk": {
+                        "storageAccountType": "StandardSSD_LRS"
+                      }
+                    }
+                  ]
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-sql')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-sql')]"
+              ]
+            },
+            {
+              "type": "Microsoft.SqlVirtualMachine/sqlVirtualMachines",
+              "apiVersion": "2023-10-01",
+              "name": "vm-onprem-sql",
+              "location": "[parameters('location')]",
+              "tags": "[variables('dbTags')]",
+              "properties": {
+                "virtualMachineResourceId": "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]",
+                "sqlServerLicenseType": "PAYG",
+                "storageConfigurationSettings": {
+                  "diskConfigurationType": "NEW",
+                  "sqlDataSettings": {
+                    "luns": [
+                      0
+                    ],
+                    "defaultFilePath": "F:\\SQLData"
+                  },
+                  "sqlLogSettings": {
+                    "luns": [
+                      0
+                    ],
+                    "defaultFilePath": "F:\\SQLLog"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines/extensions",
+              "apiVersion": "2024-07-01",
+              "name": "[format('{0}/{1}', 'vm-onprem-sql', 'DomainJoin')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "JsonADDomainExtension",
+                "typeHandlerVersion": "1.3",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                  "Name": "[parameters('domainName')]",
+                  "User": "[format('{0}\\{1}', parameters('domainName'), parameters('adminUsername'))]",
+                  "Restart": "true",
+                  "Options": "3"
+                },
+                "protectedSettings": {
+                  "Password": "[parameters('adminPassword')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-ad', 'ADSetup')]",
+                "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-sql')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkInterfaces",
+              "apiVersion": "2024-05-01",
+              "name": "nic-vm-onprem-web",
+              "location": "[parameters('location')]",
+              "tags": "[variables('webTags')]",
+              "properties": {
+                "ipConfigurations": [
+                  {
+                    "name": "ipconfig1",
+                    "properties": {
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                      },
+                      "privateIPAllocationMethod": "Static",
+                      "privateIPAddress": "10.0.1.6"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines",
+              "apiVersion": "2024-07-01",
+              "name": "vm-onprem-web",
+              "location": "[parameters('location')]",
+              "tags": "[variables('webTags')]",
+              "properties": {
+                "hardwareProfile": {
+                  "vmSize": "Standard_B2ms"
+                },
+                "osProfile": {
+                  "computerName": "APP01",
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "adminPassword": "[parameters('adminPassword')]",
+                  "windowsConfiguration": {
+                    "provisionVMAgent": true,
+                    "enableAutomaticUpdates": true
+                  }
+                },
+                "storageProfile": {
+                  "imageReference": {
+                    "publisher": "MicrosoftWindowsServer",
+                    "offer": "WindowsServer",
+                    "sku": "2022-Datacenter",
+                    "version": "latest"
+                  },
+                  "osDisk": {
+                    "createOption": "FromImage",
+                    "managedDisk": {
+                      "storageAccountType": "StandardSSD_LRS"
+                    }
+                  }
+                },
+                "networkProfile": {
+                  "networkInterfaces": [
+                    {
+                      "id": "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-web')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkInterfaces', 'nic-vm-onprem-web')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines/extensions",
+              "apiVersion": "2024-07-01",
+              "name": "[format('{0}/{1}', 'vm-onprem-web', 'IISSetup')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.10",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                  "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \"Install-WindowsFeature -Name Web-Server,Web-Asp-Net45,Web-Mgmt-Tools,NET-Framework-45-ASPNET -IncludeManagementTools\""
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-web')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Compute/virtualMachines/extensions",
+              "apiVersion": "2024-07-01",
+              "name": "[format('{0}/{1}', 'vm-onprem-web', 'DomainJoin')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "JsonADDomainExtension",
+                "typeHandlerVersion": "1.3",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                  "Name": "[parameters('domainName')]",
+                  "User": "[format('{0}\\{1}', parameters('domainName'), parameters('adminUsername'))]",
+                  "Restart": "true",
+                  "Options": "3"
+                },
+                "protectedSettings": {
+                  "Password": "[parameters('adminPassword')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-ad', 'ADSetup')]",
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-web', 'IISSetup')]",
+                "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-web')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-05-01",
+              "name": "vgw-onprem-pip1",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworkGateways",
+              "apiVersion": "2024-05-01",
+              "name": "vgw-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "properties": {
+                "gatewayType": "Vpn",
+                "vpnType": "RouteBased",
+                "sku": {
+                  "name": "VpnGw1",
+                  "tier": "VpnGw1"
+                },
+                "ipConfigurations": [
+                  {
+                    "name": "vpnGwIpConfig",
+                    "properties": {
+                      "publicIPAddress": {
+                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
+                      },
+                      "subnet": {
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'GatewaySubnet')]"
+                      }
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]",
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
+              ]
+            },
+            {
+              "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
+              "type": "Microsoft.Network/localNetworkGateways",
+              "apiVersion": "2024-05-01",
+              "name": "lgw-hub",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "properties": {
+                "gatewayIpAddress": "[parameters('remoteGatewayIp')]",
+                "localNetworkAddressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('remoteAddressPrefix')]"
+                  ]
+                }
+              }
+            },
+            {
+              "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
+              "type": "Microsoft.Network/connections",
+              "apiVersion": "2024-05-01",
+              "name": "cn-onprem-to-hub",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "properties": {
+                "connectionType": "IPsec",
+                "virtualNetworkGateway1": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]",
+                  "properties": {}
+                },
+                "localNetworkGateway2": {
+                  "id": "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
+                  "properties": {}
+                },
+                "sharedKey": "[parameters('vpnSharedKey')]",
+                "connectionProtocol": "IKEv2"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
+                "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vpnGatewayPublicIp": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1'), '2024-05-01').ipAddress]"
+            },
+            "bastionName": {
+              "type": "string",
+              "value": "bas-onprem"
+            },
+            "adServerPrivateIp": {
+              "type": "string",
+              "value": "10.0.1.4"
+            },
+            "sqlServerPrivateIp": {
+              "type": "string",
+              "value": "10.0.1.5"
+            },
+            "webServerPrivateIp": {
+              "type": "string",
+              "value": "10.0.1.6"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('onpremResourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('deployVpnGateway')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-onprem-vpn-connect",
       "resourceGroup": "[variables('onpremResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -29454,8 +30139,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "3768299220588903230"
+              "version": "0.42.1.51946",
+              "templateHash": "17124821297943670658"
             }
           },
           "parameters": {
@@ -30092,6 +30777,7 @@
       },
       "dependsOn": [
         "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-cloud-foundation')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('onpremResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-onprem-base')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('onpremResourceGroupName'))]"
       ]
     }
