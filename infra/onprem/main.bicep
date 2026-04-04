@@ -196,7 +196,7 @@ resource adVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   tags: dcTags
   properties: {
     hardwareProfile: {
-      vmSize: 'Standard_B2ms'
+      vmSize: 'Standard_B2as_v2'
     }
     osProfile: {
       computerName: 'DC01'
@@ -277,7 +277,7 @@ resource sqlVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   tags: dbTags
   properties: {
     hardwareProfile: {
-      vmSize: 'Standard_B2ms'
+      vmSize: 'Standard_B2as_v2'
     }
     osProfile: {
       computerName: 'DB01'
@@ -399,7 +399,7 @@ resource webVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   tags: webTags
   properties: {
     hardwareProfile: {
-      vmSize: 'Standard_B2ms'
+      vmSize: 'Standard_B2as_v2'
     }
     osProfile: {
       computerName: 'APP01'
