@@ -32,8 +32,8 @@
 
 ## 方法 A: 一度に環境を作る方法
 
-**一括セットアップ用エントリポイント** を使って、環境全体をまとめて作成する方法です。  
-現在の正式な配置は `infra/main.bicep` で、内部で `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、**方法 B と同じ構成・命名** で初期セットアップを実施できます。
+`infra/main.bicep` を使って環境全体をまとめて作成します。  
+内部で `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、方法 B と同じ構成・命名になります。
 
 ### Deploy to Azure ボタン
 
@@ -43,7 +43,27 @@
 
 > このボタンは `infra/main.json` を利用します。別の fork / mirror で使う場合は、リンク先 URL 内のリポジトリ パスを自身のものに置き換えてください。
 
-### 実行例（Azure CLI / Bicep）
+### デプロイ後に必要な手動設定
+
+Deploy to Azure ボタンまたは CLI によるデプロイが完了したら、疑似オンプレ側からクラウド側の Private Endpoint を名前解決するために、DC01 に **DNS 条件付きフォワーダー**を設定します。この設定は Bicep では自動化されないため、手動で実行してください。
+
+詳細な手順は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) を参照してください。
+
+### 一括作成されるもの
+
+- `rg-onprem`, `rg-hub`, `rg-spoke1` ～ `rg-spoke4`
+- On-Prem VNet / Hub VNet / 各 Spoke VNet
+- Azure Firewall / Azure Bastion / Log Analytics / Policy / Defender
+- `DC01` / `DB01` / `APP01`
+- Hub 側 VPN Gateway / On-Prem 側 VPN Gateway
+- VNet 間接続に必要な VPN 接続設定
+- DNS Private Resolver / DNS Forwarding Ruleset（クラウド → オンプレ方向の DNS 転送）
+
+> DC01 の DNS 条件付きフォワーダー（オンプレ → クラウド方向）は方法 A でも自動設定されません。上記「デプロイ後に必要な手動設定」を実行してください。
+
+> デプロイ完了まで 60〜90 分程度かかることがあります。特に VPN Gateway の作成に時間を要します。
+
+### 備考: Azure CLI / Bicep で実行する場合
 
 ```powershell
 az deployment sub create `
@@ -57,29 +77,7 @@ az deployment sub create `
                vpnSharedKey='<共有キー>'
 ```
 
-> `infra/main.bicep` は一括セットアップ用、`infra/cloud/main.bicep` はクラウド側のみを構築するテンプレートです。用途に応じて使い分けてください。
-
 > `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。英大文字・小文字・数字・記号を組み合わせ、サンプル値をそのまま使わないようにしてください。
-
-### デプロイ後に必要な手動設定
-
-上記デプロイ完了後、疑似オンプレ側からクラウド側の Private Endpoint を名前解決するために、DC01 に **DNS 条件付きフォワーダー**を設定します。この設定は Bicep では自動化されないため、手動で実行してください。
-
-詳細な手順は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) を参照してください。
-
-### この方法で一括作成されるもの
-
-- `rg-onprem`, `rg-hub`, `rg-spoke1` ～ `rg-spoke4`
-- On-Prem VNet / Hub VNet / 各 Spoke VNet
-- Azure Firewall / Azure Bastion / Log Analytics / Policy / Defender
-- `DC01` / `DB01` / `APP01`
-- Hub 側 VPN Gateway / On-Prem 側 VPN Gateway
-- VNet 間接続に必要な VPN 接続設定
-- DNS Private Resolver / DNS Forwarding Ruleset（クラウド → オンプレ方向の DNS 転送）
-
-> 疑似オンプレ側 DC01 の DNS 条件付きフォワーダー（オンプレ → クラウド方向）は、方法 A でも自動設定されません。上記「デプロイ後に必要な手動設定」を実行してください。
-
-> デプロイ完了まで **60〜90 分程度** かかることがあります。特に VPN Gateway の作成に時間を要します。
 
 ---
 
