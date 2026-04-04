@@ -291,8 +291,8 @@ resource sqlVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
     storageProfile: {
       imageReference: {
         publisher: 'MicrosoftSQLServer'
-        offer: 'sql2022-ws2022'
-        sku: 'sqldev-gen2'
+        offer: 'sql2019-ws2019'
+        sku: 'sqldev'
         version: 'latest'
       }
       osDisk: {
@@ -414,7 +414,7 @@ resource webVm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
       imageReference: {
         publisher: 'MicrosoftWindowsServer'
         offer: 'WindowsServer'
-        sku: '2022-Datacenter'
+        sku: '2019-Datacenter'
         version: 'latest'
       }
       osDisk: {

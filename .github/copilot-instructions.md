@@ -6,8 +6,6 @@
 
 - **アプリケーション**: ASP.NET MVC (.NET Framework 4.8) — IIS 上でホスト（`APP01`）
 - **データベース**: SQL Server 2019 Developer Edition（`DB01`）
-- **ソースコード**: `src/legacy-app/` 配下の `InventoryApp`（在庫管理 Web アプリ）
-- **ORM**: Entity Framework（Code First / `InventoryDbContext`）
 
 移行シナリオ（Spoke1〜4）では、このオンプレ構成を前提にリホスト・DB PaaS 化・コンテナ化・フル PaaS 化を行う。
 
