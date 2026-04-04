@@ -78,7 +78,13 @@ az deployment sub create `
                vpnSharedKey='<共有キー>'
 ```
 
-> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。英大文字・小文字・数字・記号を組み合わせ、サンプル値をそのまま使わないようにしてください。
+> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
+>
+> ```powershell
+> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> ```
+>
+> 生成例: `qb06eQr=a7I@LKY#&!ljw+d2GZzSTnkyXt-p1gc%`（この値はそのまま使わず、必ず自分で生成してください）
 
 ---
 
@@ -91,13 +97,17 @@ az deployment sub create `
 
 移行元となる疑似オンプレ環境と、疑似オンプレ側の Azure VPN Gateway を作成します。
 
-```powershell
-az group create --name rg-onprem --location japaneast
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fonprem%2Fdeploy.json)
 
-az deployment group create `
+> Portal でリージョンとパラメータを入力してデプロイします。リソースグループ `rg-onprem` は自動作成されます。
+
+または CLI で実行:
+
+```powershell
+az deployment sub create `
   --name hol-onprem-base `
-  --resource-group rg-onprem `
-  --template-file infra/onprem/main.bicep `
+  --location japaneast `
+  --template-file infra/onprem/deploy.bicep `
   --parameters adminPassword='<管理者パスワード>' `
                vpnSharedKey='<共有キー>'
 ```
@@ -115,6 +125,10 @@ az deployment group create `
 ### Step 2: クラウド側のネットワーク接続の Hub / 各種 Spoke を作る
 
 クラウド側の Hub / Spoke 基盤と、Hub 側の Azure VPN Gateway を構築します。
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fcloud%2Fmain.json)
+
+または CLI で実行:
 
 ```powershell
 az deployment sub create `

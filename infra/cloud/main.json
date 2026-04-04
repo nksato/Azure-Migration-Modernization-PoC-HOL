@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "509569977241953651"
+      "templateHash": "9861542663793528681"
     }
   },
   "parameters": {
@@ -9095,6 +9095,109 @@
         "spoke2Vnet",
         "spoke3Vnet",
         "spoke4Vnet"
+      ]
+    },
+    "dnsForwardingRulesetModule": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-dns-forwarding-ruleset",
+      "resourceGroup": "rg-hub",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          },
+          "dnsResolverName": {
+            "value": "dnspr-hub"
+          },
+          "hubVnetId": {
+            "value": "[reference('hubVnet').outputs.resourceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "10059751467241234980"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "dnsResolverName": {
+              "type": "string"
+            },
+            "hubVnetId": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/dnsForwardingRulesets",
+              "apiVersion": "2022-07-01",
+              "name": "dnsrs-hub",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "dnsResolverOutboundEndpoints": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/dnsResolvers/outboundEndpoints', split(format('{0}/outbound', parameters('dnsResolverName')), '/')[0], split(format('{0}/outbound', parameters('dnsResolverName')), '/')[1])]"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/dnsForwardingRulesets/forwardingRules",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', 'dnsrs-hub', 'rule-lab-local')]",
+              "properties": {
+                "domainName": "lab.local.",
+                "forwardingRuleState": "Enabled",
+                "targetDnsServers": [
+                  {
+                    "ipAddress": "10.0.1.4",
+                    "port": 53
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/dnsForwardingRulesets', 'dnsrs-hub')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/dnsForwardingRulesets/virtualNetworkLinks",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', 'dnsrs-hub', 'link-vnet-hub')]",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[parameters('hubVnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/dnsForwardingRulesets', 'dnsrs-hub')]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "dnsResolver",
+        "hubVnet",
+        "rgHub"
       ]
     },
     "firewallPolicy": {
@@ -29121,6 +29224,51 @@
       "dependsOn": [
         "rgHub"
       ]
+    },
+    "getVpnPip": {
+      "condition": "[parameters('deployVpnGateway')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "get-vpn-pip",
+      "resourceGroup": "rg-hub",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "pipName": {
+            "value": "vpngw-hub-pip1"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "812696033890024292"
+            }
+          },
+          "parameters": {
+            "pipName": {
+              "type": "string"
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "ipAddress": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName')), '2024-01-01').ipAddress]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "rgHub",
+        "vpnGatewayHub"
+      ]
     }
   },
   "outputs": {
@@ -29155,6 +29303,10 @@
     "vpnGatewayId": {
       "type": "string",
       "value": "[if(parameters('deployVpnGateway'), coalesce(tryGet(tryGet(reference('vpnGatewayHub').outputs, 'resourceId'), 'value'), ''), '')]"
+    },
+    "vpnGatewayPublicIp": {
+      "type": "string",
+      "value": "[if(parameters('deployVpnGateway'), reference('getVpnPip').outputs.ipAddress.value, '')]"
     }
   }
 }

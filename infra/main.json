@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "7522612967283675892"
+      "templateHash": "4006456531280115294"
     }
   },
   "parameters": {
@@ -111,7 +111,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "1634003573244974109"
+              "templateHash": "9861542663793528681"
             }
           },
           "parameters": {
@@ -29329,6 +29329,51 @@
               "dependsOn": [
                 "rgHub"
               ]
+            },
+            "getVpnPip": {
+              "condition": "[parameters('deployVpnGateway')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "get-vpn-pip",
+              "resourceGroup": "rg-hub",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "pipName": {
+                    "value": "vpngw-hub-pip1"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.41.2.15936",
+                      "templateHash": "812696033890024292"
+                    }
+                  },
+                  "parameters": {
+                    "pipName": {
+                      "type": "string"
+                    }
+                  },
+                  "resources": [],
+                  "outputs": {
+                    "ipAddress": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', parameters('pipName')), '2024-01-01').ipAddress]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "rgHub",
+                "vpnGatewayHub"
+              ]
             }
           },
           "outputs": {
@@ -29363,6 +29408,10 @@
             "vpnGatewayId": {
               "type": "string",
               "value": "[if(parameters('deployVpnGateway'), coalesce(tryGet(tryGet(reference('vpnGatewayHub').outputs, 'resourceId'), 'value'), ''), '')]"
+            },
+            "vpnGatewayPublicIp": {
+              "type": "string",
+              "value": "[if(parameters('deployVpnGateway'), reference('getVpnPip').outputs.ipAddress.value, '')]"
             }
           }
         }
@@ -29394,7 +29443,7 @@
           "vpnSharedKey": {
             "value": "[parameters('vpnSharedKey')]"
           },
-          "remoteGatewayIp": "[if(parameters('deployVpnGateway'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'rg-hub'), 'Microsoft.Network/publicIPAddresses', 'vpngw-hub-pip1'), '2024-01-01').ipAddress), createObject('value', ''))]",
+          "remoteGatewayIp": "[if(parameters('deployVpnGateway'), createObject('value', reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-cloud-foundation'), '2025-04-01').outputs.vpnGatewayPublicIp.value), createObject('value', ''))]",
           "remoteAddressPrefix": {
             "value": "[variables('hubAddressPrefix')]"
           }
@@ -29406,7 +29455,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "13164348086565208665"
+              "templateHash": "3768299220588903230"
             }
           },
           "parameters": {
@@ -30058,7 +30107,7 @@
     },
     "hubGatewayPublicIp": {
       "type": "string",
-      "value": "[if(parameters('deployVpnGateway'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'rg-hub'), 'Microsoft.Network/publicIPAddresses', 'vpngw-hub-pip1'), '2024-01-01').ipAddress, '')]"
+      "value": "[if(parameters('deployVpnGateway'), reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-cloud-foundation'), '2025-04-01').outputs.vpnGatewayPublicIp.value, '')]"
     },
     "onpremVpnGatewayName": {
       "type": "string",

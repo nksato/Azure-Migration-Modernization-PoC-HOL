@@ -56,16 +56,7 @@ module cloudFoundation 'cloud/main.bicep' = {
   }
 }
 
-resource rgHub 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
-  name: 'rg-hub'
-}
-
-resource hubVpnPublicIp 'Microsoft.Network/publicIPAddresses@2024-01-01' existing = if (deployVpnGateway) {
-  scope: rgHub
-  name: 'vpngw-hub-pip1'
-}
-
-var hubGatewayIp = deployVpnGateway ? reference(hubVpnPublicIp.id, '2024-01-01').ipAddress : ''
+var hubGatewayIp = deployVpnGateway ? cloudFoundation.outputs.vpnGatewayPublicIp : ''
 
 module onpremEnvironment 'onprem/main.bicep' = {
   name: 'deploy-onprem-environment'
@@ -79,13 +70,10 @@ module onpremEnvironment 'onprem/main.bicep' = {
     remoteGatewayIp: hubGatewayIp
     remoteAddressPrefix: hubAddressPrefix
   }
-  dependsOn: [
-    cloudFoundation
-  ]
 }
 
 output onpremResourceGroupName string = rgOnprem.name
-output hubResourceGroupName string = rgHub.name
+output hubResourceGroupName string = 'rg-hub'
 output hubGatewayPublicIp string = hubGatewayIp
 output onpremVpnGatewayName string = 'vgw-onprem'
 output dnsResolverInboundSubnet string = '10.10.5.0/28 (snet-dns-inbound)'

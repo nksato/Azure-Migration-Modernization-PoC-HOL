@@ -26,7 +26,7 @@
 
 ### Deploy to Azure を使う場合
 
-リポジトリの `README.md` や `docs/README.md` から、ハンズオン向けのデプロイ導線を利用します。
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fcloud%2Fmain.json)
 
 ### Azure CLI / Bicep で実行する場合
 

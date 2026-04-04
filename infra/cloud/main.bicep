@@ -572,6 +572,19 @@ module pocDashboard './modules/governance/dashboard.bicep' = {
 }
 
 // ============================================================
+// VPN Gateway Public IP の取得 (main.bicep 連携用)
+// ============================================================
+
+module getVpnPip 'modules/network/get-pip-ip.bicep' = if (deployVpnGateway) {
+  scope: rgHub
+  name: 'get-vpn-pip'
+  params: {
+    pipName: 'vpngw-hub-pip1'
+  }
+  dependsOn: [vpnGatewayHub]
+}
+
+// ============================================================
 // Outputs
 // ============================================================
 
@@ -583,3 +596,4 @@ output spoke3VnetId string = spoke3Vnet.outputs.resourceId
 output spoke4VnetId string = spoke4Vnet.outputs.resourceId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.resourceId
 output vpnGatewayId string = deployVpnGateway ? vpnGatewayHub.outputs.?resourceId ?? '' : ''
+output vpnGatewayPublicIp string = deployVpnGateway ? getVpnPip.outputs.ipAddress : ''
