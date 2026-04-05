@@ -32,15 +32,12 @@ param adminPassword string
 @description('Active Directory ドメイン名')
 param domainName string = 'lab.local'
 
-@description('リソースグループ名')
-param resourceGroupName string = 'rg-onprem'
-
 // ============================================================
 // リソースグループ
 // ============================================================
 
 resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: resourceGroupName
+  name: 'rg-onprem'
   location: location
   tags: {
     Environment: 'PoC'
