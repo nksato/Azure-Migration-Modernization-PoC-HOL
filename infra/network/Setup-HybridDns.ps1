@@ -27,11 +27,14 @@ param(
 $ErrorActionPreference = 'Stop'
 
 Write-Host '=== Hybrid DNS Setup ===' -ForegroundColor Cyan
+Write-Host '  [1/2] クラウド → オンプレ: DNS Forwarding Ruleset で AD ドメインを DC01 へ転送' -ForegroundColor Cyan
+Write-Host '  [2/2] オンプレ → クラウド: DC01 の条件付きフォワーダーで Private DNS Zone を Resolver へ転送' -ForegroundColor Cyan
 
 # ============================================================
 # [1/2] クラウド→オンプレ: DNS Forwarding Ruleset 作成
 # ============================================================
-Write-Host '[1/2] Setting up Cloud to On-premises DNS forwarding...' -ForegroundColor Yellow
+Write-Host '[1/2] クラウド → オンプレ: DNS Forwarding Ruleset を作成中...' -ForegroundColor Yellow
+Write-Host "  $OnpremDomain のクエリを DC01 ($OnpremDnsTarget) へ転送します" -ForegroundColor Yellow
 
 # DNS Resolver の Outbound Endpoint ID を取得
 Write-Host '  Getting DNS Resolver outbound endpoint...' -ForegroundColor Yellow
@@ -87,7 +90,8 @@ Write-Host '  Cloud to On-premises DNS forwarding configured.' -ForegroundColor 
 # ============================================================
 # [2/2] オンプレ→クラウド: DC01 に条件付きフォワーダーを追加
 # ============================================================
-Write-Host '[2/2] Setting up On-premises to Cloud DNS forwarding...' -ForegroundColor Yellow
+Write-Host '[2/2] オンプレ → クラウド: DC01 に条件付きフォワーダーを追加中...' -ForegroundColor Yellow
+Write-Host "  $ForwardZone のクエリを DNS Resolver ($dnsInboundIp) へ転送します" -ForegroundColor Yellow
 
 # DNS Private Resolver のインバウンド IP を取得
 $dnsInboundIp = az dns-resolver inbound-endpoint show `
