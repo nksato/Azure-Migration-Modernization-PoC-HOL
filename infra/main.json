@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "6217532195110026034"
+      "templateHash": "17955019223541269583"
     }
   },
   "parameters": {
@@ -27504,7 +27504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "5192902917814150998"
+              "templateHash": "1539528351395683049"
             }
           },
           "parameters": {
@@ -27527,7 +27527,7 @@
               "Environment": "PoC",
               "SecurityControl": "ignore"
             },
-            "hubVnetId": "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-hub')]"
+            "hubVnetId": "[resourceId('rg-hub', 'Microsoft.Network/virtualNetworks', 'vnet-hub')]"
           },
           "resources": {
             "rgOnprem": {

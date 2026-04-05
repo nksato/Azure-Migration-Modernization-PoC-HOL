@@ -66,7 +66,7 @@ module hubVpnGateway 'br/public:avm/res/network/virtual-network-gateway:0.10.1' 
 }
 
 // Hub VNet の Resource ID を構築
-var hubVnetId = resourceId('Microsoft.Network/virtualNetworks', 'vnet-hub')
+var hubVnetId = resourceId('rg-hub', 'Microsoft.Network/virtualNetworks', 'vnet-hub')
 
 // ============================================================
 // Hub 側 VPN Gateway の Public IP を取得
