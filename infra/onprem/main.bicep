@@ -227,7 +227,7 @@ resource adSetupExtension 'Microsoft.Compute/virtualMachines/extensions@2024-07-
 }
 
 // ============================================================
-// SQL サーバ (SQL Server 2022 Developer on Windows Server 2022)
+// SQL サーバ (SQL Server 2019 Developer on Windows Server 2019)
 // ============================================================
 
 resource sqlNic 'Microsoft.Network/networkInterfaces@2024-05-01' = {

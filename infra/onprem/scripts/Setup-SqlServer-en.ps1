@@ -27,7 +27,7 @@ Write-Host '=== SQL Server Setup Started ===' -ForegroundColor Cyan
 # ----------------------------------------------------------
 Write-Host '[1/5] Changing SQL Server authentication to mixed mode...' -ForegroundColor Yellow
 
-$regPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\MSSQLServer"
+$regPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\MSSQLServer"
 Set-ItemProperty -Path $regPath -Name 'LoginMode' -Value 2
 Write-Host '  Set to mixed mode (Windows + SQL).' -ForegroundColor Green
 
@@ -37,7 +37,7 @@ Write-Host '  Set to mixed mode (Windows + SQL).' -ForegroundColor Green
 Write-Host '[2/5] Enabling TCP/IP protocol...' -ForegroundColor Yellow
 
 # Enable TCP/IP via registry (SMO WMI assembly may not be available)
-$tcpRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\MSSQLServer\SuperSocketNetLib\Tcp"
+$tcpRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\MSSQLServer\SuperSocketNetLib\Tcp"
 $tcpEnabled = (Get-ItemProperty -Path $tcpRegPath -Name 'Enabled').Enabled
 if ($tcpEnabled -ne 1) {
     Set-ItemProperty -Path $tcpRegPath -Name 'Enabled' -Value 1
@@ -72,7 +72,7 @@ Stop-Service -Name $SqlInstance -Force
 Start-Sleep -Seconds 3
 
 # Start in single-user mode (first connection gets sysadmin)
-$sqlBin = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\Setup").SQLBinRoot
+$sqlBin = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\Setup").SQLBinRoot
 $sqlServr = Join-Path $sqlBin 'sqlservr.exe'
 $proc = Start-Process -FilePath $sqlServr -ArgumentList "-m -s $SqlInstance" -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 10

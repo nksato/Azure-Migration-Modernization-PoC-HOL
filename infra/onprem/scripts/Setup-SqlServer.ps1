@@ -27,7 +27,7 @@ Write-Host '=== SQL Server セットアップ開始 ===' -ForegroundColor Cyan
 # ----------------------------------------------------------
 Write-Host '[1/5] SQL Server 認証モードを混合モードに変更...' -ForegroundColor Yellow
 
-$regPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\MSSQLServer"
+$regPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\MSSQLServer"
 Set-ItemProperty -Path $regPath -Name 'LoginMode' -Value 2
 Write-Host '  混合モード (Windows + SQL) に設定しました。' -ForegroundColor Green
 
@@ -37,7 +37,7 @@ Write-Host '  混合モード (Windows + SQL) に設定しました。' -Foregro
 Write-Host '[2/5] TCP/IP プロトコルを有効化...' -ForegroundColor Yellow
 
 # レジストリで TCP/IP を有効化 (SMO WMI アセンブリが利用できない場合があるため)
-$tcpRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\MSSQLServer\SuperSocketNetLib\Tcp"
+$tcpRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\MSSQLServer\SuperSocketNetLib\Tcp"
 $tcpEnabled = (Get-ItemProperty -Path $tcpRegPath -Name 'Enabled').Enabled
 if ($tcpEnabled -ne 1) {
     Set-ItemProperty -Path $tcpRegPath -Name 'Enabled' -Value 1
@@ -71,7 +71,7 @@ Stop-Service -Name $SqlInstance -Force
 Start-Sleep -Seconds 3
 
 # シングルユーザーモードで起動 (最初の接続が sysadmin 権限を取得)
-$sqlBin = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.${SqlInstance}\Setup").SQLBinRoot
+$sqlBin = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL15.${SqlInstance}\Setup").SQLBinRoot
 $sqlServr = Join-Path $sqlBin 'sqlservr.exe'
 $proc = Start-Process -FilePath $sqlServr -ArgumentList "-m -s $SqlInstance" -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 10
