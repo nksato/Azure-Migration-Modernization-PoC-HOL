@@ -56,7 +56,7 @@ module cloudFoundation 'cloud/main.bicep' = {
   }
 }
 
-module onpremBase 'onprem/main.bicep' = {
+module onpremBase 'onprem/resources.bicep' = {
   name: 'deploy-onprem-base'
   scope: rgOnprem
   params: {

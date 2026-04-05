@@ -69,11 +69,12 @@
 
 ## 5. 使用テンプレート
 
-ハンズオンでは、`infra/onprem/main.bicep` を標準構成として利用します。
+ハンズオンでは、`infra/onprem/main.bicep` をエントリポイントとして利用します。
 
 | テンプレート | 特徴 | 用途 |
 |---|---|---|
-| `main.bicep` | Azure 既定の送信アクセスを利用 | 標準ラボ構成 |
+| `main.bicep` | サブスクリプションスコープ ラッパー | RG 作成 + resources.bicep 呼び出し |
+| `resources.bicep` | Azure 既定の送信アクセスを利用 | 標準ラボ構成 |
 
 ---
 
@@ -111,6 +112,7 @@
 - `README.md`
 - `docs/README.md`
 - `infra/onprem/Deploy-Lab.ps1`
-- `infra/onprem/main.bicep`
+- `infra/onprem/main.bicep` (サブスクリプションスコープ)
+- `infra/onprem/resources.bicep` (リソースグループスコープ)
 - `infra/onprem/Enable-ArcOnVMs.ps1`
 - `infra/onprem/scripts/*`

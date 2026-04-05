@@ -6,7 +6,7 @@
 
 - `infra/main.bicep`
   - 初期環境を一括セットアップする正式エントリポイント
-  - `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出す
+  - `infra/cloud/main.bicep` と `infra/onprem/resources.bicep` を呼び出す
 
 - `infra/cloud/`
   - クラウド側（Hub & Spoke / ガバナンス / スポーク用リソース）のテンプレート

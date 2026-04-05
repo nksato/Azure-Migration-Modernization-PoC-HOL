@@ -109,7 +109,7 @@ az deployment sub create `
 
 | Step | 内容 | テンプレート / スクリプト |
 |------|------|------------------------|
-| 1 | 疑似オンプレ環境 | `infra/onprem/deploy.bicep` |
+| 1 | 疑似オンプレ環境 | `infra/onprem/main.bicep` |
 | 2 | Parts Unlimited インストール | `az vm run-command` |
 | 3 | クラウド基盤 (Hub & Spoke) | `infra/cloud/main.bicep` |
 | 4 | VPN Gateway 配置・接続 | `infra/network/main.bicep` |
@@ -119,7 +119,7 @@ az deployment sub create `
 
 移行元となる疑似オンプレ環境（VNet + VM 3 台 + Bastion）を作成します。
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fonprem%2Fdeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fonprem%2Fmain.json)
 
 > Portal でリージョンとパラメータを入力してデプロイします。リソースグループ `rg-onprem` は自動作成されます。
 
@@ -129,7 +129,7 @@ az deployment sub create `
 az deployment sub create `
   --name hol-onprem-base `
   --location japaneast `
-  --template-file infra/onprem/deploy.bicep `
+  --template-file infra/onprem/main.bicep `
   --parameters adminPassword='<管理者パスワード>'
 ```
 

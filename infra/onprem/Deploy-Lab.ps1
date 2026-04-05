@@ -37,7 +37,7 @@ param(
     [string]$ResourceGroupName,
 
     [string]$Location = 'japaneast',
-    [string]$TemplateFile = 'main.bicep',
+    [string]$TemplateFile = 'resources.bicep',
     [string]$AdminUsername = 'labadmin',
     [string]$DomainName = 'lab.local',
     [string]$RemoteGatewayIp = '',

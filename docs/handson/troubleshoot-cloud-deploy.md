@@ -73,6 +73,40 @@ az deployment sub create `
 
 ---
 
+### 方法 3: 失敗リソースを削除してから再デプロイ
+
+再デプロイでも同じエラーが繰り返される場合は、`Failed` 状態のリソースを削除してから再実行します。
+
+#### Firewall が失敗した場合
+
+```powershell
+# 失敗した Firewall と関連 PIP を削除
+az network firewall delete -g rg-hub -n afw-hub --yes
+az network public-ip delete -g rg-hub -n pip-afw-hub 2>$null
+az network public-ip delete -g rg-hub -n pip-afw-hub-mgmt 2>$null
+
+# 再デプロイ
+az deployment sub create `
+  --location japaneast `
+  --template-file infra/cloud/main.bicep `
+  --parameters deployFirewall=true deployBastion=true
+```
+
+#### DNS Resolver が失敗した場合
+
+```powershell
+# 失敗した DNS Resolver を削除（エンドポイントも自動削除される）
+az dns-resolver delete -g rg-hub -n dnspr-hub --yes
+
+# 再デプロイ
+az deployment sub create `
+  --location japaneast `
+  --template-file infra/cloud/main.bicep `
+  --parameters deployFirewall=true deployBastion=true
+```
+
+---
+
 ### 確認: Firewall のプロビジョニング状態
 
 ```powershell
