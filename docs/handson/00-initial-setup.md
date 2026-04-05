@@ -86,13 +86,12 @@ az deployment sub create `
                vpnSharedKey='<共有キー>'
 ```
 
-> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
+> **Tip**: デプロイ後に共有キーを確認するには、以下のコマンドを使用してください。
 >
 > ```powershell
-> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> az network vpn-connection shared-key show `
+>   --resource-group rg-onprem --name cn-onprem-to-hub -o tsv
 > ```
->
-> 生成例: `qb06eQr=a7I@LKY#&!ljw+d2GZzSTnkyXt-p1gc%`（この値はそのまま使わず、必ず自分で生成してください）
 
 ---
 
