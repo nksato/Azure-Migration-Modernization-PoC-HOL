@@ -41,7 +41,7 @@
 
 ### Bicep でデプロイ
 
-`infra/vpn/main.bicep` は Subscription スコープのテンプレートで、以下を一括処理します。
+`infra/network/main.bicep` は Subscription スコープのテンプレートで、以下を一括処理します。
 
 1. 疑似オンプレ VNet に GatewaySubnet を追加し VPN Gateway をデプロイ
 2. Hub VNet に VPN Gateway をデプロイ
@@ -52,7 +52,7 @@
 az deployment sub create `
   --name hol-vpn-setup `
   --location japaneast `
-  --template-file infra/vpn/main.bicep `
+  --template-file infra/network/main.bicep `
   --parameters vpnSharedKey='<共有キー>'
 ```
 
@@ -87,10 +87,10 @@ az network vpn-connection show `
 - このテンプレートは疑似オンプレ側とクラウド側の両方に VPN Gateway を作成するため、完了まで時間がかかります。
 - 接続状態が `Connected` にならない場合は、`vpnSharedKey` の値を確認してください。
 - テンプレートの実体:
-  - `infra/vpn/main.bicep` — VPN 配置のエントリポイント
-  - `infra/vpn/modules/onprem-vpn-gateway.bicep` — 疑似オンプレ側 GatewaySubnet + VPN GW
-  - `infra/vpn/modules/vpn-connection.bicep` — LGW + S2S 接続
-  - `infra/vpn/modules/update-hub-peering.bicep` — Peering の Gateway Transit 有効化
+  - `infra/network/main.bicep` — VPN 配置のエントリポイント
+  - `infra/network/modules/onprem-vpn-gateway.bicep` — 疑似オンプレ側 GatewaySubnet + VPN GW
+  - `infra/network/modules/vpn-connection.bicep` — LGW + S2S 接続
+  - `infra/network/modules/update-hub-peering.bicep` — Peering の Gateway Transit 有効化
 
 ---
 

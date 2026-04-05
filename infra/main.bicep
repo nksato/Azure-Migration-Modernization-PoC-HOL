@@ -68,7 +68,7 @@ module onpremBase 'onprem/main.bicep' = {
 }
 
 // Phase 2: 両方の VPN GW を作成し S2S 接続
-module vpnSetup 'vpn/main.bicep' = if (deployVpnGateway) {
+module vpnSetup 'network/main.bicep' = if (deployVpnGateway) {
   name: 'deploy-vpn-setup'
   dependsOn: [onpremBase, cloudFoundation]
   params: {

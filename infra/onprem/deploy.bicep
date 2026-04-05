@@ -3,7 +3,7 @@
 // ============================================================
 // リソースグループの作成を含めて一括デプロイするためのエントリポイント。
 // 内部で main.bicep をモジュールとして呼び出します。
-// VPN Gateway は Step 4 (infra/vpn/main.bicep) で別途デプロイします。
+// VPN Gateway は Step 4 (infra/network/main.bicep) で別途デプロイします。
 //
 // 使い方:
 //   az deployment sub create \

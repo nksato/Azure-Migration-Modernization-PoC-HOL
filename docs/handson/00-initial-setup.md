@@ -105,8 +105,8 @@ az deployment sub create `
 | 1 | 疑似オンプレ環境 | `infra/onprem/deploy.bicep` |
 | 2 | Parts Unlimited インストール | `az vm run-command` |
 | 3 | クラウド基盤 (Hub & Spoke) | `infra/cloud/main.bicep` |
-| 4 | VPN Gateway 配置・接続 | `infra/vpn/main.bicep` |
-| 5 | ハイブリッド DNS | `infra/scripts/Setup-HybridDns.ps1` |
+| 4 | VPN Gateway 配置・接続 | `infra/network/main.bicep` |
+| 5 | ハイブリッド DNS | `infra/network/Setup-HybridDns.ps1` |
 
 ### Step 1: 疑似オンプレ環境を作る
 
@@ -180,7 +180,7 @@ az deployment sub create `
 az deployment sub create `
   --name hol-vpn-setup `
   --location japaneast `
-  --template-file infra/vpn/main.bicep `
+  --template-file infra/network/main.bicep `
   --parameters vpnSharedKey='<共有キー>'
 ```
 
@@ -200,7 +200,7 @@ az deployment sub create `
 VPN 接続が確立したら、双方向の DNS 転送を設定します。
 
 ```powershell
-.\infra\scripts\Setup-HybridDns.ps1
+.\infra\network\Setup-HybridDns.ps1
 ```
 
 **このステップで行うこと**
