@@ -60,6 +60,13 @@
 |---|---|---|---|
 | [`handson/07-cloud-cleanup.md`](./handson/07-cloud-cleanup.md) | リソースのクリーンアップ | 5〜10 分 | リソースグループの削除。課金停止 |
 
+### 付録: トラブルシューティング
+
+| ファイル | 内容 | 備考 |
+|---|---|---|
+| [`handson/troubleshoot-cloud-deploy.md`](./handson/troubleshoot-cloud-deploy.md) | Firewall / DNS Resolver のデプロイ失敗 | `rg-hub` 内リソースのリカバリ手順 |
+| [`handson/troubleshoot-domain-join.md`](./handson/troubleshoot-domain-join.md) | ドメイン参加の失敗 | DB01 / APP01 が WORKGROUP のままの場合 |
+
 ---
 
 ## 🎯 このドキュメント群の役割

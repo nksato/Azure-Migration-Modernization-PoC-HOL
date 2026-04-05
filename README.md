@@ -49,12 +49,14 @@
 
 | Step | ドキュメント | 内容 |
 |---|---|---|
+| — | [`docs/handson/00-prerequisites.md`](./docs/handson/00-prerequisites.md) | 作業環境の準備（Azure CLI / Git / クローン） |
 | 00 | [`docs/handson/00-initial-setup.md`](./docs/handson/00-initial-setup.md) | 初期環境を一括または段階的にセットアップ |
 | 00a | [`docs/handson/00a-onprem-deploy.md`](./docs/handson/00a-onprem-deploy.md) | 疑似オンプレ環境をデプロイ |
 | 00b | [`docs/handson/00b-onprem-parts-unlimited.md`](./docs/handson/00b-onprem-parts-unlimited.md) | `DB01` / `APP01` に Parts Unlimited をセットアップ |
 | 00c | [`docs/handson/00c-onprem-verification.md`](./docs/handson/00c-onprem-verification.md) | アプリと通信を確認 |
 | 00d | [`docs/handson/00d-cloud-deploy.md`](./docs/handson/00d-cloud-deploy.md) | 移行先クラウド基盤をデプロイ |
 | 00e | [`docs/handson/00e-cloud-vpn-connect.md`](./docs/handson/00e-cloud-vpn-connect.md) | クラウド VPN 接続を構成 |
+| 00f | [`docs/handson/00f-cloud-hybrid-dns.md`](./docs/handson/00f-cloud-hybrid-dns.md) | ハイブリッド DNS を設定 |
 
 > ワンクリックで初期環境を作成したい場合は、[`docs/handson/00-initial-setup.md`](./docs/handson/00-initial-setup.md) の **Deploy to Azure** ボタンを利用できます。
 
@@ -73,6 +75,7 @@
 | 05c | [`docs/handson/05c-cloud-containerize.md`](./docs/handson/05c-cloud-containerize.md) | コンテナ化を実施 |
 | 05d | [`docs/handson/05d-cloud-full-paas.md`](./docs/handson/05d-cloud-full-paas.md) | フル PaaS 化を実施 |
 | 06 | [`docs/handson/06-cloud-compare.md`](./docs/handson/06-cloud-compare.md) | 結果の比較とまとめ |
+| 07 | [`docs/handson/07-cloud-cleanup.md`](./docs/handson/07-cloud-cleanup.md) | リソースのクリーンアップ |
 
 ---
 
