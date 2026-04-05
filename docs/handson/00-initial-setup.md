@@ -86,6 +86,14 @@ az deployment sub create `
                vpnSharedKey='<共有キー>'
 ```
 
+> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
+>
+> ```powershell
+> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> ```
+>
+> 生成例: `qb06eQr=a7I@LKY#&!ljw+d2GZzSTnkyXt-p1gc%`（この値はそのまま使わず、必ず自分で生成してください）
+
 > **Tip**: デプロイ後に共有キーを確認するには、以下のコマンドを使用してください。
 >
 > ```powershell
@@ -187,18 +195,15 @@ az deployment sub create `
   --parameters vpnSharedKey='<共有キー>'
 ```
 
-> **Tip**: CLI 実行時は以下のコマンドで共有キーを自動生成できます。
+> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
 >
 > ```powershell
-> $vpnKey = -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
-> az deployment sub create `
->   --name hol-vpn-setup `
->   --location japaneast `
->   --template-file infra/network/main.bicep `
->   --parameters vpnSharedKey=$vpnKey
+> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
 > ```
 >
-> 共有キーはデプロイ後に以下のコマンドで取得できます。
+> 生成例: `qb06eQr=a7I@LKY#&!ljw+d2GZzSTnkyXt-p1gc%`（この値はそのまま使わず、必ず自分で生成してください）
+
+> **Tip**: デプロイ後に共有キーを確認するには、以下のコマンドを使用してください。
 >
 > ```powershell
 > az network vpn-connection shared-key show `
