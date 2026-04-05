@@ -257,15 +257,30 @@ Write-Host "  IIS site '$SiteName' created and started." -ForegroundColor Green
 # Complete
 # ----------------------------------------------------------
 
+# ----------------------------------------------------------
+# Verification
+# ----------------------------------------------------------
+Write-Host ''
+Write-Host '=== Verification ===' -ForegroundColor Cyan
+
 # Verify SQL Server connectivity
-Write-Host '' -ForegroundColor White
-Write-Host 'SQL Server connectivity check:' -ForegroundColor White
+Write-Host '[1/2] SQL Server connectivity check...' -ForegroundColor Yellow
 $tcp = Test-NetConnection -ComputerName $SqlServer -Port 1433 -WarningAction SilentlyContinue
 if ($tcp.TcpTestSucceeded) {
     Write-Host "  TCP 1433 to ${SqlServer}: OK" -ForegroundColor Green
 } else {
     Write-Host "  TCP 1433 to ${SqlServer}: FAILED" -ForegroundColor Red
     Write-Host '  Check: Setup-SqlServer-en.ps1 executed on DB01? Firewall rule? SQL Service running?' -ForegroundColor Red
+}
+
+# Trigger initial HTTP request to seed database (EF Code First migration)
+Write-Host '[2/2] Triggering initial request to seed database...' -ForegroundColor Yellow
+try {
+    $response = Invoke-WebRequest -Uri "http://localhost:$SitePort" -UseBasicParsing -TimeoutSec 120
+    Write-Host "  Initial request completed (StatusCode: $($response.StatusCode))." -ForegroundColor Green
+} catch {
+    Write-Warning "  Initial request failed: $_"
+    Write-Host '  The database may be seeded on the first browser access instead.' -ForegroundColor Yellow
 }
 
 Write-Host ''

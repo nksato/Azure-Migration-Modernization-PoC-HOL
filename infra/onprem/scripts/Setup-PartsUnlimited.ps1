@@ -257,15 +257,30 @@ Write-Host "  IIS サイト '$SiteName' を作成・開始しました。" -Fore
 # 完了
 # ----------------------------------------------------------
 
+# ----------------------------------------------------------
+# 動作検証
+# ----------------------------------------------------------
+Write-Host ''
+Write-Host '=== 動作検証 ===' -ForegroundColor Cyan
+
 # SQL Server への接続確認
-Write-Host '' -ForegroundColor White
-Write-Host 'SQL Server 接続確認:' -ForegroundColor White
+Write-Host '[1/2] SQL Server 接続確認...' -ForegroundColor Yellow
 $tcp = Test-NetConnection -ComputerName $SqlServer -Port 1433 -WarningAction SilentlyContinue
 if ($tcp.TcpTestSucceeded) {
     Write-Host "  TCP 1433 to ${SqlServer}: OK" -ForegroundColor Green
 } else {
     Write-Host "  TCP 1433 to ${SqlServer}: 失敗" -ForegroundColor Red
     Write-Host '  確認: DB01 で Setup-SqlServer.ps1 を実行済みか、ファイアウォール、SQL Server サービスの状態を確認してください。' -ForegroundColor Red
+}
+
+# 初回 HTTP リクエストで DB を初期化 (EF Code First マイグレーション)
+Write-Host '[2/2] 初回リクエストを送信して DB を初期化...' -ForegroundColor Yellow
+try {
+    $response = Invoke-WebRequest -Uri "http://localhost:$SitePort" -UseBasicParsing -TimeoutSec 120
+    Write-Host "  初回リクエスト完了 (StatusCode: $($response.StatusCode))。" -ForegroundColor Green
+} catch {
+    Write-Warning "  初回リクエスト失敗: $_"
+    Write-Host '  ブラウザでの初回アクセス時に DB が作成されます。' -ForegroundColor Yellow
 }
 
 Write-Host ''
