@@ -70,6 +70,8 @@ CAF 推奨: `snet`
 | `vgw-hub` | `vgw` | VPN Gateway (Hub 側) |
 | `vgw-onprem` | `vgw` | VPN Gateway (OnPrem 側) |
 | `log-hub` | `log` | Log Analytics Workspace |
+| `dnspr-hub` | `dnspr` | DNS Private Resolver |
+| `dnsrs-hub` | `dnsrs` | DNS Forwarding Ruleset |
 
 ### Spoke リソース
 

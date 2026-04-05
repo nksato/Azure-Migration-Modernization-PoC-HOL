@@ -119,4 +119,4 @@ az bicep upgrade
 
 作業環境の準備ができたら、初期環境のセットアップに進みます。
 
-➡ [`handson/00-initial-setup.md`](./handson/00-initial-setup.md)
+➡ [`00-initial-setup.md`](./00-initial-setup.md)

@@ -17,10 +17,10 @@
 
 - Azure サブスクリプション
 - リソースグループ作成権限
-- Azure CLI / PowerShell を利用できる環境（[作業環境の準備](./prerequisites.md)）
+- Azure CLI / PowerShell を利用できる環境（[作業環境の準備](./00-prerequisites.md)）
 - このリポジトリをクローン済みであること
 
-> **リージョン制約**: クラウド側のテンプレートには、リソース作成先を **`japaneast`** と **`japanwest`** に限定する Azure Policy が含まれています。これ以外のリージョンにデプロイすると、Policy 違反でリソース作成が拒否されます。別のリージョンを使用したい場合は、`infra/cloud/main.bicep` の `listOfAllowedLocations` パラメータと `infra/cloud/modules/governance/policy.bicep` の既定値を変更してください。
+> **リージョン制約**: クラウド側のテンプレートには、リソース作成先を **`japaneast`** と **`japanwest`** に限定する Azure Policy が含まれています。これ以外のリージョンにデプロイすると、Policy 違反でリソース作成が拒否されます。別のリージョンを使用したい場合は、`infra/cloud/modules/governance/policy.bicep` の `listOfAllowedLocations` 既定値を変更してください。
 
 ---
 
