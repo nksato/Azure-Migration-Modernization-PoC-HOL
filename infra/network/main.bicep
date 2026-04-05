@@ -99,6 +99,23 @@ module vpnConnection 'modules/vpn-connection.bicep' = {
 }
 
 // ============================================================
+// S2S 接続 (Hub 側に Local Network Gateway + Connection を作成)
+// ============================================================
+
+module vpnConnectionHub 'modules/vpn-connection-hub.bicep' = {
+  scope: rgHub
+  name: 'deploy-vpn-connection-hub'
+  params: {
+    location: location
+    tags: commonTags
+    vpnSharedKey: vpnSharedKey
+    hubVpnGatewayId: hubVpnGateway.outputs.resourceId
+    remoteGatewayIp: onpremVpnGateway.outputs.vpnGatewayPublicIp
+    remoteAddressPrefix: '10.0.0.0/16'
+  }
+}
+
+// ============================================================
 // Peering 更新: Gateway Transit を有効化
 // ============================================================
 

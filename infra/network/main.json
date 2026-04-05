@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "17716994279185856452"
+      "templateHash": "10902811729469520512"
     }
   },
   "parameters": {
@@ -2638,6 +2638,113 @@
       },
       "dependsOn": [
         "getHubVpnPip",
+        "onpremVpnGateway"
+      ]
+    },
+    "vpnConnectionHub": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-vpn-connection-hub",
+      "resourceGroup": "rg-hub",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          },
+          "vpnSharedKey": {
+            "value": "[parameters('vpnSharedKey')]"
+          },
+          "hubVpnGatewayId": {
+            "value": "[reference('hubVpnGateway').outputs.resourceId.value]"
+          },
+          "remoteGatewayIp": {
+            "value": "[reference('onpremVpnGateway').outputs.vpnGatewayPublicIp.value]"
+          },
+          "remoteAddressPrefix": {
+            "value": "10.0.0.0/16"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "4040626379373248911"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "vpnSharedKey": {
+              "type": "securestring"
+            },
+            "hubVpnGatewayId": {
+              "type": "string"
+            },
+            "remoteGatewayIp": {
+              "type": "string"
+            },
+            "remoteAddressPrefix": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/localNetworkGateways",
+              "apiVersion": "2024-05-01",
+              "name": "lgw-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "gatewayIpAddress": "[parameters('remoteGatewayIp')]",
+                "localNetworkAddressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('remoteAddressPrefix')]"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Network/connections",
+              "apiVersion": "2024-05-01",
+              "name": "cn-hub-to-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "connectionType": "IPsec",
+                "virtualNetworkGateway1": {
+                  "id": "[parameters('hubVpnGatewayId')]",
+                  "properties": {}
+                },
+                "localNetworkGateway2": {
+                  "id": "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-onprem')]",
+                  "properties": {}
+                },
+                "sharedKey": "[parameters('vpnSharedKey')]",
+                "connectionProtocol": "IKEv2"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-onprem')]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "hubVpnGateway",
         "onpremVpnGateway"
       ]
     },

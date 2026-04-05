@@ -103,8 +103,8 @@ if ($rulesJson) {
 }
 
 # VNet リンク
-$vnetLinks = az dns-resolver forwarding-ruleset vnet-link list -g $HubResourceGroup `
-    --ruleset-name dnsrs-hub -o json 2>$null | ConvertFrom-Json
+$vnetLinks = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
+    --resource-group $HubResourceGroup -o json 2>$null | ConvertFrom-Json
 $vnetLinkCount = if ($vnetLinks) { $vnetLinks.Count } else { 0 }
 Test-Bool "Ruleset VNet リンク数 >= 1 (実際: $vnetLinkCount)" ($vnetLinkCount -ge 1)
 
@@ -217,10 +217,10 @@ $p2 = Test-NetConnection -ComputerName 10.10.1.4 -WarningAction SilentlyContinue
 Write-Output ('HUB_FW_PING=' + $p2.PingSucceeded)
 '@
 
-# Firewall は ICMP をブロックする可能性があるため info 扱い
+# DNS Private Resolver / Firewall は ICMP に応答しないことがあるため info 扱い
 $hubDnsPing = Get-Val $vpnOut 'HUB_DNS_PING'
 $hubFwPing  = Get-Val $vpnOut 'HUB_FW_PING'
-Test-Val 'DC01 → Hub DNS (10.10.5.4) ICMP' $hubDnsPing 'True'
+Write-Host "         DC01 → Hub DNS (10.10.5.4) ICMP: $hubDnsPing (DNS Resolver は ICMP 非応答の場合あり)" -ForegroundColor Gray
 Write-Host "         DC01 → Hub FW  (10.10.1.4) ICMP: $hubFwPing (Firewall は ICMP ブロックの場合あり)" -ForegroundColor Gray
 
 # ============================================================
