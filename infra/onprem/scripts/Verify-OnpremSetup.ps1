@@ -59,6 +59,20 @@ function Test-NotEmpty ([string]$Label, [string]$Actual) {
 }
 
 # ============================================================
+# 0. リソースグループ
+# ============================================================
+Write-Host "`n=== 0. リソースグループ ===" -ForegroundColor Cyan
+
+$rgExists = az group exists -n $ResourceGroupName -o tsv 2>$null
+Test-Val $ResourceGroupName $rgExists 'true'
+
+if ($rgExists -ne 'true') {
+    Write-Host "`n  リソースグループが見つかりません。デプロイを確認してください。" -ForegroundColor Red
+    Write-Host ("`n結果: {0}/{1} PASS" -f $passed, $total) -ForegroundColor $(if ($passed -eq $total) {'Green'} else {'Yellow'})
+    exit 1
+}
+
+# ============================================================
 # 1. VM の状態 (Azure API — run-command 不要)
 # ============================================================
 Write-Host "`n=== 1. VM の状態 ===" -ForegroundColor Cyan

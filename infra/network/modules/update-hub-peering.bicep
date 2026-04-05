@@ -47,8 +47,10 @@ module hubPeering 'br/public:avm/res/network/virtual-network:0.7.2' = {
 }
 
 // Spoke VNet の peering も useRemoteGateways: true に更新
+// Hub 側の allowGatewayTransit が先に有効化されている必要がある
 module spoke1PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
   scope: resourceGroup(split(spoke1VnetId, '/')[4])
+  dependsOn: [hubPeering]
   params: {
     name: 'vnet-spoke1'
     location: location
@@ -66,6 +68,7 @@ module spoke1PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
 
 module spoke2PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
   scope: resourceGroup(split(spoke2VnetId, '/')[4])
+  dependsOn: [hubPeering]
   params: {
     name: 'vnet-spoke2'
     location: location
@@ -83,6 +86,7 @@ module spoke2PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
 
 module spoke3PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
   scope: resourceGroup(split(spoke3VnetId, '/')[4])
+  dependsOn: [hubPeering]
   params: {
     name: 'vnet-spoke3'
     location: location
@@ -100,6 +104,7 @@ module spoke3PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
 
 module spoke4PeeringUpdate 'br/public:avm/res/network/virtual-network:0.7.2' = {
   scope: resourceGroup(split(spoke4VnetId, '/')[4])
+  dependsOn: [hubPeering]
   params: {
     name: 'vnet-spoke4'
     location: location

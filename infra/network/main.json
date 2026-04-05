@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "1539528351395683049"
+      "templateHash": "17716994279185856452"
     }
   },
   "parameters": {
@@ -29,7 +29,7 @@
       "Environment": "PoC",
       "SecurityControl": "ignore"
     },
-    "hubVnetId": "[resourceId('rg-hub', 'Microsoft.Network/virtualNetworks', 'vnet-hub')]"
+    "hubVnetId": "[format('/subscriptions/{0}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub', subscription().subscriptionId)]"
   },
   "resources": {
     "rgOnprem": {
@@ -2659,16 +2659,16 @@
             "value": "[variables('hubVnetId')]"
           },
           "spoke1VnetId": {
-            "value": "[resourceId('rg-spoke1', 'Microsoft.Network/virtualNetworks', 'vnet-spoke1')]"
+            "value": "[format('/subscriptions/{0}/resourceGroups/rg-spoke1/providers/Microsoft.Network/virtualNetworks/vnet-spoke1', subscription().subscriptionId)]"
           },
           "spoke2VnetId": {
-            "value": "[resourceId('rg-spoke2', 'Microsoft.Network/virtualNetworks', 'vnet-spoke2')]"
+            "value": "[format('/subscriptions/{0}/resourceGroups/rg-spoke2/providers/Microsoft.Network/virtualNetworks/vnet-spoke2', subscription().subscriptionId)]"
           },
           "spoke3VnetId": {
-            "value": "[resourceId('rg-spoke3', 'Microsoft.Network/virtualNetworks', 'vnet-spoke3')]"
+            "value": "[format('/subscriptions/{0}/resourceGroups/rg-spoke3/providers/Microsoft.Network/virtualNetworks/vnet-spoke3', subscription().subscriptionId)]"
           },
           "spoke4VnetId": {
-            "value": "[resourceId('rg-spoke4', 'Microsoft.Network/virtualNetworks', 'vnet-spoke4')]"
+            "value": "[format('/subscriptions/{0}/resourceGroups/rg-spoke4/providers/Microsoft.Network/virtualNetworks/vnet-spoke4', subscription().subscriptionId)]"
           }
         },
         "template": {
@@ -2679,7 +2679,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "2108171342262832600"
+              "templateHash": "1586106827437667761"
             }
           },
           "parameters": {
@@ -6050,7 +6050,10 @@
                     }
                   }
                 }
-              }
+              },
+              "dependsOn": [
+                "hubPeering"
+              ]
             },
             "spoke2PeeringUpdate": {
               "type": "Microsoft.Resources/deployments",
@@ -7716,7 +7719,10 @@
                     }
                   }
                 }
-              }
+              },
+              "dependsOn": [
+                "hubPeering"
+              ]
             },
             "spoke3PeeringUpdate": {
               "type": "Microsoft.Resources/deployments",
@@ -9382,7 +9388,10 @@
                     }
                   }
                 }
-              }
+              },
+              "dependsOn": [
+                "hubPeering"
+              ]
             },
             "spoke4PeeringUpdate": {
               "type": "Microsoft.Resources/deployments",
@@ -11048,7 +11057,10 @@
                     }
                   }
                 }
-              }
+              },
+              "dependsOn": [
+                "hubPeering"
+              ]
             }
           }
         }

@@ -66,7 +66,7 @@ module hubVpnGateway 'br/public:avm/res/network/virtual-network-gateway:0.10.1' 
 }
 
 // Hub VNet の Resource ID を構築
-var hubVnetId = resourceId('rg-hub', 'Microsoft.Network/virtualNetworks', 'vnet-hub')
+var hubVnetId = '/subscriptions/${subscription().subscriptionId}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub'
 
 // ============================================================
 // Hub 側 VPN Gateway の Public IP を取得
@@ -108,10 +108,10 @@ module hubPeeringUpdate 'modules/update-hub-peering.bicep' = {
   params: {
     location: location
     hubVnetResourceId: hubVnetId
-    spoke1VnetId: resourceId('rg-spoke1', 'Microsoft.Network/virtualNetworks', 'vnet-spoke1')
-    spoke2VnetId: resourceId('rg-spoke2', 'Microsoft.Network/virtualNetworks', 'vnet-spoke2')
-    spoke3VnetId: resourceId('rg-spoke3', 'Microsoft.Network/virtualNetworks', 'vnet-spoke3')
-    spoke4VnetId: resourceId('rg-spoke4', 'Microsoft.Network/virtualNetworks', 'vnet-spoke4')
+    spoke1VnetId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/rg-spoke1/providers/Microsoft.Network/virtualNetworks/vnet-spoke1'
+    spoke2VnetId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/rg-spoke2/providers/Microsoft.Network/virtualNetworks/vnet-spoke2'
+    spoke3VnetId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/rg-spoke3/providers/Microsoft.Network/virtualNetworks/vnet-spoke3'
+    spoke4VnetId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/rg-spoke4/providers/Microsoft.Network/virtualNetworks/vnet-spoke4'
   }
   dependsOn: [hubVpnGateway]
 }
