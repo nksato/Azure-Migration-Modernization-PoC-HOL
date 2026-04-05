@@ -115,3 +115,13 @@ http://localhost
 - Parts Unlimited が表示される
 
 > この状態になれば、以降の移行 HOL の移行元環境として利用できます。
+
+> [!TIP]
+> Bastion に接続せず、ローカル PC から `az vm run-command` で一括検証できるスクリプトも用意しています。
+> VM 内部に入らず外部から諸元（サービス状態・ドメイン参加・ポート疎通など）を確認する簡易チェックのため、ブラウザでの画面表示確認やアプリの操作確認は含みません。
+>
+> ```powershell
+> .\infra\onprem\scripts\Verify-OnpremSetup.ps1
+> ```
+>
+> Parts Unlimited のセットアップ前に実行する場合は `-SkipPartsUnlimited` を付けてください。

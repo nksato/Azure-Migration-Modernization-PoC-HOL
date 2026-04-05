@@ -63,6 +63,16 @@ az deployment sub create `
   - `infra/cloud/modules/network/*` — Hub / Spoke / ルーティング
   - `infra/cloud/modules/governance/*` — Log Analytics / Policy / Defender / Dashboard
 
+> [!TIP]
+> Azure CLI からリソースの存在・状態を一括検証できるスクリプトも用意しています。
+> VM 内部には入らず Azure API だけで諸元（リソースの有無・プロビジョニング状態・ピアリング状態など）を確認する簡易チェックのため、ポータル画面での目視確認は含みません。
+>
+> ```powershell
+> .\infra\cloud\scripts\Verify-CloudDeploy.ps1
+> ```
+>
+> Firewall / Bastion を未デプロイの場合は `-SkipFirewall` `-SkipBastion` を付けてください。
+
 ## 次のステップ
 
 クラウド基盤の作成が完了したら、次に VPN 接続を構成します。
