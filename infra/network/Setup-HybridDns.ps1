@@ -105,15 +105,7 @@ Write-Host "  DNS Resolver inbound IP: $dnsInboundIp" -ForegroundColor Green
 # DC01 に条件付きフォワーダーを追加
 Write-Host "  Adding conditional forwarder on $VmName for $ForwardZone..." -ForegroundColor Yellow
 
-$script = @"
-`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue
-if (`$zone) {
-    Write-Host 'Conditional forwarder already exists. Updating MasterServers.'
-    Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp'
-} else {
-    Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest
-}
-"@
+$script = "`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue; if (`$zone) { Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' } else { Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest }"
 
 az vm run-command invoke `
     --resource-group $OnpremResourceGroup `

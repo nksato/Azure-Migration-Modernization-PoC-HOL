@@ -46,15 +46,7 @@ Write-Host "  インバウンド IP: $dnsInboundIp" -ForegroundColor Green
 # ----------------------------------------------------------
 Write-Host "[2/3] $VmName に $ForwardZone の条件付きフォワーダーを追加..." -ForegroundColor Yellow
 
-$script = @"
-`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue
-if (`$zone) {
-    Write-Host '条件付きフォワーダーは既に存在します。MasterServers を更新します。'
-    Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp'
-} else {
-    Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest
-}
-"@
+$script = "`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue; if (`$zone) { Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' } else { Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest }"
 
 az vm run-command invoke `
     --resource-group $OnpremResourceGroup `
