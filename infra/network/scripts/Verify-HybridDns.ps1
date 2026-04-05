@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     ハイブリッド DNS 構成の状態と双方向疎通を検証する
 .DESCRIPTION

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     クラウド基盤 (Hub & Spoke) のデプロイ状態を検証する
 .DESCRIPTION

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     VPN Gateway 配置・接続の状態を検証する
 .DESCRIPTION
