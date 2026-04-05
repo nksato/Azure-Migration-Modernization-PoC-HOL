@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     疑似オンプレミス環境をデプロイするスクリプト
 .DESCRIPTION

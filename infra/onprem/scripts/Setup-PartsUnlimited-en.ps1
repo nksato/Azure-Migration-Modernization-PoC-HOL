@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # Setup-PartsUnlimited-en.ps1
 # Setup script to run on APP01 (IIS/Web)
 # Builds and deploys Parts Unlimited (ASP.NET 4.8 MVC)

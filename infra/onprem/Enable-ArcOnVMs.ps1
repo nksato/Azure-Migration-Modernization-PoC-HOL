@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     ラボ環境の Azure VM を Azure Arc 対応サーバーとして登録するスクリプト
 .DESCRIPTION
