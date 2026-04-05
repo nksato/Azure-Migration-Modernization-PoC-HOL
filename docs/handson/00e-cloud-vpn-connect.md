@@ -32,7 +32,8 @@
 > `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
 >
 > ```powershell
-> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> $vpnKey = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 40 | %{[char]$_})
+> Write-Host "vpnSharedKey = $vpnKey"
 > ```
 
 ---
@@ -53,20 +54,18 @@
 4. Hub-Spoke 間の VNet Peering を Gateway Transit 有効で再デプロイ
 
 ```powershell
+# 共有キーを生成して変数に格納（英数字 40 文字）
+$vpnKey = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 40 | %{[char]$_})
+Write-Host "vpnSharedKey = $vpnKey"
+
 az deployment sub create `
   --name hol-vpn-setup `
   --location japaneast `
   --template-file infra/network/main.bicep `
-  --parameters vpnSharedKey='<共有キー>'
+  --parameters vpnSharedKey="$vpnKey"
 ```
 
-> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
->
-> ```powershell
-> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
-> ```
->
-> 生成例: `qb06eQr=a7I@LKY#&!ljw+d2GZzSTnkyXt-p1gc%`（この値はそのまま使わず、必ず自分で生成してください）
+> `&`, `!`, `%` などの特殊文字を含む共有キーは、`az` CLI に渡す際にシェルに解釈されてエラーになることがあります。上記のように英数字のみで生成し、変数経由で渡すのが安全です。
 
 > **Tip**: デプロイ後に共有キーを確認するには、以下のコマンドを使用してください。
 >
