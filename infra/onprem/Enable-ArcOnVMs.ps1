@@ -90,7 +90,9 @@ function Invoke-VmRunCommand {
         return $null
     }
 
-    $parsed = $result | ConvertFrom-Json
+    # stderr 由来の WARNING 行を除外して JSON のみパース
+    $jsonText = ($result | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
+    $parsed = $jsonText | ConvertFrom-Json
     $stdout = $parsed.value | Where-Object { $_.code -like '*StdOut*' } | Select-Object -ExpandProperty message
     $stderr = $parsed.value | Where-Object { $_.code -like '*StdErr*' } | Select-Object -ExpandProperty message
 
@@ -141,16 +143,18 @@ Write-Step "1. サービス プリンシパルの準備"
 if (-not $ServicePrincipalId) {
     Write-Host "  Arc オンボーディング用サービス プリンシパルを作成します..." -ForegroundColor Yellow
 
-    $spJson = az ad sp create-for-rbac `
+    $spRaw = az ad sp create-for-rbac `
         --name "arc-onboarding-lab" `
         --role "Azure Connected Machine Onboarding" `
         --scopes "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
         -o json 2>&1
 
     if ($LASTEXITCODE -ne 0) {
-        throw "サービス プリンシパルの作成に失敗しました: $spJson"
+        throw "サービス プリンシパルの作成に失敗しました: $spRaw"
     }
 
+    # stderr 由来の WARNING 行を除外して JSON のみパース
+    $spJson = ($spRaw | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
     $sp = $spJson | ConvertFrom-Json
     $ServicePrincipalId = $sp.appId
     $spSecret = $sp.password
@@ -178,7 +182,7 @@ foreach ($vmName in $VmNames) {
         -ResourceGroup $ResourceGroupName `
         -VmName $vmName `
         -Description "環境変数 MSFT_ARC_TEST を設定" `
-        -Script '[System.Environment]::SetEnvironmentVariable("MSFT_ARC_TEST","true",[System.EnvironmentVariableTarget]::Machine); Write-Output "MSFT_ARC_TEST=true を設定しました"'
+        -Script '[System.Environment]::SetEnvironmentVariable(''MSFT_ARC_TEST'',''true'',[System.EnvironmentVariableTarget]::Machine); Write-Output ''MSFT_ARC_TEST=true set'''
 
     # --- 2b. VM 拡張機能を削除 ---
     Write-Host "  [$vmName] VM 拡張機能を確認中..." -ForegroundColor Yellow
@@ -210,31 +214,30 @@ foreach ($vmName in $VmNames) {
         -ResourceGroup $ResourceGroupName `
         -VmName $vmName `
         -Description "Azure VM ゲスト エージェントを無効化" `
-        -Script 'Set-Service WindowsAzureGuestAgent -StartupType Disabled -Verbose; Stop-Service WindowsAzureGuestAgent -Force -Verbose; Write-Output "WindowsAzureGuestAgent を無効化しました"'
+        -Script 'Set-Service WindowsAzureGuestAgent -StartupType Disabled; Stop-Service WindowsAzureGuestAgent -Force; Write-Output ''WindowsAzureGuestAgent disabled'''
 
     # --- 2d. IMDS エンドポイントをブロック ---
+    $imdsScript = @'
+$r1 = Get-NetFirewallRule -Name 'BlockAzureIMDS' -ErrorAction SilentlyContinue
+if (-not $r1) {
+    New-NetFirewallRule -Name 'BlockAzureIMDS' -DisplayName 'Block access to Azure IMDS' -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.254
+    Write-Output 'BlockAzureIMDS created'
+} else {
+    Write-Output 'BlockAzureIMDS exists'
+}
+$r2 = Get-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -ErrorAction SilentlyContinue
+if (-not $r2) {
+    New-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -DisplayName 'Block access to Azure Local IMDS' -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.253
+    Write-Output 'BlockAzureIMDS_AzureLocal created'
+} else {
+    Write-Output 'BlockAzureIMDS_AzureLocal exists'
+}
+'@
     Invoke-VmRunCommand `
         -ResourceGroup $ResourceGroupName `
         -VmName $vmName `
         -Description "IMDS エンドポイントへのアクセスをブロック" `
-        -Script @'
-$ruleName = "BlockAzureIMDS"
-$existing = Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue
-if ($existing) {
-    Write-Output "ファイアウォール ルール '$ruleName' は既に存在します。スキップします。"
-} else {
-    New-NetFirewallRule -Name $ruleName -DisplayName "Block access to Azure IMDS" -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.254
-    Write-Output "ファイアウォール ルール '$ruleName' を作成しました。"
-}
-$ruleName2 = "BlockAzureIMDS_AzureLocal"
-$existing2 = Get-NetFirewallRule -Name $ruleName2 -ErrorAction SilentlyContinue
-if ($existing2) {
-    Write-Output "ファイアウォール ルール '$ruleName2' は既に存在します。スキップします。"
-} else {
-    New-NetFirewallRule -Name $ruleName2 -DisplayName "Block access to Azure Local IMDS" -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.253
-    Write-Output "ファイアウォール ルール '$ruleName2' を作成しました。"
-}
-'@
+        -Script $imdsScript
 }
 
 # ============================================================
@@ -245,43 +248,46 @@ foreach ($vmName in $VmNames) {
     Write-Step "3. [$vmName] Azure Connected Machine Agent のインストールと接続"
 
     # エージェントのダウンロードとインストール
+    $installScript = @'
+$agentExe = 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe'
+if (Test-Path $agentExe) {
+    Write-Output 'Agent already installed'
+} else {
+    Write-Output 'Downloading agent...'
+    $ProgressPreference = 'SilentlyContinue'
+    $msi = Join-Path $env:TEMP 'install_windows_azcmagent.msi'
+    Invoke-WebRequest -Uri 'https://aka.ms/AzureConnectedMachineAgent' -OutFile $msi -UseBasicParsing
+    Write-Output 'Installing agent...'
+    $log = Join-Path $env:TEMP 'installationlog.txt'
+    $exitCode = (Start-Process -FilePath msiexec.exe -ArgumentList '/i',$msi,'/l*v',$log,'/qn' -Wait -Passthru).ExitCode
+    if ($exitCode -ne 0) {
+        throw ('Agent install failed (ExitCode: ' + $exitCode + '). Log: ' + $log)
+    }
+    Write-Output 'Agent installed successfully'
+}
+'@
     Invoke-VmRunCommand `
         -ResourceGroup $ResourceGroupName `
         -VmName $vmName `
         -Description "Azure Connected Machine Agent をダウンロード・インストール" `
-        -Script @'
-# 既にインストール済みか確認
-if (Test-Path "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe") {
-    Write-Output "Azure Connected Machine Agent は既にインストールされています。"
-} else {
-    Write-Output "Azure Connected Machine Agent をダウンロード中..."
-    $ProgressPreference = "SilentlyContinue"
-    Invoke-WebRequest -Uri "https://aka.ms/AzureConnectedMachineAgent" -OutFile "$env:TEMP\install_windows_azcmagent.msi" -UseBasicParsing
-    Write-Output "インストール中..."
-    $exitCode = (Start-Process -FilePath msiexec.exe -ArgumentList "/i", "$env:TEMP\install_windows_azcmagent.msi", "/l*v", "$env:TEMP\installationlog.txt", "/qn" -Wait -Passthru).ExitCode
-    if ($exitCode -ne 0) {
-        throw "Azure Connected Machine Agent のインストールに失敗しました (ExitCode: $exitCode)。ログ: $env:TEMP\installationlog.txt"
-    }
-    Write-Output "Azure Connected Machine Agent のインストールが完了しました。"
-}
-'@
+        -Script $installScript
 
     # azcmagent connect で Arc に接続
     # サービス プリンシパルの資格情報を使用
     $connectScript = @"
 `$env:MSFT_ARC_TEST = 'true'
-& "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe" connect ``
-    --service-principal-id "$ServicePrincipalId" ``
-    --service-principal-secret "$spSecret" ``
-    --tenant-id "$TenantId" ``
-    --subscription-id "$SubscriptionId" ``
-    --resource-group "$ArcResourceGroupName" ``
-    --location "$Location" ``
-    --resource-name "$vmName-Arc"
+& 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe' connect ``
+    --service-principal-id '$ServicePrincipalId' ``
+    --service-principal-secret '$spSecret' ``
+    --tenant-id '$TenantId' ``
+    --subscription-id '$SubscriptionId' ``
+    --resource-group '$ArcResourceGroupName' ``
+    --location '$Location' ``
+    --resource-name '$vmName-Arc'
 if (`$LASTEXITCODE -eq 0) {
-    Write-Output "Azure Arc への接続に成功しました。"
+    Write-Output 'Arc connection succeeded'
 } else {
-    Write-Output "Azure Arc への接続に失敗しました (ExitCode: `$LASTEXITCODE)。"
+    Write-Output ('Arc connection failed (ExitCode: ' + `$LASTEXITCODE + ')')
 }
 "@
 
