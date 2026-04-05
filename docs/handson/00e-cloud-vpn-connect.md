@@ -60,6 +60,24 @@ az deployment sub create `
   --parameters vpnSharedKey='<共有キー>'
 ```
 
+> **Tip**: CLI 実行時は以下のコマンドで共有キーを自動生成してデプロイできます。
+>
+> ```powershell
+> $vpnKey = -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> az deployment sub create `
+>   --name hol-vpn-setup `
+>   --location japaneast `
+>   --template-file infra/network/main.bicep `
+>   --parameters vpnSharedKey=$vpnKey
+> ```
+>
+> 共有キーはデプロイ後に以下のコマンドで取得できます。
+>
+> ```powershell
+> az network vpn-connection shared-key show `
+>   --resource-group rg-onprem --name cn-onprem-to-hub -o tsv
+> ```
+
 ---
 
 ## 完了確認
