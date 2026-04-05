@@ -2,8 +2,9 @@
 // Azure Migration & Modernization PoC - Unified Initial Setup
 // ============================================================
 // 一括デプロイ用の正式エントリポイント
-// `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出し、
+// Step 1 (onprem) → Step 3 (cloud) → Step 4 (vpn) を順次呼び出し、
 // 段階実行（方法 B）と同じ構成・命名に揃えて初期環境を作成します。
+// DNS 転送設定 (Step 5) は VPN 確立後にスクリプトで実行してください。
 // ============================================================
 
 targetScope = 'subscription'
@@ -21,7 +22,7 @@ param adminPassword string
 @description('Active Directory ドメイン名')
 param domainName string = 'lab.local'
 
-@description('VPN 共有キー (方法 B の Step 1 / Step 3 と同じ値)')
+@description('VPN 共有キー (S2S 接続用)')
 @secure()
 param vpnSharedKey string
 
@@ -35,7 +36,6 @@ param deployVpnGateway bool = true
 param deployBastion bool = true
 
 var onpremResourceGroupName = 'rg-onprem'
-var hubAddressPrefix = '10.10.0.0/16'
 
 resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: onpremResourceGroupName
@@ -47,15 +47,12 @@ resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
 }
 
 // Phase 1: クラウド基盤とオンプレ基盤を並列デプロイ
-// onpremBase は remoteGatewayIp='' で VPN 接続リソースをスキップし、
-// VNet / VM / Bastion / VPN GW のみ作成する
 module cloudFoundation 'cloud/main.bicep' = {
   name: 'deploy-cloud-foundation'
   params: {
     location: location
     deployFirewall: deployFirewall
     deployBastion: deployBastion
-    deployVpnGateway: deployVpnGateway
   }
 }
 
@@ -67,32 +64,21 @@ module onpremBase 'onprem/main.bicep' = {
     adminUsername: adminUsername
     adminPassword: adminPassword
     domainName: domainName
-    vpnSharedKey: vpnSharedKey
-    remoteGatewayIp: ''
-    remoteAddressPrefix: hubAddressPrefix
   }
 }
 
-// Phase 2: 両方の VPN GW が揃った後に接続リソースを追加
-var hubGatewayIp = deployVpnGateway ? cloudFoundation.outputs.vpnGatewayPublicIp : ''
-
-module onpremVpnConnect 'onprem/main.bicep' = if (deployVpnGateway) {
-  name: 'deploy-onprem-vpn-connect'
-  scope: rgOnprem
-  dependsOn: [onpremBase]
+// Phase 2: 両方の VPN GW を作成し S2S 接続
+module vpnSetup 'vpn/main.bicep' = if (deployVpnGateway) {
+  name: 'deploy-vpn-setup'
+  dependsOn: [onpremBase, cloudFoundation]
   params: {
     location: location
-    adminUsername: adminUsername
-    adminPassword: adminPassword
-    domainName: domainName
     vpnSharedKey: vpnSharedKey
-    remoteGatewayIp: hubGatewayIp
-    remoteAddressPrefix: hubAddressPrefix
   }
 }
 
 output onpremResourceGroupName string = rgOnprem.name
 output hubResourceGroupName string = 'rg-hub'
-output hubGatewayPublicIp string = hubGatewayIp
-output onpremVpnGatewayName string = 'vgw-onprem'
+output hubGatewayPublicIp string = deployVpnGateway ? vpnSetup.outputs.hubVpnGatewayPublicIp : ''
+output onpremVpnGatewayPublicIp string = deployVpnGateway ? vpnSetup.outputs.onpremVpnGatewayPublicIp : ''
 output dnsResolverInboundSubnet string = '10.10.5.0/28 (snet-dns-inbound)'

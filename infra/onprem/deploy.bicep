@@ -3,12 +3,13 @@
 // ============================================================
 // リソースグループの作成を含めて一括デプロイするためのエントリポイント。
 // 内部で main.bicep をモジュールとして呼び出します。
+// VPN Gateway は Step 4 (infra/vpn/main.bicep) で別途デプロイします。
 //
 // 使い方:
 //   az deployment sub create \
 //     --location japaneast \
 //     --template-file infra/onprem/deploy.bicep \
-//     --parameters adminPassword='<パスワード>' vpnSharedKey='<共有キー>'
+//     --parameters adminPassword='<パスワード>'
 // ============================================================
 
 targetScope = 'subscription'
@@ -25,16 +26,6 @@ param adminPassword string
 
 @description('Active Directory ドメイン名')
 param domainName string = 'lab.local'
-
-@description('VPN 共有キー (S2S 接続用)')
-@secure()
-param vpnSharedKey string
-
-@description('接続先 Azure VPN Gateway のパブリック IP アドレス (空の場合 S2S 接続リソースはスキップ)')
-param remoteGatewayIp string = ''
-
-@description('接続先 Azure 側のアドレス空間')
-param remoteAddressPrefix string = '10.10.0.0/16'
 
 @description('リソースグループ名')
 param resourceGroupName string = 'rg-onprem'
@@ -64,8 +55,5 @@ module onpremEnvironment 'main.bicep' = {
     adminUsername: adminUsername
     adminPassword: adminPassword
     domainName: domainName
-    vpnSharedKey: vpnSharedKey
-    remoteGatewayIp: remoteGatewayIp
-    remoteAddressPrefix: remoteAddressPrefix
   }
 }

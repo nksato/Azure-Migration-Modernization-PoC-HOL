@@ -1,91 +1,67 @@
-# 00e. クラウド VPN 接続の構成
+# 00e. VPN Gateway 配置・接続
 
 > **Note**  
 > [`00-initial-setup.md`](./00-initial-setup.md) の **Deploy to Azure** でセットアップ済みの場合、VPN 接続設定も含まれているため、このページの手順は不要です。
 
-`00a` で作成した疑似オンプレ側 VPN Gateway と、`00d` で作成した Hub 側 VPN Gateway を接続し、**S2S VPN** を成立させます。
+疑似オンプレ側と Hub 側の両方に VPN Gateway をデプロイし、**S2S VPN** を成立させます。  
+あわせて Hub-Spoke 間の VNet Peering を Gateway Transit 有効で更新します。
 
 ## 目的
 
-- Hub 側 VPN Gateway の公開 IP を取得する
-- 疑似オンプレ側に `Local Network Gateway` を作成する
-- `cn-onprem-to-hub` 接続を構成する
+- 疑似オンプレ側 VNet に GatewaySubnet と VPN Gateway を追加する
+- Hub 側に VPN Gateway をデプロイする
+- `Local Network Gateway` と S2S 接続を構成する
+- Hub-Spoke 間の VNet Peering を Gateway Transit 有効に更新する
 
 ---
 
 ## 前提条件
 
-- [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) が完了している
-- [`00d-cloud-deploy.md`](./00d-cloud-deploy.md) が完了している
-- `vgw-onprem` と `vgw-hub` の作成が完了している
-- `vpnSharedKey` を控えている
+- [`00a-onprem-deploy.md`](./00a-onprem-deploy.md)（Step 1）が完了している
+- [`00d-cloud-deploy.md`](./00d-cloud-deploy.md)（Step 3）が完了している
+- `vpnSharedKey` に使用する共有キーを準備している
 
-> VPN Gateway のデプロイ完了には時間がかかるため、作成直後は数十分待ってから次に進んでください。
+> VPN Gateway のデプロイには 30〜45 分程度かかります。
 
-### 事前に確認する値
+### 事前に準備する値
 
-| 項目 | 値の例 | 用途 |
+| 項目 | 値の例 | 説明 |
 |---|---|---|
-| Hub 側リソースグループ | `rg-hub` | クラウド側 VPN Gateway の参照先 |
-| 疑似オンプレ側リソースグループ | `rg-onprem` | 接続設定のデプロイ先 |
-| Hub 側公開 IP | `vpngw-hub-pip1` | `remoteGatewayIp` に指定 |
-| Azure 側アドレス空間 | `10.10.0.0/16` | `remoteAddressPrefix` に指定 |
-| 事前共有キー | `<共有キー>` | `vpnSharedKey` に指定 |
+| VPN 共有キー | `<共有キー>` | S2S 接続に使用する事前共有キー（32 文字以上推奨） |
 
-> `vpnSharedKey` は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) のデプロイ時に指定した値と同じものを使用してください。
+> `vpnSharedKey` には 32 文字以上のランダムな文字列を指定してください。以下のコマンドで生成できます。
+>
+> ```powershell
+> -join ((65..90)+(97..122)+(48..57)+(33,35,36,37,38,42,43,45,61,64)|Get-Random -Count 40|%{[char]$_})
+> ```
 
 ---
 
 ## 手順
 
-### 方法 1: Bicep で接続設定を追加
+### Bicep でデプロイ
+
+`infra/vpn/main.bicep` は Subscription スコープのテンプレートで、以下を一括処理します。
+
+1. 疑似オンプレ VNet に GatewaySubnet を追加し VPN Gateway をデプロイ
+2. Hub VNet に VPN Gateway をデプロイ
+3. 両方の Public IP を取得し、Local Network Gateway + S2S 接続を作成
+4. Hub-Spoke 間の VNet Peering を Gateway Transit 有効で再デプロイ
 
 ```powershell
-# 1. Hub 側 VPN Gateway の公開 IP を取得
-$hubGatewayIp = az network public-ip show `
-  --resource-group rg-hub `
-  --name vpngw-hub-pip1 `
-  --query ipAddress -o tsv
-
-$hubGatewayIp
-
-# 2. 疑似オンプレ側から接続設定を追加（既存 VM は再作成されない）
-az deployment group create `
-  --name hol-onprem-vpn-connection `
-  --resource-group rg-onprem `
-  --template-file infra/onprem/main.bicep `
-  --parameters adminPassword='<管理者パスワード>' `
-               vpnSharedKey='<共有キー>' `
-               remoteGatewayIp=$hubGatewayIp `
-               remoteAddressPrefix='10.10.0.0/16'
+az deployment sub create `
+  --name hol-vpn-setup `
+  --location japaneast `
+  --template-file infra/vpn/main.bicep `
+  --parameters vpnSharedKey='<共有キー>'
 ```
-
-この再デプロイでは、主に以下を追加・更新します。
-
-- `lgw-hub`
-- `cn-onprem-to-hub`
-
----
-
-### 方法 2: `Deploy-Lab.ps1` を再実行する場合
-
-```powershell
-Set-Location .\infra\onprem
-
-.\Deploy-Lab.ps1 `
-  -ResourceGroupName "rg-onprem" `
-  -Location "japaneast" `
-  -RemoteGatewayIp $hubGatewayIp `
-  -RemoteAddressPrefix "10.10.0.0/16"
-```
-
-> `vpnSharedKey` は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) で指定した値と同じものを入力してください。
 
 ---
 
 ## 完了確認
 
 ```powershell
+# VPN 接続状態の確認
 az network vpn-connection show `
   --resource-group rg-onprem `
   --name cn-onprem-to-hub `
@@ -100,16 +76,21 @@ az network vpn-connection show `
 
 あわせて以下も確認してください。
 
-- `lgw-hub` が作成されている
-- `vgw-onprem` / `vgw-hub` が存在している
-- 疑似オンプレ側から Hub 側アドレス空間への接続設定ができている
+- `vgw-onprem`（疑似オンプレ側）と `vgw-hub`（Hub 側）の VPN Gateway が作成されている
+- `lgw-hub`（Local Network Gateway）が作成されている
+- Hub-Spoke 間の VNet Peering で `AllowGatewayTransit` / `UseRemoteGateways` が有効になっている
 
 ---
 
 ## 補足
 
-- 現在のテンプレート構成では、S2S 接続の作成は疑似オンプレ側の再デプロイで完結します。`00d` 実施後にクラウド側で追加の手動設定は不要です。
-- 接続状態が `Connected` にならない場合は、`vpnSharedKey` と `remoteGatewayIp` の値を再確認してください。
+- このテンプレートは疑似オンプレ側とクラウド側の両方に VPN Gateway を作成するため、完了まで時間がかかります。
+- 接続状態が `Connected` にならない場合は、`vpnSharedKey` の値を確認してください。
+- テンプレートの実体:
+  - `infra/vpn/main.bicep` — VPN 配置のエントリポイント
+  - `infra/vpn/modules/onprem-vpn-gateway.bicep` — 疑似オンプレ側 GatewaySubnet + VPN GW
+  - `infra/vpn/modules/vpn-connection.bicep` — LGW + S2S 接続
+  - `infra/vpn/modules/update-hub-peering.bicep` — Peering の Gateway Transit 有効化
 
 ---
 

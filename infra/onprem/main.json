@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "5180255493202892166"
+      "templateHash": "5921082404246470699"
     }
   },
   "parameters": {
@@ -34,26 +34,6 @@
       "defaultValue": "lab.local",
       "metadata": {
         "description": "Active Directory ドメイン名"
-      }
-    },
-    "vpnSharedKey": {
-      "type": "securestring",
-      "metadata": {
-        "description": "VPN 共有キー (S2S 接続用)"
-      }
-    },
-    "remoteGatewayIp": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "接続先 Azure VPN Gateway のパブリック IP アドレス (空の場合 S2S 接続リソースはスキップ)"
-      }
-    },
-    "remoteAddressPrefix": {
-      "type": "string",
-      "defaultValue": "10.10.0.0/16",
-      "metadata": {
-        "description": "接続先 Azure 側のアドレス空間"
       }
     }
   },
@@ -134,12 +114,6 @@
               "networkSecurityGroup": {
                 "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
               }
-            }
-          },
-          {
-            "name": "GatewaySubnet",
-            "properties": {
-              "addressPrefix": "10.0.255.0/27"
             }
           },
           {
@@ -528,107 +502,16 @@
         "[resourceId('Microsoft.Compute/virtualMachines/extensions', 'vm-onprem-web', 'IISSetup')]",
         "[resourceId('Microsoft.Compute/virtualMachines', 'vm-onprem-web')]"
       ]
-    },
-    {
-      "type": "Microsoft.Network/publicIPAddresses",
-      "apiVersion": "2024-05-01",
-      "name": "vgw-onprem-pip1",
-      "location": "[parameters('location')]",
-      "tags": "[variables('sharedTags')]",
-      "sku": {
-        "name": "Standard"
-      },
-      "zones": [
-        "1",
-        "2",
-        "3"
-      ],
-      "properties": {
-        "publicIPAllocationMethod": "Static"
-      }
-    },
-    {
-      "type": "Microsoft.Network/virtualNetworkGateways",
-      "apiVersion": "2024-05-01",
-      "name": "vgw-onprem",
-      "location": "[parameters('location')]",
-      "tags": "[variables('sharedTags')]",
-      "properties": {
-        "gatewayType": "Vpn",
-        "vpnType": "RouteBased",
-        "sku": {
-          "name": "VpnGw1AZ",
-          "tier": "VpnGw1AZ"
-        },
-        "ipConfigurations": [
-          {
-            "name": "vpnGwIpConfig",
-            "properties": {
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
-              },
-              "subnet": {
-                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'GatewaySubnet')]"
-              }
-            }
-          }
-        ]
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', 'vnet-onprem')]",
-        "[resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1')]"
-      ]
-    },
-    {
-      "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
-      "type": "Microsoft.Network/localNetworkGateways",
-      "apiVersion": "2024-05-01",
-      "name": "lgw-hub",
-      "location": "[parameters('location')]",
-      "tags": "[variables('sharedTags')]",
-      "properties": {
-        "gatewayIpAddress": "[parameters('remoteGatewayIp')]",
-        "localNetworkAddressSpace": {
-          "addressPrefixes": [
-            "[parameters('remoteAddressPrefix')]"
-          ]
-        }
-      }
-    },
-    {
-      "condition": "[not(equals(parameters('remoteGatewayIp'), ''))]",
-      "type": "Microsoft.Network/connections",
-      "apiVersion": "2024-05-01",
-      "name": "cn-onprem-to-hub",
-      "location": "[parameters('location')]",
-      "tags": "[variables('sharedTags')]",
-      "properties": {
-        "connectionType": "IPsec",
-        "virtualNetworkGateway1": {
-          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]",
-          "properties": {}
-        },
-        "localNetworkGateway2": {
-          "id": "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
-          "properties": {}
-        },
-        "sharedKey": "[parameters('vpnSharedKey')]",
-        "connectionProtocol": "IKEv2"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Network/localNetworkGateways', 'lgw-hub')]",
-        "[resourceId('Microsoft.Network/virtualNetworkGateways', 'vgw-onprem')]"
-      ]
     }
   ],
   "outputs": {
-    "vpnGatewayPublicIp": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', 'vgw-onprem-pip1'), '2024-05-01').ipAddress]"
-    },
     "bastionName": {
       "type": "string",
       "value": "bas-onprem"
+    },
+    "vnetName": {
+      "type": "string",
+      "value": "vnet-onprem"
     },
     "adServerPrivateIp": {
       "type": "string",

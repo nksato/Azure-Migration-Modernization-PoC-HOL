@@ -19,16 +19,6 @@ param location string = resourceGroup().location
 @description('Active Directory ドメイン名')
 param domainName string = 'lab.local'
 
-@description('VPN 共有キー (S2S 接続用)')
-@secure()
-param vpnSharedKey string
-
-@description('接続先 Azure VPN Gateway のパブリック IP アドレス (空の場合 S2S 接続リソースはスキップ)')
-param remoteGatewayIp string = ''
-
-@description('接続先 Azure 側のアドレス空間')
-param remoteAddressPrefix string = '10.10.0.0/16'
-
 // タグ定義
 var dcTags = { Role: 'DomainController' }
 var dbTags = { Role: 'Database' }
@@ -99,12 +89,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         }
       }
       {
-        name: 'GatewaySubnet'
-        properties: {
-          addressPrefix: '10.0.255.0/27'
-        }
-      }
-      {
         name: 'AzureBastionSubnet'
         properties: {
           addressPrefix: '10.0.254.0/26'
@@ -117,11 +101,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
 resource serverSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
   parent: vnet
   name: 'ServerSubnet'
-}
-
-resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
-  parent: vnet
-  name: 'GatewaySubnet'
 }
 
 resource bastionSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
@@ -477,90 +456,11 @@ resource webDomainJoin 'Microsoft.Compute/virtualMachines/extensions@2024-07-01'
 }
 
 // ============================================================
-// VPN Gateway (S2S 接続用)
-// ============================================================
-
-resource vpnGatewayPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
-  name: 'vgw-onprem-pip1'
-  location: location
-  tags: sharedTags
-  sku: {
-    name: 'Standard'
-  }
-  zones: ['1', '2', '3']
-  properties: {
-    publicIPAllocationMethod: 'Static'
-  }
-}
-
-resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = {
-  name: 'vgw-onprem'
-  location: location
-  tags: sharedTags
-  properties: {
-    gatewayType: 'Vpn'
-    vpnType: 'RouteBased'
-    sku: {
-      name: 'VpnGw1AZ'
-      tier: 'VpnGw1AZ'
-    }
-    ipConfigurations: [
-      {
-        name: 'vpnGwIpConfig'
-        properties: {
-          publicIPAddress: {
-            id: vpnGatewayPip.id
-          }
-          subnet: {
-            id: gatewaySubnet.id
-          }
-        }
-      }
-    ]
-  }
-}
-
-// S2S 接続先 (Azure 側) を表す Local Network Gateway
-resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2024-05-01' = if (remoteGatewayIp != '') {
-  name: 'lgw-hub'
-  location: location
-  tags: sharedTags
-  properties: {
-    gatewayIpAddress: remoteGatewayIp
-    localNetworkAddressSpace: {
-      addressPrefixes: [
-        remoteAddressPrefix
-      ]
-    }
-  }
-}
-
-// S2S VPN 接続
-resource vpnConnection 'Microsoft.Network/connections@2024-05-01' = if (remoteGatewayIp != '') {
-  name: 'cn-onprem-to-hub'
-  location: location
-  tags: sharedTags
-  properties: {
-    connectionType: 'IPsec'
-    virtualNetworkGateway1: {
-      id: vpnGateway.id
-      properties: {}
-    }
-    localNetworkGateway2: {
-      id: localNetworkGateway.id
-      properties: {}
-    }
-    sharedKey: vpnSharedKey
-    connectionProtocol: 'IKEv2'
-  }
-}
-
-// ============================================================
 // Outputs
 // ============================================================
 
-output vpnGatewayPublicIp string = vpnGatewayPip.properties.ipAddress
 output bastionName string = bastion.name
+output vnetName string = vnet.name
 output adServerPrivateIp string = '10.0.1.4'
 output sqlServerPrivateIp string = '10.0.1.5'
 output webServerPrivateIp string = '10.0.1.6'

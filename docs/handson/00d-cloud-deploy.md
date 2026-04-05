@@ -8,7 +8,7 @@
 ## 目的
 
 - Hub VNet と 4 つの Spoke VNet を用意する
-- Azure Firewall / VPN Gateway / Bastion / Log Analytics などの共通基盤をデプロイする
+- Azure Firewall / Bastion / DNS Private Resolver / Log Analytics などの共通基盤をデプロイする
 - 後続の移行パターン用の受け皿を準備する
 
 ---
@@ -37,8 +37,7 @@ az deployment sub create `
   --template-file infra/cloud/main.bicep `
   --parameters location='japaneast' `
                deployFirewall=true `
-               deployBastion=true `
-               deployVpnGateway=true
+               deployBastion=true
 ```
 
 > このテンプレートは **subscription スコープ** で実行し、`rg-hub` と `rg-spoke1` ～ `rg-spoke4` をまとめて作成します。
@@ -49,19 +48,20 @@ az deployment sub create `
 
 - `rg-hub` と各 `rg-spoke*` が存在する
 - `Hub VNet` と `Spoke1-4 VNet` が作成されている
-- `Azure Firewall`, `VPN Gateway`, `Azure Bastion` が作成されている
-- DNS Private Resolver（`dnspr-hub`）と DNS Forwarding Ruleset（`dnsrs-hub`）が作成されている
+- `Azure Firewall`, `Azure Bastion` が作成されている
+- DNS Private Resolver（`dnspr-hub`）が作成されている
 - Private DNS Zone（`privatelink.database.windows.net`）が作成されている
 - Policy / Log Analytics / Defender の土台がある
+
+> VPN Gateway はこのステップでは作成されません。Step 4（[`00e-cloud-vpn-connect.md`](./00e-cloud-vpn-connect.md)）で別途デプロイします。
 
 ## 備考
 
 - 参照テンプレート:
   - `infra/cloud/azuredeploy.json` — Deploy to Azure 用 ARM テンプレート
   - `infra/cloud/main.bicep` — クラウド側メイン Bicep
-  - `infra/cloud/modules/network/*` — Hub / Spoke / VPN / ルーティング
+  - `infra/cloud/modules/network/*` — Hub / Spoke / ルーティング
   - `infra/cloud/modules/governance/*` — Log Analytics / Policy / Defender / Dashboard
-- DNS Forwarding Ruleset は、クラウド側から疑似オンプレ側の `lab.local` ドメインを名前解決するための転送ルールです。逆方向（疑似オンプレ → クラウド）の DNS 設定は [`00f-cloud-hybrid-dns.md`](./00f-cloud-hybrid-dns.md) で行います。
 
 ## 次のステップ
 

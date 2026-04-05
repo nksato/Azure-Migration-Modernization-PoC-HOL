@@ -11,9 +11,6 @@ param deployFirewall bool = true
 @description('Deploy Azure Bastion')
 param deployBastion bool = true
 
-@description('Deploy VPN Gateway (Hub side)')
-param deployVpnGateway bool = true
-
 // Common tags applied to all resources
 var commonTags = {
   Environment: 'PoC'
@@ -137,21 +134,6 @@ module privateDnsZoneSql 'br/public:avm/res/network/private-dns-zone:0.8.1' = {
       { virtualNetworkResourceId: spoke4Vnet.outputs.resourceId, registrationEnabled: false }
     ]
   }
-}
-
-// DNS Forwarding Ruleset — lab.local をオンプレ DC01 へ転送
-module dnsForwardingRulesetModule 'modules/network/dns-forwarding-ruleset.bicep' = {
-  scope: rgHub
-  name: 'deploy-dns-forwarding-ruleset'
-  params: {
-    location: location
-    tags: commonTags
-    dnsResolverName: 'dnspr-hub'
-    hubVnetId: hubVnet.outputs.resourceId
-  }
-  dependsOn: [
-    dnsResolver
-  ]
 }
 
 // ============================================================
@@ -306,11 +288,10 @@ module spoke1Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
         remoteVirtualNetworkResourceId: hubVnet.outputs.resourceId
         allowForwardedTraffic: true
         allowGatewayTransit: false
-        useRemoteGateways: deployVpnGateway
+        useRemoteGateways: false
       }
     ]
   }
-  dependsOn: [vpnGatewayHub]
 }
 
 module spoke2Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
@@ -333,11 +314,10 @@ module spoke2Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
         remoteVirtualNetworkResourceId: hubVnet.outputs.resourceId
         allowForwardedTraffic: true
         allowGatewayTransit: false
-        useRemoteGateways: deployVpnGateway
+        useRemoteGateways: false
       }
     ]
   }
-  dependsOn: [vpnGatewayHub]
 }
 
 module spoke3Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
@@ -360,11 +340,10 @@ module spoke3Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
         remoteVirtualNetworkResourceId: hubVnet.outputs.resourceId
         allowForwardedTraffic: true
         allowGatewayTransit: false
-        useRemoteGateways: deployVpnGateway
+        useRemoteGateways: false
       }
     ]
   }
-  dependsOn: [vpnGatewayHub]
 }
 
 module spoke4Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
@@ -388,34 +367,14 @@ module spoke4Vnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
         remoteVirtualNetworkResourceId: hubVnet.outputs.resourceId
         allowForwardedTraffic: true
         allowGatewayTransit: false
-        useRemoteGateways: deployVpnGateway
+        useRemoteGateways: false
       }
     ]
   }
-  dependsOn: [vpnGatewayHub]
 }
 
 // ============================================================
-// VPN Gateway (depends on Hub VNet GatewaySubnet)
-// ============================================================
-
-module vpnGatewayHub 'br/public:avm/res/network/virtual-network-gateway:0.10.1' = if (deployVpnGateway) {
-  scope: rgHub
-  params: {
-    name: 'vpngw-hub'
-    location: location
-    gatewayType: 'Vpn'
-    skuName: 'VpnGw1AZ'
-    tags: commonTags
-    virtualNetworkResourceId: hubVnet.outputs.resourceId
-    clusterSettings: { clusterMode: 'activePassiveNoBgp' }
-    domainNameLabel: ['vpngw-hub-${uniqueString(subscription().subscriptionId)}']
-  }
-}
-
-// ============================================================
-// VNet Peering (Hub <-> Spokes, after VPN GW deployment)
-// Re-deploys hub VNet with peering configuration
+// VNet Peering (Hub <-> Spokes)
 // ============================================================
 
 module hubPeering 'br/public:avm/res/network/virtual-network:0.7.2' = {
@@ -428,30 +387,29 @@ module hubPeering 'br/public:avm/res/network/virtual-network:0.7.2' = {
       {
         remoteVirtualNetworkResourceId: spoke1Vnet.outputs.resourceId
         allowForwardedTraffic: true
-        allowGatewayTransit: deployVpnGateway
+        allowGatewayTransit: false
         useRemoteGateways: false
       }
       {
         remoteVirtualNetworkResourceId: spoke2Vnet.outputs.resourceId
         allowForwardedTraffic: true
-        allowGatewayTransit: deployVpnGateway
+        allowGatewayTransit: false
         useRemoteGateways: false
       }
       {
         remoteVirtualNetworkResourceId: spoke3Vnet.outputs.resourceId
         allowForwardedTraffic: true
-        allowGatewayTransit: deployVpnGateway
+        allowGatewayTransit: false
         useRemoteGateways: false
       }
       {
         remoteVirtualNetworkResourceId: spoke4Vnet.outputs.resourceId
         allowForwardedTraffic: true
-        allowGatewayTransit: deployVpnGateway
+        allowGatewayTransit: false
         useRemoteGateways: false
       }
     ]
   }
-  dependsOn: [vpnGatewayHub]
 }
 
 // ============================================================
@@ -581,19 +539,6 @@ module pocDashboard './modules/governance/dashboard.bicep' = {
 }
 
 // ============================================================
-// VPN Gateway Public IP の取得 (main.bicep 連携用)
-// ============================================================
-
-module getVpnPip 'modules/network/get-pip-ip.bicep' = if (deployVpnGateway) {
-  scope: rgHub
-  name: 'get-vpn-pip'
-  params: {
-    pipName: 'vpngw-hub-pip1'
-  }
-  dependsOn: [vpnGatewayHub]
-}
-
-// ============================================================
 // Outputs
 // ============================================================
 
@@ -604,5 +549,4 @@ output spoke2VnetId string = spoke2Vnet.outputs.resourceId
 output spoke3VnetId string = spoke3Vnet.outputs.resourceId
 output spoke4VnetId string = spoke4Vnet.outputs.resourceId
 output logAnalyticsWorkspaceId string = logAnalytics.outputs.resourceId
-output vpnGatewayId string = deployVpnGateway ? vpnGatewayHub.outputs.?resourceId ?? '' : ''
-output vpnGatewayPublicIp string = deployVpnGateway ? getVpnPip.outputs.ipAddress : ''
+output dnsResolverName string = 'dnspr-hub'
