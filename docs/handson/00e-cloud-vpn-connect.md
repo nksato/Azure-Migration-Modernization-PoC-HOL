@@ -39,7 +39,11 @@
 
 ## 手順
 
-### Bicep でデプロイ
+### Deploy to Azure ボタン
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fnetwork%2Fmain.json)
+
+### Azure CLI / Bicep で実行する場合
 
 `infra/network/main.bicep` は Subscription スコープのテンプレートで、以下を一括処理します。
 

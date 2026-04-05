@@ -176,6 +176,10 @@ az deployment sub create `
 
 疑似オンプレ側と Hub 側の両方に VPN Gateway をデプロイし、S2S VPN を成立させます。VNet Peering もゲートウェイトランジットを有効化するよう更新されます。
 
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fnksato%2FAzure-Migration-Modernization-PoC-HOL%2Fmain%2Finfra%2Fnetwork%2Fmain.json)
+
+または CLI で実行:
+
 ```powershell
 az deployment sub create `
   --name hol-vpn-setup `
