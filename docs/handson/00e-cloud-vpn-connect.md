@@ -111,6 +111,14 @@ az network vpn-connection show `
   - `infra/network/modules/vpn-connection.bicep` — LGW + S2S 接続
   - `infra/network/modules/update-hub-peering.bicep` — Peering の Gateway Transit 有効化
 
+> [!TIP]
+> Azure CLI から VPN Gateway・s2S 接続・ピアリングの状態を一括検証できるスクリプトも用意しています。
+> VM 内部には入らず Azure API だけで諸元（プロビジョニング状態・SKU・接続ステータス・Gateway Transit 設定など）を確認する簡易チェックのため、ポータル画面での目視確認は含みません。
+>
+> ```powershell
+> .\infra\network\scripts\Verify-VpnConnection.ps1
+> ```
+
 ---
 
 ## 次のステップ

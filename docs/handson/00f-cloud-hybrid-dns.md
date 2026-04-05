@@ -180,6 +180,14 @@ MasterServers : {10.10.5.4}
 - DNS Forwarding Ruleset と DC01 の条件付きフォワーダーは Bicep では自動設定されません。VPN 接続確立後にこの手順で設定します。
 - `Setup-HybridDns.ps1` は冪等に設計されており、既存の条件付きフォワーダーがある場合は MasterServers を更新します。
 
+> [!TIP]
+> Azure CLI と `az vm run-command` で DNS 設定状態・双方向の名前解決を一括検証できるスクリプトも用意しています。
+> VM 内部には入らず外部から諸元（Resolver 状態・転送ルール・条件付きフォワーダー・クロスネットワーク名前解決など）を確認する簡易チェックのため、ポータル画面での目視確認は含みません。
+>
+> ```powershell
+> .\infra\network\scripts\Verify-HybridDns.ps1
+> ```
+
 ---
 
 ## 次のステップ
