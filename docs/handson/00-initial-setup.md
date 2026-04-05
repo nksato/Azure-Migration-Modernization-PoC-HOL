@@ -38,7 +38,7 @@
 ## 方法 A: 一度に環境を作る方法
 
 `infra/main.bicep` を使って環境全体をまとめて作成します。  
-内部で `infra/cloud/main.bicep` と `infra/onprem/main.bicep` を呼び出すため、方法 B と同じ構成・命名になります。
+内部で方法 B の Step 1（疑似オンプレ）・Step 3（クラウド基盤）・Step 4（VPN 接続）を一括実行するため、方法 B と同じ構成・命名になります。
 
 ### Deploy to Azure ボタン
 
