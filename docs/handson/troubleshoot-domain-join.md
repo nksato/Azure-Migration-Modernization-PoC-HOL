@@ -152,22 +152,22 @@ CsDNSHostName   : DB01   (または APP01)
 
 ---
 
-## 根本対策: Deploy-Lab.ps1 の使用
+## 根本対策: Deploy-Onprem.ps1 の使用
 
 この問題は Bicep テンプレートの `adSetupExtension` が完了してから DC01 の再起動が終わるまでの**タイミングギャップ**に起因します。
 
-`infra/onprem/Deploy-Lab.ps1` はこの問題を想定して設計されています:
+`infra/onprem/Deploy-Onprem.ps1` はこの問題を想定して設計されています:
 
 1. Bicep デプロイ時のドメイン参加失敗を**想定内エラー**として処理
 2. DC01 の再起動完了を待機 (VM エージェントの Ready 状態 + AD DS 初期化待ち)
 3. 失敗した `DomainJoin` Extension を自動削除
 4. 最大 3 回のリトライ付きでドメイン参加を再実行
 
-Deploy to Azure ボタンではなく、`Deploy-Lab.ps1` を使うことでドメイン参加の失敗を自動的にリカバリできます。
+Deploy to Azure ボタンではなく、`Deploy-Onprem.ps1` を使うことでドメイン参加の失敗を自動的にリカバリできます。
 
 ```powershell
 cd infra/onprem
-.\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
+.\Deploy-Onprem.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
 ```
 
 詳細は [`1.2-onprem-deploy.md`](./1.2-onprem-deploy.md) を参照してください。

@@ -24,11 +24,11 @@
 .PARAMETER SkipDomainJoin
     ドメイン参加をスキップする場合に指定
 .EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
+    .\Deploy-Onprem.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
 .EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast" -RemoteGatewayIp "<Hub側VPNの公開IP>"
+    .\Deploy-Onprem.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast" -RemoteGatewayIp "<Hub側VPNの公開IP>"
 .EXAMPLE
-    .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -RemoteGatewayIp "<Hub側VPNの公開IP>" -DnsResolverInboundIp "10.10.5.4"
+    .\Deploy-Onprem.ps1 -ResourceGroupName "rg-onprem" -RemoteGatewayIp "<Hub側VPNの公開IP>" -DnsResolverInboundIp "10.10.5.4"
 #>
 
 [CmdletBinding()]
