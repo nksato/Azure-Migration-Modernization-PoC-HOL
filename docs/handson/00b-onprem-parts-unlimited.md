@@ -94,6 +94,22 @@ az vm run-command invoke `
 > 日本語を含むスクリプトは文字コードの影響で実行エラーになることがあるため、VM Run Command では `*-en.ps1` を利用しています。
 
 > `Setup-PartsUnlimited-en.ps1` は完了まで 15〜20 分程度かかる場合があります。
+>
+> **既知の問題**: Azure CLI 2.78.0 では `az vm run-command invoke --scripts` にスクリプトが正しく渡されないバグがあります。上記コマンドが動作しない場合は、`az vm run-command create` を使用してください。
+>
+> ```powershell
+> # DB01 — az vm run-command create による代替実行
+> az vm run-command create -g rg-onprem --vm-name vm-onprem-sql --name SetupSql `
+>   --script (Get-Content infra/onprem/scripts/Setup-SqlServer-en.ps1 -Raw) `
+>   --parameters SqlPassword='<パスワード>'
+> az vm run-command show -g rg-onprem --vm-name vm-onprem-sql --name SetupSql --instance-view --query "instanceView" -o json
+>
+> # APP01 — az vm run-command create による代替実行
+> az vm run-command create -g rg-onprem --vm-name vm-onprem-web --name SetupPU `
+>   --script (Get-Content infra/onprem/scripts/Setup-PartsUnlimited-en.ps1 -Raw) `
+>   --parameters SqlPassword='<パスワード>'
+> az vm run-command show -g rg-onprem --vm-name vm-onprem-web --name SetupPU --instance-view --query "instanceView" -o json
+> ```
 
 ---
 

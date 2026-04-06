@@ -229,6 +229,21 @@ Azure API で Arc リソースの存在を確認し、`az vm run-command invoke`
 - `az vm run-command invoke` を使うスクリプト (1, 4, 5) は対象 VM が起動中であること
 - Bastion 接続は **不要**（全てローカルから Azure API 経由で実行可能）
 
+### 既知の問題: Azure CLI 2.78.0 の `az vm run-command invoke` バグ
+
+> **Azure CLI 2.78.0** では `az vm run-command invoke --scripts` にスクリプトを渡しても、固定メッセージ (`This is a sample script with parameters`) が返され、実際のスクリプトが実行されません。この問題は Verify スクリプト (1, 4, 5) および `Setup-HybridDns.ps1` の [2/2] に影響します。
+>
+> **回避策:**
+> - Azure CLI を 2.78.0 以外のバージョンに更新する (`az upgrade`)
+> - または `az vm run-command create` を使用してスクリプトを実行する
+>
+> ```powershell
+> # az vm run-command create による代替実行例
+> az vm run-command create -g rg-onprem --vm-name vm-onprem-ad --name myCmd --script 'hostname'
+> az vm run-command show -g rg-onprem --vm-name vm-onprem-ad --name myCmd --instance-view --query "instanceView" -o json
+> az vm run-command delete -g rg-onprem --vm-name vm-onprem-ad --name myCmd --yes
+> ```
+
 ---
 
 ## 関連ドキュメント
