@@ -40,15 +40,21 @@ if (-not $extVer -or $extVer -lt '2') {
 
 function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
     $arcName = "$VmName-Arc"
-    $oneLiner = ($Script -split "`r?`n" | Where-Object { $_.Trim() }) -join '; '
     $cmdName = "verify-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+
+    # スクリプトを一時ファイルに保存して --script-uri ではなく直接渡す
+    # ワンライナー化せず、複数行スクリプトをそのまま渡すため一時ファイル使用
+    $tmpFile = Join-Path $env:TEMP "$cmdName.ps1"
+    $Script | Set-Content -Path $tmpFile -Encoding UTF8
 
     $raw = az connectedmachine run-command create `
         --resource-group $ArcResourceGroupName `
         --machine-name $arcName `
         --run-command-name $cmdName `
-        --script "$oneLiner" `
+        --script "@$tmpFile" `
         -o json 2>&1
+
+    Remove-Item $tmpFile -ErrorAction SilentlyContinue
 
     $json = ($raw | Where-Object { $_ -is [string] }) -join "`n"
     try {
@@ -179,29 +185,28 @@ Write-Output ('IMDS_LOCAL_BLOCK=' + $(if ($imds2) { $imds2.Enabled } else { 'Not
     Write-Host "--- 3. [$vmName] Connected Machine Agent の確認 ---" -ForegroundColor Yellow
     Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
-    $agentOut = Invoke-ArcCommand -VmName $vmName -Script @'
-$agentPath = "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe"
-Write-Output ('AGENT_INSTALLED=' + (Test-Path $agentPath))
-if (Test-Path $agentPath) {
-    $showRaw = & $agentPath show 2>&1
-    $status = ($showRaw | Select-String -Pattern '^Agent Status' | Select-Object -First 1) -replace '.*:\s*', ''
-    $name   = ($showRaw | Select-String -Pattern '^Resource Name' | Select-Object -First 1) -replace '.*:\s*', ''
-    $rg     = ($showRaw | Select-String -Pattern '^Resource Group' | Select-Object -First 1) -replace '.*:\s*', ''
-    Write-Output ('AGENT_STATUS=' + $status.Trim())
-    Write-Output ('AGENT_RESOURCE_NAME=' + $name.Trim())
-    Write-Output ('AGENT_RESOURCE_GROUP=' + $rg.Trim())
-}
-'@
+    # VM 側はシンプルに azcmagent show の生出力だけ返す
+    $agentOut = Invoke-ArcCommand -VmName $vmName -Script `
+        'if (Test-Path "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe") { & "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe" show } else { Write-Output "NOT_INSTALLED" }'
 
     if (-not $agentOut) {
         Write-Host "  [FAIL] [$vmName] VM コマンド実行失敗" -ForegroundColor Red
-        $script:total += 3; continue
+        $script:total += 4; continue
     }
 
-    Test-Val "[$vmName] Agent インストール済み" (Get-Val $agentOut 'AGENT_INSTALLED') 'True'
-    Test-Val "[$vmName] Agent 状態" (Get-Val $agentOut 'AGENT_STATUS') 'Connected'
-    Test-Val "[$vmName] Agent リソース名" (Get-Val $agentOut 'AGENT_RESOURCE_NAME') "$vmName-Arc"
-    Test-Val "[$vmName] Agent リソースグループ" (Get-Val $agentOut 'AGENT_RESOURCE_GROUP') $ArcResourceGroupName
+    # 呼び出し元で生出力をパース
+    $installed = $agentOut -notmatch 'NOT_INSTALLED'
+    Test-Val "[$vmName] Agent インストール済み" "$installed" 'True'
+
+    if ($installed) {
+        $agentStatus = ($agentOut -split "`n" | Where-Object { $_ -match '^\s*Agent Status' } | Select-Object -First 1) -replace '.*:\s*', '' | ForEach-Object { $_.Trim() }
+        $agentName   = ($agentOut -split "`n" | Where-Object { $_ -match '^\s*Resource Name' } | Select-Object -First 1) -replace '.*:\s*', '' | ForEach-Object { $_.Trim() }
+        $agentRg     = ($agentOut -split "`n" | Where-Object { $_ -match '^\s*Resource Group' } | Select-Object -First 1) -replace '.*:\s*', '' | ForEach-Object { $_.Trim() }
+
+        Test-Val "[$vmName] Agent 状態" $agentStatus 'Connected'
+        Test-Val "[$vmName] Agent リソース名" $agentName "$vmName-Arc"
+        Test-Val "[$vmName] Agent リソースグループ" $agentRg $ArcResourceGroupName
+    }
 }
 
 # ============================================================
