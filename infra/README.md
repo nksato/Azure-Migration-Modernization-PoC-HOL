@@ -14,7 +14,7 @@
 
 - `infra/onprem/`
   - 疑似オンプレ側（DC01 / DB01 / APP01 / VPN Gateway）のテンプレートとセットアップ スクリプト
-  - `main.bicep`, `main.json`, `Deploy-Lab.ps1`, `Enable-ArcOnVMs.ps1`, `scripts/`
+  - `main.bicep`, `main.json`, `Deploy-Lab.ps1`, `Convert-VmToArc.ps1`, `scripts/`
 
 - `infra/tmp/`
   - 旧構成由来の疑似オンプレ / アプリ関連ファイルを一時退避した領域

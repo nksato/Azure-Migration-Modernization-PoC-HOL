@@ -1,4 +1,4 @@
-# 2.2. Azure Arc 登録
+# 02. Azure Arc 登録
 
 移行元サーバー `DC01` / `DB01` / `APP01` を **Azure Arc** に登録し、Azure の管理プレーンから一元管理できるようにします。
 
@@ -22,7 +22,7 @@
 
 ## 前提条件
 
-- [`1.2-onprem-deploy.md`](./1.2-onprem-deploy.md) が完了している
+- [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) が完了している
 - `rg-onprem` に対象 VM が存在している
 - Azure CLI / PowerShell を利用できる
 - Arc 登録先リソース グループに対して必要な権限がある
@@ -97,4 +97,4 @@ Azure Portal でオンボーディング スクリプトを生成し、対象サ
 
 ## 次のステップ
 
-➡ [`2.3-cloud-hybrid-mgmt.md`](./2.3-cloud-hybrid-mgmt.md)
+➡ [`03-cloud-hybrid-mgmt.md`](./03-cloud-hybrid-mgmt.md)

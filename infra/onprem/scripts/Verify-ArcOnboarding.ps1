@@ -3,7 +3,7 @@
 .SYNOPSIS
     Azure Arc オンボーディングの状態をリモートから検証する
 .DESCRIPTION
-    Enable-ArcOnVMs.ps1 / Invoke-ArcOnboarding.ps1 による Arc 登録が正しく完了しているかを確認する。
+    Convert-VmToArc.ps1 による Arc 登録が正しく完了しているかを確認する。
     セクション 2, 3 は az connectedmachine run-command (Arc エージェント経由) で
     VM 内コマンドを実行するため、ゲストエージェントが停止していても動作する。
     チェック項目:
@@ -119,7 +119,7 @@ function Test-NotEmpty ([string]$Label, [string]$Actual) {
 Write-Host "`n=== 1. Azure Arc リソース ($ArcResourceGroupName) ===" -ForegroundColor Cyan
 
 foreach ($vmName in $VmNames) {
-    # Enable-ArcOnVMs.ps1 は "$vmName-Arc" でリソースを登録する
+    # Convert-VmToArc.ps1 は "$vmName-Arc" でリソースを登録する
     $arcName = "$vmName-Arc"
     $arcJson = az connectedmachine show `
         --resource-group $ArcResourceGroupName `

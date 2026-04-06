@@ -65,7 +65,7 @@
 |---|---|
 | 対象 | `DC01`, `DB01`, `APP01` |
 | 目的 | ハイブリッド管理 / ポリシー / 更新管理 / Defender 評価 |
-| 参照スクリプト | `infra/onprem/Enable-ArcOnVMs.ps1` |
+| 参照スクリプト | `infra/onprem/Convert-VmToArc.ps1` |
 
 ---
 
@@ -158,5 +158,5 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 - `infra/network/modules/vpn-connection.bicep`
 - `infra/network/modules/vpn-connection-hub.bicep`
 - `infra/main.bicep` — 一括デプロイ用エントリポイント
-- `infra/onprem/Enable-ArcOnVMs.ps1` — Azure Arc オンボーディング
+- `infra/onprem/Convert-VmToArc.ps1` — Azure Arc オンボーディング
 - `infra/onprem/scripts/*` — セットアップスクリプト群

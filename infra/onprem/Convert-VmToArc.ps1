@@ -29,9 +29,9 @@
 .PARAMETER VmNames
     Arc 対応にする VM 名の配列 (既定: vm-onprem-ad, vm-onprem-sql, vm-onprem-web)
 .EXAMPLE
-    .\Invoke-ArcOnboarding.ps1 -ResourceGroupName "rg-onprem"
+    .\Convert-VmToArc.ps1 -ResourceGroupName "rg-onprem"
 .EXAMPLE
-    .\Invoke-ArcOnboarding.ps1 -ResourceGroupName "rg-onprem" -VmNames @("vm-onprem-web")
+    .\Convert-VmToArc.ps1 -ResourceGroupName "rg-onprem" -VmNames @("vm-onprem-web")
 #>
 
 [CmdletBinding()]
