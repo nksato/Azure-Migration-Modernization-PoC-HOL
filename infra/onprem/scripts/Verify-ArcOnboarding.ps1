@@ -101,17 +101,10 @@ function Test-NotEmpty ([string]$Label, [string]$Actual) {
     $script:total++; if ($ok) { $script:passed++ }
 }
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " Azure Arc オンボーディング検証" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-
 # ============================================================
 # 1. Azure 側: Arc リソースの確認
 # ============================================================
-
-Write-Host "--- 1. Azure Arc リソースの確認 ($ArcResourceGroupName) ---" -ForegroundColor Yellow
+Write-Host "`n=== 1. Azure Arc リソース ($ArcResourceGroupName) ===" -ForegroundColor Cyan
 
 foreach ($vmName in $VmNames) {
     # Enable-ArcOnVMs.ps1 は "$vmName-Arc" でリソースを登録する
@@ -134,13 +127,12 @@ foreach ($vmName in $VmNames) {
 }
 
 # ============================================================
-# 2. VM 側: Arc 対応準備の確認
+# 2/3. VM 側: 設定 + Agent の確認
 # ============================================================
 
 foreach ($vmName in $VmNames) {
-    Write-Host ""
-    Write-Host "--- 2/3. [$vmName] VM 設定 + Agent の確認 ---" -ForegroundColor Yellow
-    Write-Host "  リモートコマンド実行中 (1 回で全チェック)..." -ForegroundColor Gray
+    Write-Host "`n=== 2/3. [$vmName] VM 設定 + Agent ===" -ForegroundColor Cyan
+    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
     # セクション 2 (環境/サービス/FW) + セクション 3 (azcmagent show) を 1 回で実行
     $allOut = Invoke-ArcCommand -VmName $vmName -Script @'
@@ -200,12 +192,7 @@ if (Test-Path 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe') { & '
 # ============================================================
 # サマリー
 # ============================================================
-
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
 $color = if ($passed -eq $total) { 'Green' } else { 'Red' }
-Write-Host "  結果: $passed / $total PASS" -ForegroundColor $color
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
+Write-Host ("`n=== 結果: {0} / {1} 通過 ===" -f $passed, $total) -ForegroundColor $color
 
 exit $(if ($passed -eq $total) { 0 } else { 1 })
