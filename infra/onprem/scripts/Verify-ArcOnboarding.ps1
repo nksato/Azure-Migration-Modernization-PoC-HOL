@@ -1,8 +1,11 @@
-﻿<#
+
+<#
 .SYNOPSIS
     Azure Arc オンボーディングの状態をリモートから検証する
 .DESCRIPTION
-    Enable-ArcOnVMs.ps1 による Arc 登録が正しく完了しているかを確認する。
+    Enable-ArcOnVMs.ps1 / Invoke-ArcOnboarding.ps1 による Arc 登録が正しく完了しているかを確認する。
+    セクション 2, 3 は az connectedmachine run-command (Arc エージェント経由) で
+    VM 内コマンドを実行するため、ゲストエージェントが停止していても動作する。
     チェック項目:
       1. Azure 側 — Arc リソース (Microsoft.HybridCompute/machines) の存在とステータス
       2. VM 側  — 環境変数 MSFT_ARC_TEST / ゲストエージェント停止 / IMDS ブロック
@@ -25,16 +28,32 @@ $total = 0; $passed = 0
 
 # --- ヘルパー ---
 
-function Invoke-VmCommand ([string]$VmName, [string]$Script) {
+function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
+    $arcName = "$VmName-Arc"
     $oneLiner = ($Script -split "`r?`n" | Where-Object { $_.Trim() }) -join '; '
-    $raw = az vm run-command invoke `
-        --resource-group $ResourceGroupName --name $VmName `
-        --command-id RunPowerShellScript --scripts $oneLiner -o json 2>&1
-    $json = ($raw | Where-Object { $_ -notmatch '^WARNING' }) -join ''
+    $cmdName = "verify-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+
+    $raw = az connectedmachine run-command create `
+        --resource-group $ArcResourceGroupName `
+        --machine-name $arcName `
+        --run-command-name $cmdName `
+        --script $oneLiner `
+        -o json 2>&1
+
+    $json = ($raw | Where-Object { $_ -is [string] }) -join "`n"
     $r = $json | ConvertFrom-Json
-    $stderr = ($r.value | Where-Object { $_.code -like '*stderr*' }).message
+
+    $stderr = $r.instanceView.error
     if ($stderr) { Write-Host "         stderr: $stderr" -ForegroundColor DarkYellow }
-    ($r.value | Where-Object { $_.code -like '*stdout*' }).message
+
+    # 使い終わった run-command リソースを削除
+    az connectedmachine run-command delete `
+        --resource-group $ArcResourceGroupName `
+        --machine-name $arcName `
+        --run-command-name $cmdName `
+        --yes -o none 2>$null
+
+    $r.instanceView.output
 }
 
 function Get-Val ([string]$Output, [string]$Key) {
@@ -103,7 +122,7 @@ foreach ($vmName in $VmNames) {
     Write-Host ""
     Write-Host "--- 2. [$vmName] Arc 対応準備の確認 ---" -ForegroundColor Yellow
 
-    $prepOut = Invoke-VmCommand -VmName $vmName -Script @'
+    $prepOut = Invoke-ArcCommand -VmName $vmName -Script @'
 Write-Output ('MSFT_ARC_TEST=' + [System.Environment]::GetEnvironmentVariable('MSFT_ARC_TEST', 'Machine'))
 $svc = Get-Service WindowsAzureGuestAgent -ErrorAction SilentlyContinue
 if ($svc) {
@@ -141,7 +160,7 @@ Write-Output ('IMDS_LOCAL_BLOCK=' + $(if ($imds2) { $imds2.Enabled } else { 'Not
     Write-Host ""
     Write-Host "--- 3. [$vmName] Connected Machine Agent の確認 ---" -ForegroundColor Yellow
 
-    $agentOut = Invoke-VmCommand -VmName $vmName -Script @'
+    $agentOut = Invoke-ArcCommand -VmName $vmName -Script @'
 $agentPath = "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe"
 Write-Output ('AGENT_INSTALLED=' + (Test-Path $agentPath))
 if (Test-Path $agentPath) {
