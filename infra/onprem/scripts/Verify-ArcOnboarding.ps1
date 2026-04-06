@@ -8,8 +8,7 @@
     VM 内コマンドを実行するため、ゲストエージェントが停止していても動作する。
     チェック項目:
       1. Azure 側 — Arc リソース (Microsoft.HybridCompute/machines) の存在とステータス
-      2. VM 側  — 環境変数 MSFT_ARC_TEST / ゲストエージェント停止 / IMDS ブロック
-      3. VM 側  — Connected Machine Agent のインストールと接続状態
+      2/3. VM 側 — 環境変数・ゲストエージェント・IMDS + Agent 状態 (1 回のリモート実行で取得)
 .EXAMPLE
     .\Verify-ArcOnboarding.ps1
     .\Verify-ArcOnboarding.ps1 -ArcResourceGroupName "rg-arc"
@@ -40,21 +39,15 @@ if (-not $extVer -or $extVer -lt '2') {
 
 function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
     $arcName = "$VmName-Arc"
-    $cmdName = "verify-$([guid]::NewGuid().ToString('N').Substring(0,8))"
-
-    # スクリプトを一時ファイルに保存して --script-uri ではなく直接渡す
-    # ワンライナー化せず、複数行スクリプトをそのまま渡すため一時ファイル使用
-    $tmpFile = Join-Path $env:TEMP "$cmdName.ps1"
-    $Script | Set-Content -Path $tmpFile -Encoding UTF8
+    # 固定名を使い回すことで、前回の run-command を上書き (delete 不要)
+    $cmdName = 'verify-arc'
 
     $raw = az connectedmachine run-command create `
         --resource-group $ArcResourceGroupName `
         --machine-name $arcName `
         --run-command-name $cmdName `
-        --script "@$tmpFile" `
+        --script "$Script" `
         -o json 2>&1
-
-    Remove-Item $tmpFile -ErrorAction SilentlyContinue
 
     $json = ($raw | Where-Object { $_ -is [string] }) -join "`n"
     try {
@@ -67,14 +60,6 @@ function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
 
     $stderr = $r.instanceView.error
     if ($stderr) { Write-Host "         stderr: $stderr" -ForegroundColor DarkYellow }
-
-    # 使い終わった run-command リソースをバックグラウンドで削除
-    Start-Job -ScriptBlock {
-        param($rg, $machine, $name)
-        az connectedmachine run-command delete `
-            --resource-group $rg --machine-name $machine `
-            --run-command-name $name --yes -o none 2>$null
-    } -ArgumentList $ArcResourceGroupName, $arcName, $cmdName | Out-Null
 
     $r.instanceView.output
 }
@@ -143,10 +128,11 @@ foreach ($vmName in $VmNames) {
 
 foreach ($vmName in $VmNames) {
     Write-Host ""
-    Write-Host "--- 2. [$vmName] Arc 対応準備の確認 ---" -ForegroundColor Yellow
-    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
+    Write-Host "--- 2/3. [$vmName] VM 設定 + Agent の確認 ---" -ForegroundColor Yellow
+    Write-Host "  リモートコマンド実行中 (1 回で全チェック)..." -ForegroundColor Gray
 
-    $prepOut = Invoke-ArcCommand -VmName $vmName -Script @'
+    # セクション 2 (環境/サービス/FW) + セクション 3 (azcmagent show) を 1 回で実行
+    $allOut = Invoke-ArcCommand -VmName $vmName -Script @'
 Write-Output ('MSFT_ARC_TEST=' + [System.Environment]::GetEnvironmentVariable('MSFT_ARC_TEST', 'Machine'))
 $svc = Get-Service WindowsAzureGuestAgent -ErrorAction SilentlyContinue
 if ($svc) {
@@ -160,42 +146,33 @@ $imds1 = Get-NetFirewallRule -Name 'BlockAzureIMDS' -ErrorAction SilentlyContinu
 Write-Output ('IMDS_BLOCK=' + $(if ($imds1) { $imds1.Enabled } else { 'NotFound' }))
 $imds2 = Get-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -ErrorAction SilentlyContinue
 Write-Output ('IMDS_LOCAL_BLOCK=' + $(if ($imds2) { $imds2.Enabled } else { 'NotFound' }))
+Write-Output '---AGENT---'
+if (Test-Path 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe') { & 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe' show } else { Write-Output 'NOT_INSTALLED' }
 '@
 
-    if (-not $prepOut) {
+    if (-not $allOut) {
         Write-Host "  [FAIL] [$vmName] VM コマンド実行失敗" -ForegroundColor Red
-        $script:total += 4; continue
+        $script:total += 9; continue
     }
 
-    # 環境変数 MSFT_ARC_TEST
+    # マーカーで分割
+    $parts = ($allOut -split '---AGENT---', 2)
+    $prepOut  = $parts[0].Trim()
+    $agentOut = if ($parts.Count -gt 1) { $parts[1].Trim() } else { '' }
+
+    # --- セクション 2: Arc 対応準備 ---
     Test-Val "[$vmName] MSFT_ARC_TEST" (Get-Val $prepOut 'MSFT_ARC_TEST') 'true'
 
-    # ゲストエージェント停止
     $guestStatus = Get-Val $prepOut 'GUEST_AGENT_STATUS'
     $guestStartup = Get-Val $prepOut 'GUEST_AGENT_STARTUP'
     Test-Match "[$vmName] ゲストエージェント状態" $guestStatus 'Stopped|NotFound'
     Test-Val "[$vmName] ゲストエージェント起動種別" $guestStartup 'Disabled'
 
-    # IMDS ブロック
     Test-Val "[$vmName] IMDS ブロック (169.254.169.254)" (Get-Val $prepOut 'IMDS_BLOCK') 'True'
     Test-Val "[$vmName] IMDS ブロック (169.254.169.253)" (Get-Val $prepOut 'IMDS_LOCAL_BLOCK') 'True'
 
-    # --- 3. Connected Machine Agent の確認 ---
-    Write-Host ""
-    Write-Host "--- 3. [$vmName] Connected Machine Agent の確認 ---" -ForegroundColor Yellow
-    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
-
-    # VM 側はシンプルに azcmagent show の生出力だけ返す
-    $agentOut = Invoke-ArcCommand -VmName $vmName -Script `
-        'if (Test-Path "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe") { & "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe" show } else { Write-Output "NOT_INSTALLED" }'
-
-    if (-not $agentOut) {
-        Write-Host "  [FAIL] [$vmName] VM コマンド実行失敗" -ForegroundColor Red
-        $script:total += 4; continue
-    }
-
-    # 呼び出し元で生出力をパース
-    $installed = $agentOut -notmatch 'NOT_INSTALLED'
+    # --- セクション 3: Connected Machine Agent ---
+    $installed = $agentOut -and ($agentOut -notmatch 'NOT_INSTALLED')
     Test-Val "[$vmName] Agent インストール済み" "$installed" 'True'
 
     if ($installed) {
