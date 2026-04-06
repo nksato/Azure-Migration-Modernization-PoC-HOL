@@ -7,8 +7,9 @@
     セクション 2, 3 は az connectedmachine run-command (Arc エージェント経由) で
     VM 内コマンドを実行するため、ゲストエージェントが停止していても動作する。
     チェック項目:
+      0. 動作環境 — az CLI / connectedmachine 拡張のバージョン確認
       1. Azure 側 — Arc リソース (Microsoft.HybridCompute/machines) の存在とステータス
-      2/3. VM 側 — 環境変数・ゲストエージェント・IMDS + Agent 状態 (1 回のリモート実行で取得)
+      2. VM 側  — 環境変数・ゲストエージェント・IMDS + Agent 状態 (1 回のリモート実行で取得)
 .EXAMPLE
     .\Verify-ArcOnboarding.ps1
     .\Verify-ArcOnboarding.ps1 -ArcResourceGroupName "rg-arc"
@@ -25,19 +26,30 @@ $ErrorActionPreference = 'Continue'
 if (-not $ArcResourceGroupName) { $ArcResourceGroupName = $ResourceGroupName }
 $total = 0; $passed = 0
 
-# --- connectedmachine 拡張の確認 (run-command には 2.x 以上が必要 / preview) ---
+# ============================================================
+# 0. 動作環境の確認
+# ============================================================
+Write-Host "`n=== 0. 動作環境の確認 ===" -ForegroundColor Cyan
+
+$azVer = (az version -o json 2>$null | ConvertFrom-Json).'azure-cli'
+Write-Host "  az CLI: v$azVer" -ForegroundColor Gray
+
 $extVer = az extension show --name connectedmachine --query version -o tsv 2>$null
 if (-not $extVer) {
-    Write-Host "  connectedmachine 拡張が未インストールです (run-command には 2.x preview 以上が必要)" -ForegroundColor Yellow
+    Write-Host "  connectedmachine 拡張: 未インストール (run-command には 2.x preview 以上が必要)" -ForegroundColor Yellow
     $ans = Read-Host "  インストールしますか? (y/n)"
     if ($ans -ne 'y') { Write-Host "中断しました。"; exit 1 }
     az extension add --name connectedmachine --allow-preview true -o none 2>$null
+    $extVer = az extension show --name connectedmachine --query version -o tsv 2>$null
+    Write-Host "  connectedmachine 拡張: v$extVer (インストール済み)" -ForegroundColor Green
 }
 elseif ($extVer -lt '2') {
     Write-Host "  connectedmachine 拡張: v$extVer (run-command には 2.x preview 以上が必要)" -ForegroundColor Yellow
     $ans = Read-Host "  preview 版にアップデートしますか? (y/n)"
     if ($ans -ne 'y') { Write-Host "中断しました。"; exit 1 }
     az extension update --name connectedmachine --allow-preview true -o none 2>$null
+    $extVer = az extension show --name connectedmachine --query version -o tsv 2>$null
+    Write-Host "  connectedmachine 拡張: v$extVer (アップデート済み)" -ForegroundColor Green
 }
 else {
     Write-Host "  connectedmachine 拡張: v$extVer (preview) [OK]" -ForegroundColor Green
@@ -127,11 +139,11 @@ foreach ($vmName in $VmNames) {
 }
 
 # ============================================================
-# 2/3. VM 側: 設定 + Agent の確認
+# 2. VM 側: 設定および Agent の確認
 # ============================================================
 
 foreach ($vmName in $VmNames) {
-    Write-Host "`n=== 2/3. [$vmName] VM 設定 + Agent ===" -ForegroundColor Cyan
+    Write-Host "`n=== 2. [$vmName] VM 設定 + Agent ===" -ForegroundColor Cyan
     Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
     # セクション 2 (環境/サービス/FW) + セクション 3 (azcmagent show) を 1 回で実行
