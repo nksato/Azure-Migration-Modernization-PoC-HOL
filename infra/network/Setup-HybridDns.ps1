@@ -78,7 +78,7 @@ az dns-resolver forwarding-rule create `
 
 # ルールセットを Hub VNet にリンク
 Write-Host '  Linking ruleset to Hub VNet...' -ForegroundColor Yellow
-az dns-resolver forwarding-ruleset vnet-link create `
+az dns-resolver vnet-link create `
     --resource-group $HubResourceGroup `
     --ruleset-name 'dnsrs-hub' `
     --name 'link-vnet-hub' `
