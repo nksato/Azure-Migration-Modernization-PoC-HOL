@@ -42,11 +42,14 @@ function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
     # 固定名を使い回すことで、前回の run-command を上書き (delete 不要)
     $cmdName = 'verify-arc'
 
+    # 複数行スクリプトを 1 行に結合 (az CLI --script は改行で途切れる)
+    $oneLine = ($Script -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join '; '
+
     $raw = az connectedmachine run-command create `
         --resource-group $ArcResourceGroupName `
         --machine-name $arcName `
         --run-command-name $cmdName `
-        --script "$Script" `
+        --script "$oneLine" `
         -o json 2>&1
 
     $json = ($raw | Where-Object { $_ -is [string] }) -join "`n"
