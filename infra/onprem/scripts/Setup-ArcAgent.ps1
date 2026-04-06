@@ -3,8 +3,8 @@
 # VM 内で実行: Arc 対応に必要な準備と接続を行う
 # - IMDS エンドポイントをブロック
 # - Azure Connected Machine Agent をインストール
-# - Azure VM ゲスト エージェントを無効化
 # - azcmagent connect で Azure Arc に接続
+# - Azure VM ゲスト エージェントを無効化 (遅延実行、応答返却後)
 # ============================================================
 # Usage (via az vm run-command):
 #   az vm run-command invoke `
@@ -86,18 +86,9 @@ if (Test-Path $agentExe) {
 }
 
 # ----------------------------------------------------------
-# 3. Azure VM ゲスト エージェントを無効化
+# 3. Azure Arc に接続
 # ----------------------------------------------------------
-Write-Output '[3/4] Disabling Azure VM Guest Agent...'
-
-Set-Service WindowsAzureGuestAgent -StartupType Disabled
-Stop-Service WindowsAzureGuestAgent -Force
-Write-Output '  WindowsAzureGuestAgent disabled'
-
-# ----------------------------------------------------------
-# 4. Azure Arc に接続
-# ----------------------------------------------------------
-Write-Output '[4/4] Connecting to Azure Arc...'
+Write-Output '[3/4] Connecting to Azure Arc...'
 
 $env:MSFT_ARC_TEST = 'true'
 
@@ -121,5 +112,20 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Output "  Arc connection failed (ExitCode: $LASTEXITCODE)"
 }
+
+# ----------------------------------------------------------
+# 4. Azure VM ゲスト エージェントを無効化 (遅延実行)
+# ----------------------------------------------------------
+Write-Output '[4/4] ゲスト エージェント無効化をスケジュール中 (30秒後)...'
+
+# run-command のレスポンスがゲスト エージェント経由で返されるため、
+# バックグラウンドで遅延実行して応答を先に返す
+Start-Process powershell.exe -ArgumentList '-NoProfile', '-Command', @'
+Start-Sleep -Seconds 30
+Set-Service WindowsAzureGuestAgent -StartupType Disabled
+Stop-Service WindowsAzureGuestAgent -Force
+'@ -WindowStyle Hidden
+
+Write-Output '  ゲスト エージェントは約30秒後に無効化されます'
 
 Write-Output '=== Arc Agent Setup Completed ==='

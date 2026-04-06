@@ -209,7 +209,7 @@ foreach ($vmName in $VmNames) {
     $arcResourceName = "$vmName-Arc"
 
     Write-Host "  [$vmName] Setup-ArcAgent.ps1 を実行中..." -ForegroundColor Yellow
-    Write-Host "  (IMDS ブロック → Agent インストール → ゲスト エージェント無効化 → Arc 接続)" -ForegroundColor Gray
+    Write-Host "  (IMDS ブロック → Agent インストール → Arc 接続 → ゲスト エージェント無効化[遅延])" -ForegroundColor Gray
 
     $result = az vm run-command invoke `
         --resource-group $ResourceGroupName `

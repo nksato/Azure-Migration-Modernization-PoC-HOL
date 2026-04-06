@@ -3,8 +3,8 @@
 # Setup script to run inside VM for Azure Arc onboarding
 # - Block IMDS endpoints (firewall rules)
 # - Install Azure Connected Machine Agent
-# - Disable Azure VM Guest Agent
 # - Connect to Azure Arc via azcmagent
+# - Disable Azure VM Guest Agent (delayed, so run-command can return)
 # ============================================================
 # Usage (via az vm run-command):
 #   az vm run-command invoke `
@@ -86,18 +86,9 @@ if (Test-Path $agentExe) {
 }
 
 # ----------------------------------------------------------
-# 3. Disable Azure VM Guest Agent
+# 3. Connect to Azure Arc
 # ----------------------------------------------------------
-Write-Output '[3/4] Disabling Azure VM Guest Agent...'
-
-Set-Service WindowsAzureGuestAgent -StartupType Disabled
-Stop-Service WindowsAzureGuestAgent -Force
-Write-Output '  WindowsAzureGuestAgent has been disabled.'
-
-# ----------------------------------------------------------
-# 4. Connect to Azure Arc
-# ----------------------------------------------------------
-Write-Output '[4/4] Connecting to Azure Arc...'
+Write-Output '[3/4] Connecting to Azure Arc...'
 
 $env:MSFT_ARC_TEST = 'true'
 
@@ -121,5 +112,20 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Output "  Arc connection failed (ExitCode: $LASTEXITCODE)."
 }
+
+# ----------------------------------------------------------
+# 4. Disable Azure VM Guest Agent (delayed)
+# ----------------------------------------------------------
+Write-Output '[4/4] Scheduling Azure VM Guest Agent disable (30s delay)...'
+
+# Run as a background process with delay so that the run-command
+# response can be sent back via the guest agent before it is stopped.
+Start-Process powershell.exe -ArgumentList '-NoProfile', '-Command', @'
+Start-Sleep -Seconds 30
+Set-Service WindowsAzureGuestAgent -StartupType Disabled
+Stop-Service WindowsAzureGuestAgent -Force
+'@ -WindowStyle Hidden
+
+Write-Output '  Guest agent will be disabled in ~30 seconds.'
 
 Write-Output '=== Arc Agent Setup Completed ==='
