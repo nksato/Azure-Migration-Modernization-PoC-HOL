@@ -5,10 +5,11 @@
     Azure VM 上で Azure Arc 対応サーバーを評価するため、以下の手順を自動実行します。
     1. 環境変数 MSFT_ARC_TEST を設定 (Azure VM 上での Arc インストールを許可)
     2. VM 拡張機能を削除
-    3. Azure VM ゲスト エージェントを無効化
-    4. IMDS エンドポイントへのアクセスをブロック (ファイアウォール ルール)
-    5. Azure Connected Machine Agent をインストール
-    6. azcmagent connect で Azure Arc に接続
+    3. 1 つの run-command で以下を一括実行 (ゲスト エージェント停止後は run-command が使えないため)
+       a. IMDS エンドポイントへのアクセスをブロック (ファイアウォール ルール)
+       b. Azure Connected Machine Agent をインストール
+       c. Azure VM ゲスト エージェントを無効化
+       d. azcmagent connect で Azure Arc に接続
 
     参考: https://learn.microsoft.com/ja-jp/azure/azure-arc/servers/plan-evaluate-on-azure-virtual-machine
 .PARAMETER ResourceGroupName
@@ -244,75 +245,49 @@ foreach ($vmName in $VmNames) {
     # --- 拡張機能削除後に VM が停止する場合があるため再確認 ---
     Ensure-VmRunning -ResourceGroup $ResourceGroupName -VmName $vmName
 
-    # --- 2c. Azure VM ゲスト エージェントを無効化 ---
-    Invoke-VmRunCommand `
-        -ResourceGroup $ResourceGroupName `
-        -VmName $vmName `
-        -Description "Azure VM ゲスト エージェントを無効化" `
-        -Script 'Set-Service WindowsAzureGuestAgent -StartupType Disabled; Stop-Service WindowsAzureGuestAgent -Force; Write-Output ''WindowsAzureGuestAgent disabled'''
-
-    # --- 2d. IMDS エンドポイントをブロック ---
-    $imdsScript = @'
-$r1 = Get-NetFirewallRule -Name 'BlockAzureIMDS' -ErrorAction SilentlyContinue
-if (-not $r1) {
+    # --- 2c. IMDS ブロック + Agent インストール + ゲスト エージェント無効化 + Arc 接続 ---
+    # ゲスト エージェント停止後は az vm run-command が使えないため、1 つの run-command で一括実行
+    $arcSetupScript = @"
+# ---- IMDS エンドポイントをブロック ----
+`$r1 = Get-NetFirewallRule -Name 'BlockAzureIMDS' -ErrorAction SilentlyContinue
+if (-not `$r1) {
     New-NetFirewallRule -Name 'BlockAzureIMDS' -DisplayName 'Block access to Azure IMDS' -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.254
     Write-Output 'BlockAzureIMDS created'
 } else {
     Write-Output 'BlockAzureIMDS exists'
 }
-$r2 = Get-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -ErrorAction SilentlyContinue
-if (-not $r2) {
+`$r2 = Get-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -ErrorAction SilentlyContinue
+if (-not `$r2) {
     New-NetFirewallRule -Name 'BlockAzureIMDS_AzureLocal' -DisplayName 'Block access to Azure Local IMDS' -Enabled True -Profile Any -Direction Outbound -Action Block -RemoteAddress 169.254.169.253
     Write-Output 'BlockAzureIMDS_AzureLocal created'
 } else {
     Write-Output 'BlockAzureIMDS_AzureLocal exists'
 }
-'@
-    Invoke-VmRunCommand `
-        -ResourceGroup $ResourceGroupName `
-        -VmName $vmName `
-        -Description "IMDS エンドポイントへのアクセスをブロック" `
-        -Script $imdsScript
-}
 
-# ============================================================
-# 3. Azure Connected Machine Agent のインストールと接続
-# ============================================================
-
-foreach ($vmName in $VmNames) {
-    Write-Step "3. [$vmName] Azure Connected Machine Agent のインストールと接続"
-
-    # --- VM 起動確認 ---
-    Ensure-VmRunning -ResourceGroup $ResourceGroupName -VmName $vmName
-
-    # エージェントのダウンロードとインストール
-    $installScript = @'
-$agentExe = 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe'
-if (Test-Path $agentExe) {
+# ---- Azure Connected Machine Agent をインストール ----
+`$agentExe = 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe'
+if (Test-Path `$agentExe) {
     Write-Output 'Agent already installed'
 } else {
     Write-Output 'Downloading agent...'
-    $ProgressPreference = 'SilentlyContinue'
-    $msi = Join-Path $env:TEMP 'install_windows_azcmagent.msi'
-    Invoke-WebRequest -Uri 'https://aka.ms/AzureConnectedMachineAgent' -OutFile $msi -UseBasicParsing
+    `$ProgressPreference = 'SilentlyContinue'
+    `$msi = Join-Path `$env:TEMP 'install_windows_azcmagent.msi'
+    Invoke-WebRequest -Uri 'https://aka.ms/AzureConnectedMachineAgent' -OutFile `$msi -UseBasicParsing
     Write-Output 'Installing agent...'
-    $log = Join-Path $env:TEMP 'installationlog.txt'
-    $exitCode = (Start-Process -FilePath msiexec.exe -ArgumentList '/i',$msi,'/l*v',$log,'/qn' -Wait -Passthru).ExitCode
-    if ($exitCode -ne 0) {
-        throw ('Agent install failed (ExitCode: ' + $exitCode + '). Log: ' + $log)
+    `$log = Join-Path `$env:TEMP 'installationlog.txt'
+    `$exitCode = (Start-Process -FilePath msiexec.exe -ArgumentList '/i',`$msi,'/l*v',`$log,'/qn' -Wait -Passthru).ExitCode
+    if (`$exitCode -ne 0) {
+        throw ('Agent install failed (ExitCode: ' + `$exitCode + '). Log: ' + `$log)
     }
     Write-Output 'Agent installed successfully'
 }
-'@
-    Invoke-VmRunCommand `
-        -ResourceGroup $ResourceGroupName `
-        -VmName $vmName `
-        -Description "Azure Connected Machine Agent をダウンロード・インストール" `
-        -Script $installScript
 
-    # azcmagent connect で Arc に接続
-    # サービス プリンシパルの資格情報を使用
-    $connectScript = @"
+# ---- Azure VM ゲスト エージェントを無効化 ----
+Set-Service WindowsAzureGuestAgent -StartupType Disabled
+Stop-Service WindowsAzureGuestAgent -Force
+Write-Output 'WindowsAzureGuestAgent disabled'
+
+# ---- Azure Arc に接続 ----
 `$env:MSFT_ARC_TEST = 'true'
 & 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe' connect ``
     --service-principal-id '$ServicePrincipalId' ``
@@ -328,19 +303,18 @@ if (`$LASTEXITCODE -eq 0) {
     Write-Output ('Arc connection failed (ExitCode: ' + `$LASTEXITCODE + ')')
 }
 "@
-
     Invoke-VmRunCommand `
         -ResourceGroup $ResourceGroupName `
         -VmName $vmName `
-        -Description "Azure Arc に接続" `
-        -Script $connectScript
+        -Description "IMDS ブロック → Agent インストール → ゲスト エージェント無効化 → Arc 接続" `
+        -Script $arcSetupScript
 }
 
 # ============================================================
-# 4. 接続結果の確認
+# 3. 接続結果の確認
 # ============================================================
 
-Write-Step "4. Azure Arc 接続状況の確認"
+Write-Step "3. Azure Arc 接続状況の確認"
 
 $arcResources = az resource list `
     --resource-group $ArcResourceGroupName `
@@ -355,6 +329,10 @@ else {
     Write-Host "  Arc リソースが見つかりません。接続が完了するまで数分かかる場合があります。" -ForegroundColor Yellow
     Write-Host "  Azure Portal で確認してください: Azure Arc > サーバー" -ForegroundColor Yellow
 }
+
+# ============================================================
+# 後片付け
+# ============================================================
 
 # シークレットをメモリからクリア
 $spSecret = $null
