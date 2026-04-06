@@ -11,6 +11,7 @@
     2. 各 VM の事前準備 (MSFT_ARC_TEST 環境変数、拡張機能削除)
     3. Setup-ArcAgent.ps1 を @file で送信・実行
     4. 接続結果の確認
+    5. サービス プリンシパルのクリーンアップ (自動作成時のみ)
 
     参考: https://learn.microsoft.com/ja-jp/azure/azure-arc/servers/plan-evaluate-on-azure-virtual-machine
 .PARAMETER ResourceGroupName
@@ -49,6 +50,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$spName = 'arc-onboarding-lab'
+$spAutoCreated = $false
 
 # ============================================================
 # ヘルパー関数
@@ -121,7 +125,7 @@ if (-not $ServicePrincipalId) {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $spRaw = az ad sp create-for-rbac `
-        --name "arc-onboarding-lab" `
+        --name $spName `
         --role "Azure Connected Machine Onboarding" `
         --scopes "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
         -o json 2>&1
@@ -135,9 +139,11 @@ if (-not $ServicePrincipalId) {
     $sp = $spJson | ConvertFrom-Json
     $ServicePrincipalId = $sp.appId
     $spSecret = $sp.password
+    $spAutoCreated = $true
 
     Write-Host "  サービス プリンシパル作成完了" -ForegroundColor Green
-    Write-Host "    App ID: $ServicePrincipalId" -ForegroundColor White
+    Write-Host "    名前   : $spName" -ForegroundColor White
+    Write-Host "    App ID : $ServicePrincipalId" -ForegroundColor White
 }
 else {
     Write-Host "  既存のサービス プリンシパルを使用します: $ServicePrincipalId" -ForegroundColor Green
@@ -275,6 +281,26 @@ else {
 # シークレットをメモリからクリア
 $spSecret = $null
 [System.GC]::Collect()
+
+# ============================================================
+# 5. サービス プリンシパルのクリーンアップ
+# ============================================================
+
+if ($spAutoCreated) {
+    Write-Step "5. サービス プリンシパルのクリーンアップ"
+
+    Write-Host "  ロール割り当てを削除中..." -ForegroundColor Yellow
+    az role assignment delete `
+        --assignee $ServicePrincipalId `
+        --role "Azure Connected Machine Onboarding" `
+        --scope "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
+        -o none 2>$null
+    Write-Host "  ロール割り当てを削除しました" -ForegroundColor Green
+
+    Write-Host "  アプリ登録 (サービス プリンシパル) を削除中..." -ForegroundColor Yellow
+    az ad app delete --id $ServicePrincipalId -o none 2>$null
+    Write-Host "  アプリ登録 '$spName' (App ID: $ServicePrincipalId) を削除しました" -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
