@@ -25,14 +25,22 @@ $ErrorActionPreference = 'Continue'
 if (-not $ArcResourceGroupName) { $ArcResourceGroupName = $ResourceGroupName }
 $total = 0; $passed = 0
 
-# --- connectedmachine 拡張の確認 (run-command には 2.x 以上が必要) ---
+# --- connectedmachine 拡張の確認 (run-command には 2.x 以上が必要 / preview) ---
 $extVer = az extension show --name connectedmachine --query version -o tsv 2>$null
-if (-not $extVer -or $extVer -lt '2') {
-    Write-Host "  connectedmachine 拡張をアップデートしています..." -ForegroundColor Yellow
+if (-not $extVer) {
+    Write-Host "  connectedmachine 拡張が未インストールです (run-command には 2.x preview 以上が必要)" -ForegroundColor Yellow
+    $ans = Read-Host "  インストールしますか? (y/n)"
+    if ($ans -ne 'y') { Write-Host "中断しました。"; exit 1 }
+    az extension add --name connectedmachine --allow-preview true -o none 2>$null
+}
+elseif ($extVer -lt '2') {
+    Write-Host "  connectedmachine 拡張: v$extVer (run-command には 2.x preview 以上が必要)" -ForegroundColor Yellow
+    $ans = Read-Host "  preview 版にアップデートしますか? (y/n)"
+    if ($ans -ne 'y') { Write-Host "中断しました。"; exit 1 }
     az extension update --name connectedmachine --allow-preview true -o none 2>$null
-    if (-not $?) {
-        az extension add --name connectedmachine --allow-preview true -o none 2>$null
-    }
+}
+else {
+    Write-Host "  connectedmachine 拡張: v$extVer (preview) [OK]" -ForegroundColor Green
 }
 
 # --- ヘルパー ---
