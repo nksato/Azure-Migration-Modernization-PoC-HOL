@@ -82,7 +82,7 @@ function Ensure-VmRunning {
 }
 
 # VM 内スクリプトのパスを解決
-$setupScriptPath = Join-Path $PSScriptRoot 'scripts' 'Setup-ArcAgent-en.ps1'
+$setupScriptPath = Join-Path (Join-Path $PSScriptRoot 'scripts') 'Setup-ArcAgent-en.ps1'
 if (-not (Test-Path $setupScriptPath)) {
     throw "VM 内スクリプトが見つかりません: $setupScriptPath"
 }
