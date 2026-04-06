@@ -247,6 +247,8 @@ foreach ($vmName in $VmNames) {
 
     # --- 2c. IMDS ブロック + Agent インストール + ゲスト エージェント無効化 + Arc 接続 ---
     # ゲスト エージェント停止後は az vm run-command が使えないため、1 つの run-command で一括実行
+    # シークレットにシングルクォートが含まれる場合に備えてエスケープ
+    $spSecretSafe = $spSecret -replace "'", "''"
     $arcSetupScript = @"
 # ---- IMDS エンドポイントをブロック ----
 `$r1 = Get-NetFirewallRule -Name 'BlockAzureIMDS' -ErrorAction SilentlyContinue
@@ -291,7 +293,7 @@ Write-Output 'WindowsAzureGuestAgent disabled'
 `$env:MSFT_ARC_TEST = 'true'
 & 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe' connect ``
     --service-principal-id '$ServicePrincipalId' ``
-    --service-principal-secret '$spSecret' ``
+    --service-principal-secret '$spSecretSafe' ``
     --tenant-id '$TenantId' ``
     --subscription-id '$SubscriptionId' ``
     --resource-group '$ArcResourceGroupName' ``
