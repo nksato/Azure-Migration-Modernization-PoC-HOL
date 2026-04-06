@@ -28,10 +28,15 @@
     既存のサービス プリンシパル アプリケーション ID (省略時は自動作成)
 .PARAMETER VmNames
     Arc 対応にする VM 名の配列 (既定: vm-onprem-ad, vm-onprem-sql, vm-onprem-web)
+.PARAMETER CleanupOnly
+    登録処理を行わず、自動作成されたサービス プリンシパル (arc-onboarding-lab) の
+    削除だけを実行します。途中終了で残った SP をクリーンアップする際に使用します。
 .EXAMPLE
     .\Convert-VmToArc.ps1 -ResourceGroupName "rg-onprem"
 .EXAMPLE
     .\Convert-VmToArc.ps1 -ResourceGroupName "rg-onprem" -VmNames @("vm-onprem-web")
+.EXAMPLE
+    .\Convert-VmToArc.ps1 -ResourceGroupName "rg-onprem" -CleanupOnly
 #>
 
 [CmdletBinding()]
@@ -45,7 +50,9 @@ param(
     [string]$SubscriptionId = '',
     [string]$ServicePrincipalId = '',
 
-    [string[]]$VmNames = @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')
+    [string[]]$VmNames = @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web'),
+
+    [switch]$CleanupOnly
 )
 
 Set-StrictMode -Version Latest
@@ -66,6 +73,33 @@ function Write-Step {
     Write-Host "========================================" -ForegroundColor Cyan
 }
 
+function Remove-ArcServicePrincipal {
+    <#
+    .SYNOPSIS
+        arc-onboarding-lab サービス プリンシパルとロール割り当てを削除する
+    #>
+    param(
+        [string]$AppId,
+        [string]$SubId,
+        [string]$RgName,
+        [string]$SpDisplayName
+    )
+
+    Write-Step "サービス プリンシパルのクリーンアップ"
+
+    Write-Host "  ロール割り当てを削除中..." -ForegroundColor Yellow
+    az role assignment delete `
+        --assignee $AppId `
+        --role "Azure Connected Machine Onboarding" `
+        --scope "/subscriptions/$SubId/resourceGroups/$RgName" `
+        -o none 2>$null
+    Write-Host "  ロール割り当てを削除しました" -ForegroundColor Green
+
+    Write-Host "  アプリ登録 (サービス プリンシパル) を削除中..." -ForegroundColor Yellow
+    az ad app delete --id $AppId -o none 2>$null
+    Write-Host "  アプリ登録 '$SpDisplayName' (App ID: $AppId) を削除しました" -ForegroundColor Green
+}
+
 function Ensure-VmRunning {
     param(
         [string]$ResourceGroup,
@@ -83,6 +117,27 @@ function Ensure-VmRunning {
         }
         Write-Host "  [$VmName] VM が起動しました" -ForegroundColor Green
     }
+}
+
+# ============================================================
+# -CleanupOnly: SP クリーンアップのみ実行して終了
+# ============================================================
+
+if ($CleanupOnly) {
+    $account = az account show -o json 2>$null | ConvertFrom-Json
+    if (-not $account) { throw "Azure CLI にログインしてください: az login" }
+    if (-not $SubscriptionId) { $SubscriptionId = $account.id }
+    if (-not $ArcResourceGroupName) { $ArcResourceGroupName = $ResourceGroupName }
+
+    # SP を検索
+    $existingAppId = az ad app list --display-name $spName --query "[0].appId" -o tsv 2>$null
+    if ($existingAppId) {
+        Remove-ArcServicePrincipal -AppId $existingAppId -SubId $SubscriptionId -RgName $ArcResourceGroupName -SpDisplayName $spName
+    }
+    else {
+        Write-Host "  サービス プリンシパル '$spName' は存在しません。クリーンアップ不要です。" -ForegroundColor Green
+    }
+    return
 }
 
 # VM 内スクリプトのパスを解決
@@ -152,6 +207,8 @@ else {
         [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($spSecretSecure)
     )
 }
+
+try {
 
 # ============================================================
 # 2. 各 VM の事前準備
@@ -280,30 +337,6 @@ else {
     Write-Host "  Azure Portal で確認してください: Azure Arc > サーバー" -ForegroundColor Yellow
 }
 
-# シークレットをメモリからクリア
-$spSecret = $null
-[System.GC]::Collect()
-
-# ============================================================
-# 5. サービス プリンシパルのクリーンアップ
-# ============================================================
-
-if ($spAutoCreated) {
-    Write-Step "5. サービス プリンシパルのクリーンアップ"
-
-    Write-Host "  ロール割り当てを削除中..." -ForegroundColor Yellow
-    az role assignment delete `
-        --assignee $ServicePrincipalId `
-        --role "Azure Connected Machine Onboarding" `
-        --scope "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
-        -o none 2>$null
-    Write-Host "  ロール割り当てを削除しました" -ForegroundColor Green
-
-    Write-Host "  アプリ登録 (サービス プリンシパル) を削除中..." -ForegroundColor Yellow
-    az ad app delete --id $ServicePrincipalId -o none 2>$null
-    Write-Host "  アプリ登録 '$spName' (App ID: $ServicePrincipalId) を削除しました" -ForegroundColor Green
-}
-
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " Arc 対応の処理が完了しました" -ForegroundColor Cyan
@@ -324,4 +357,19 @@ if ($cmList) {
         Write-Host "  $line" -ForegroundColor White
     }
     Write-Host ""
+}
+
+} # try end
+finally {
+    # シークレットをメモリからクリア
+    $spSecret = $null
+    [System.GC]::Collect()
+
+    # ============================================================
+    # 5. サービス プリンシパルのクリーンアップ
+    # ============================================================
+
+    if ($spAutoCreated) {
+        Remove-ArcServicePrincipal -AppId $ServicePrincipalId -SubId $SubscriptionId -RgName $ArcResourceGroupName -SpDisplayName $spName
+    }
 }
