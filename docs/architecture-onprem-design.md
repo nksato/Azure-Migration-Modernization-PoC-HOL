@@ -27,9 +27,19 @@
 | 管理導線 | `bas-onprem` (Azure Bastion Basic) | ブラウザ経由の RDP 接続 |
 | 接続基盤 | `vgw-onprem` (VPN Gateway) | Hub 側環境との S2S 接続 |
 
+### サブネット構成
+
+| サブネット | CIDR | 用途 |
+|---|---|---|
+| `ServerSubnet` | `10.0.1.0/24` | DC01 / DB01 / APP01 |
+| `AzureBastionSubnet` | `10.0.254.0/26` | Azure Bastion |
+| `GatewaySubnet` | `10.0.255.0/27` | VPN Gateway |
+
 ---
 
-## 3. サーバー構成
+## 3. リソース構成
+
+### サーバー構成
 
 | Azure リソース名 | ホスト名 | 主な役割 | 代表 IP | OS | VM サイズ |
 |---|---|---|---|---|---|
@@ -47,19 +57,19 @@
 | 接続形態 | APP01 → DB01 |
 | 管理アクセス | Azure Bastion 経由 |
 
+### Azure Arc
+
+この環境は、Azure Arc の評価対象としても利用できます。
+
+| 項目 | 内容 |
+|---|---|
+| 対象 | `DC01`, `DB01`, `APP01` |
+| 目的 | ハイブリッド管理 / ポリシー / 更新管理 / Defender 評価 |
+| 参照スクリプト | `infra/onprem/Enable-ArcOnVMs.ps1` |
+
 ---
 
 ## 4. ネットワーク設計
-
-### サブネット構成
-
-| サブネット | CIDR | 用途 |
-|---|---|---|
-| `ServerSubnet` | `10.0.1.0/24` | DC01 / DB01 / APP01 |
-| `AzureBastionSubnet` | `10.0.254.0/26` | Azure Bastion |
-| `GatewaySubnet` | `10.0.255.0/27` | VPN Gateway |
-
-### 設計ポイント
 
 - 各 VM に**パブリック IP は付与しない**
 - 管理アクセスは **Azure Bastion** に統一
@@ -69,7 +79,7 @@
 
 ---
 
-## 5. クラウド側とのネットワーク接続
+## 5. ネットワーク接続と DNS
 
 疑似オンプレ環境は、クラウド側 Hub VNet と **S2S VPN** で接続します。この構成はオンプレ基盤とは別のテンプレート (`infra/network/`) でデプロイされます。
 
@@ -95,7 +105,9 @@
 
 ---
 
-## 6. 使用テンプレート
+## 6. デプロイ
+
+### 使用テンプレート
 
 ハンズオンでは、`infra/onprem/main.bicep` をエントリポイントとして利用します。
 
@@ -106,9 +118,7 @@
 | `infra/network/main.bicep` | VPN Gateway + S2S 接続 | オンプレ・ Hub 両方の VPN GW + 接続 |
 | `infra/main.bicep` | 一括デプロイ用エントリポイント | 上記をまとめて実行 |
 
----
-
-## 7. デプロイとセットアップの流れ
+### デプロイとセットアップの流れ
 
 Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動的に実行**されます。
 
@@ -127,29 +137,26 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 
 ---
 
-## 8. Azure Arc
+## 7. 関連ドキュメント
 
-この環境は、Azure Arc の評価対象としても利用できます。
+- クラウド設計: [`./architecture-cloud-design.md`](./architecture-cloud-design.md)
+- オンプレ図解: [`./architecture-onprem-diagrams.md`](./architecture-onprem-diagrams.md)
+- クラウド図解: [`./architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md)
+- 検証スクリプト: [`./architecture-verify-scripts.md`](./architecture-verify-scripts.md)
+- オンプレデプロイ: [`./handson/00a-onprem-deploy.md`](./handson/00a-onprem-deploy.md)
+- Parts Unlimited セットアップ: [`./handson/00b-onprem-parts-unlimited.md`](./handson/00b-onprem-parts-unlimited.md)
+- 動作確認: [`./handson/00c-onprem-verification.md`](./handson/00c-onprem-verification.md)
+- VPN 接続: [`./handson/00e-cloud-vpn-connect.md`](./handson/00e-cloud-vpn-connect.md)
+- ハイブリッド DNS: [`./handson/00f-cloud-hybrid-dns.md`](./handson/00f-cloud-hybrid-dns.md)
 
-| 項目 | 内容 |
-|---|---|
-| 対象 | `DC01`, `DB01`, `APP01` |
-| 目的 | ハイブリッド管理 / ポリシー / 更新管理 / Defender 評価 |
-| 参照スクリプト | `infra/onprem/Enable-ArcOnVMs.ps1` |
+### 参照ファイル一覧
 
----
-
-## 9. 参照ファイル
-
-- `README.md`
-- `docs/README.md`
-- `infra/onprem/Deploy-Lab.ps1`
-- `infra/onprem/main.bicep` (サブスクリプションスコープ)
-- `infra/onprem/resources.bicep` (リソースグループスコープ)
-- `infra/network/main.bicep` (VPN Gateway + S2S 接続)
+- `infra/onprem/main.bicep` — サブスクリプションスコープ ラッパー
+- `infra/onprem/resources.bicep` — リソースグループスコープ (VM / VNet / Bastion / NSG)
+- `infra/network/main.bicep` — VPN Gateway + S2S 接続
 - `infra/network/modules/onprem-vpn-gateway.bicep`
 - `infra/network/modules/vpn-connection.bicep`
 - `infra/network/modules/vpn-connection-hub.bicep`
-- `infra/main.bicep` (一括デプロイ用エントリポイント)
-- `infra/onprem/Enable-ArcOnVMs.ps1`
-- `infra/onprem/scripts/*`
+- `infra/main.bicep` — 一括デプロイ用エントリポイント
+- `infra/onprem/Enable-ArcOnVMs.ps1` — Azure Arc オンボーディング
+- `infra/onprem/scripts/*` — セットアップスクリプト群
