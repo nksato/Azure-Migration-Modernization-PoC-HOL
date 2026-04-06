@@ -85,6 +85,28 @@ az dns-resolver vnet-link create `
     --id $hubVnetId `
     --only-show-errors 2>$null
 
+# ルールセットを Spoke VNet にもリンク (Spoke VM からオンプレ名前解決に必要)
+$spokeVnets = @(
+    @{ rg = 'rg-spoke1'; vnet = 'vnet-spoke1'; link = 'link-vnet-spoke1' }
+    @{ rg = 'rg-spoke2'; vnet = 'vnet-spoke2'; link = 'link-vnet-spoke2' }
+    @{ rg = 'rg-spoke3'; vnet = 'vnet-spoke3'; link = 'link-vnet-spoke3' }
+    @{ rg = 'rg-spoke4'; vnet = 'vnet-spoke4'; link = 'link-vnet-spoke4' }
+)
+foreach ($spoke in $spokeVnets) {
+    $spokeVnetId = az network vnet show -g $spoke.rg -n $spoke.vnet --query "id" -o tsv 2>$null
+    if ($spokeVnetId) {
+        Write-Host "  Linking ruleset to $($spoke.vnet)..." -ForegroundColor Yellow
+        az dns-resolver vnet-link create `
+            --resource-group $HubResourceGroup `
+            --ruleset-name 'dnsrs-hub' `
+            --name $spoke.link `
+            --id $spokeVnetId `
+            --only-show-errors 2>$null
+    } else {
+        Write-Host "  $($spoke.vnet) not found, skipping link." -ForegroundColor DarkGray
+    }
+}
+
 Write-Host '  Cloud to On-premises DNS forwarding configured.' -ForegroundColor Green
 
 # ============================================================

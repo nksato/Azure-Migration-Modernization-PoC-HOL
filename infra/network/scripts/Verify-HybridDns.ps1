@@ -106,7 +106,13 @@ if ($rulesJson) {
 $vnetLinks = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
     --resource-group $HubResourceGroup -o json 2>$null | ConvertFrom-Json
 $vnetLinkCount = if ($vnetLinks) { $vnetLinks.Count } else { 0 }
-Test-Bool "Ruleset VNet リンク数 >= 1 (実際: $vnetLinkCount)" ($vnetLinkCount -ge 1)
+Test-Bool "Ruleset VNet リンク数 >= 2 (Hub + Spoke) (実際: $vnetLinkCount)" ($vnetLinkCount -ge 2)
+if ($vnetLinks) {
+    foreach ($link in $vnetLinks) {
+        $vnetName = ($link.virtualNetwork.id -split '/')[-1]
+        Write-Host "         $($link.name) → $vnetName" -ForegroundColor Gray
+    }
+}
 
 # ============================================================
 # 3. DC01 条件付きフォワーダー (オンプレ → クラウド)
