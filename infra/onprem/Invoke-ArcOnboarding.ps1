@@ -271,7 +271,9 @@ $arcResources = az resource list `
     -o table 2>$null
 
 if ($arcResources) {
-    Write-Host $arcResources -ForegroundColor Green
+    foreach ($line in $arcResources) {
+        Write-Host "  $line" -ForegroundColor Green
+    }
 }
 else {
     Write-Host "  Arc リソースが見つかりません。接続が完了するまで数分かかる場合があります。" -ForegroundColor Yellow
