@@ -150,6 +150,10 @@ Write-Output '---AGENT---'
 if (Test-Path 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe') { & 'C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe' show } else { Write-Output 'NOT_INSTALLED' }
 '@
 
+    # デバッグ: 生の戻り値を表示
+    Write-Host "  [DEBUG] raw output:" -ForegroundColor DarkGray
+    Write-Host $allOut -ForegroundColor DarkGray
+
     if (-not $allOut) {
         Write-Host "  [FAIL] [$vmName] VM コマンド実行失敗" -ForegroundColor Red
         $script:total += 9; continue
