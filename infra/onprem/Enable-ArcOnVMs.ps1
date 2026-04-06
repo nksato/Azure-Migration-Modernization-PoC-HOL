@@ -170,7 +170,7 @@ if (-not $ServicePrincipalId) {
         --name "arc-onboarding-lab" `
         --role "Azure Connected Machine Onboarding" `
         --scopes "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
-        -o json 2>&1
+        -o json 2>&1 | ForEach-Object { $_.ToString() }
 
     if ($LASTEXITCODE -ne 0) {
         throw "サービス プリンシパルの作成に失敗しました: $spRaw"
