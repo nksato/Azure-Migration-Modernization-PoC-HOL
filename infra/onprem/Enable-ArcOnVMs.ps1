@@ -78,20 +78,23 @@ function Invoke-VmRunCommand {
         Write-Host "  [$VmName] $Description" -ForegroundColor Yellow
     }
 
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $result = az vm run-command invoke `
         --resource-group $ResourceGroup `
         --name $VmName `
         --command-id RunPowerShellScript `
         --scripts $Script `
         -o json 2>&1
+    $ErrorActionPreference = $prevEAP
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [$VmName] コマンド実行に失敗しました: $result" -ForegroundColor Red
         return $null
     }
 
-    # stderr 由来の WARNING 行を除外して JSON のみパース
-    $jsonText = ($result | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
+    # stderr 由来の WARNING 行 (ErrorRecord) を文字列化してから除外し JSON のみパース
+    $jsonText = ($result | ForEach-Object { $_.ToString() } | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
     $parsed = $jsonText | ConvertFrom-Json
     $stdout = $parsed.value | Where-Object { $_.code -like '*StdOut*' } | Select-Object -ExpandProperty message
     $stderr = $parsed.value | Where-Object { $_.code -like '*StdErr*' } | Select-Object -ExpandProperty message
@@ -166,18 +169,21 @@ Write-Step "1. サービス プリンシパルの準備"
 if (-not $ServicePrincipalId) {
     Write-Host "  Arc オンボーディング用サービス プリンシパルを作成します..." -ForegroundColor Yellow
 
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $spRaw = az ad sp create-for-rbac `
         --name "arc-onboarding-lab" `
         --role "Azure Connected Machine Onboarding" `
         --scopes "/subscriptions/$SubscriptionId/resourceGroups/$ArcResourceGroupName" `
-        -o json 2>&1 | ForEach-Object { $_.ToString() }
+        -o json 2>&1
+    $ErrorActionPreference = $prevEAP
 
     if ($LASTEXITCODE -ne 0) {
         throw "サービス プリンシパルの作成に失敗しました: $spRaw"
     }
 
-    # stderr 由来の WARNING 行を除外して JSON のみパース
-    $spJson = ($spRaw | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
+    # stderr 由来の WARNING 行 (ErrorRecord) を文字列化してから除外し JSON のみパース
+    $spJson = ($spRaw | ForEach-Object { $_.ToString() } | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
     $sp = $spJson | ConvertFrom-Json
     $ServicePrincipalId = $sp.appId
     $spSecret = $sp.password
