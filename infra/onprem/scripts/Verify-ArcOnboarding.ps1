@@ -26,6 +26,16 @@ $ErrorActionPreference = 'Continue'
 if (-not $ArcResourceGroupName) { $ArcResourceGroupName = $ResourceGroupName }
 $total = 0; $passed = 0
 
+# --- connectedmachine 拡張の確認 (run-command には 2.x 以上が必要) ---
+$extVer = az extension show --name connectedmachine --query version -o tsv 2>$null
+if (-not $extVer -or $extVer -lt '2') {
+    Write-Host "  connectedmachine 拡張をアップデートしています..." -ForegroundColor Yellow
+    az extension update --name connectedmachine --allow-preview true -o none 2>$null
+    if (-not $?) {
+        az extension add --name connectedmachine --allow-preview true -o none 2>$null
+    }
+}
+
 # --- ヘルパー ---
 
 function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
