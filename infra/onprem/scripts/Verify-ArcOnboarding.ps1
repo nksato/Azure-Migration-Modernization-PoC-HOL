@@ -138,6 +138,7 @@ foreach ($vmName in $VmNames) {
 foreach ($vmName in $VmNames) {
     Write-Host ""
     Write-Host "--- 2. [$vmName] Arc 対応準備の確認 ---" -ForegroundColor Yellow
+    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
     $prepOut = Invoke-ArcCommand -VmName $vmName -Script @'
 Write-Output ('MSFT_ARC_TEST=' + [System.Environment]::GetEnvironmentVariable('MSFT_ARC_TEST', 'Machine'))
@@ -176,6 +177,7 @@ Write-Output ('IMDS_LOCAL_BLOCK=' + $(if ($imds2) { $imds2.Enabled } else { 'Not
     # --- 3. Connected Machine Agent の確認 ---
     Write-Host ""
     Write-Host "--- 3. [$vmName] Connected Machine Agent の確認 ---" -ForegroundColor Yellow
+    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
     $agentOut = Invoke-ArcCommand -VmName $vmName -Script @'
 $agentPath = "C:\Program Files\AzureConnectedMachineAgent\azcmagent.exe"
