@@ -310,6 +310,17 @@ Write-Host " Arc 対応の処理が完了しました" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  確認方法:" -ForegroundColor White
-Write-Host "    Azure Portal → Azure Arc → サーバー" -ForegroundColor White
-Write-Host "    または: az connectedmachine list -g $ArcResourceGroupName -o table" -ForegroundColor White
+Write-Host "    - Azure Portal → Azure Arc → サーバー" -ForegroundColor Gray
+Write-Host "    - az connectedmachine list -g $ArcResourceGroupName -o table" -ForegroundColor Gray
 Write-Host ""
+
+# connectedmachine で詳細表示 (status 含む)
+$cmList = az connectedmachine list -g $ArcResourceGroupName `
+    --query "[].{Name:name, Status:status, OS:osName, Agent:agentVersion, Location:location}" `
+    -o table 2>$null
+if ($cmList) {
+    foreach ($line in $cmList) {
+        Write-Host "  $line" -ForegroundColor White
+    }
+    Write-Host ""
+}
