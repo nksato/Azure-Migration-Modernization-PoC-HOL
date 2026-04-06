@@ -211,7 +211,7 @@ foreach ($vmName in $VmNames) {
     Write-Host "  [$vmName] Setup-ArcAgent.ps1 を実行中..." -ForegroundColor Yellow
     Write-Host "  (IMDS ブロック → Agent インストール → Arc 接続 → ゲスト エージェント無効化[遅延])" -ForegroundColor Gray
 
-    $result = az vm run-command invoke `
+    $resultJson = az vm run-command invoke `
         --resource-group $ResourceGroupName `
         --name $vmName `
         --command-id RunPowerShellScript `
@@ -223,7 +223,7 @@ foreach ($vmName in $VmNames) {
                      "ResourceGroupName=$ArcResourceGroupName" `
                      "Location=$Location" `
                      "ResourceName=$arcResourceName" `
-        --query "value[].message" -o tsv
+        -o json
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [$vmName] Arc セットアップに失敗しました。" -ForegroundColor Red
@@ -231,7 +231,25 @@ foreach ($vmName in $VmNames) {
     else {
         Write-Host "  [$vmName] 結果:" -ForegroundColor Green
     }
-    Write-Host $result -ForegroundColor Gray
+
+    # run-command の stdout/stderr を整形して表示
+    try {
+        $parsed = $resultJson | ConvertFrom-Json
+        foreach ($entry in $parsed.value) {
+            $code = $entry.code
+            $msg  = $entry.message
+            if ($msg) {
+                $color = if ($code -eq 'ComponentStatus/StdErr/succeeded') { 'Yellow' } else { 'Gray' }
+                $msg -split "`n" | ForEach-Object {
+                    Write-Host "    $_" -ForegroundColor $color
+                }
+            }
+        }
+    }
+    catch {
+        # JSON パース失敗時はそのまま出力
+        Write-Host $resultJson -ForegroundColor Gray
+    }
 }
 
 # ============================================================
