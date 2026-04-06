@@ -311,7 +311,8 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  確認方法:" -ForegroundColor White
 Write-Host "    - Azure Portal → Azure Arc → サーバー" -ForegroundColor Gray
-Write-Host "    - az connectedmachine list -g $ArcResourceGroupName -o table" -ForegroundColor Gray
+Write-Host "    - az connectedmachine list -g $ArcResourceGroupName ``" -ForegroundColor Gray
+Write-Host "        --query ""[].{Name:name, Status:status, OS:osName, Agent:agentVersion}"" -o table" -ForegroundColor Gray
 Write-Host ""
 
 # connectedmachine で詳細表示 (status 含む)
