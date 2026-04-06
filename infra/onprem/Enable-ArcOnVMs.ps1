@@ -93,8 +93,8 @@ function Invoke-VmRunCommand {
         return $null
     }
 
-    # stderr 由来の WARNING 行 (ErrorRecord) を文字列化してから除外し JSON のみパース
-    $jsonText = ($result | ForEach-Object { $_.ToString() } | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
+    # stderr 由来の ErrorRecord を型で除外し、stdout (string) のみで JSON パース
+    $jsonText = ($result | Where-Object { $_ -is [string] }) -join "`n"
     $parsed = $jsonText | ConvertFrom-Json
     $stdout = $parsed.value | Where-Object { $_.code -like '*StdOut*' } | Select-Object -ExpandProperty message
     $stderr = $parsed.value | Where-Object { $_.code -like '*StdErr*' } | Select-Object -ExpandProperty message
@@ -182,8 +182,8 @@ if (-not $ServicePrincipalId) {
         throw "サービス プリンシパルの作成に失敗しました: $spRaw"
     }
 
-    # stderr 由来の WARNING 行 (ErrorRecord) を文字列化してから除外し JSON のみパース
-    $spJson = ($spRaw | ForEach-Object { $_.ToString() } | Where-Object { $_ -notmatch '^WARNING' }) -join "`n"
+    # stderr 由来の ErrorRecord を型で除外し、stdout (string) のみで JSON パース
+    $spJson = ($spRaw | Where-Object { $_ -is [string] }) -join "`n"
     $sp = $spJson | ConvertFrom-Json
     $ServicePrincipalId = $sp.appId
     $spSecret = $sp.password
