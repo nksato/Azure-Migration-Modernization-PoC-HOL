@@ -19,26 +19,60 @@
 
 ### ネットワーク構成
 
-| VNet | CIDR | 役割 |
+| VNet | CIDR | リソースグループ | 役割 |
+|---|---|---|---|
+| `vnet-onprem` | `10.0.0.0/16` | rg-onprem | 移行元（疑似オンプレ） |
+| `vnet-hub` | `10.10.0.0/16` | rg-hub | 共通サービス・管理基盤 |
+| `vnet-spoke1` | `10.20.0.0/16` | rg-spoke1 | Rehost 用 |
+| `vnet-spoke2` | `10.21.0.0/16` | rg-spoke2 | DB PaaS 化用 |
+| `vnet-spoke3` | `10.22.0.0/16` | rg-spoke3 | コンテナ化用 |
+| `vnet-spoke4` | `10.23.0.0/16` | rg-spoke4 | フル PaaS 化用 |
+
+### Hub VNet サブネット構成
+
+| サブネット | CIDR | 用途 |
 |---|---|---|
-| `OnPrem VNet` | `10.0.0.0/16` | 移行元（疑似オンプレ） |
-| `Hub VNet` | `10.10.0.0/16` | 共通サービス・管理基盤 |
-| `Spoke1 VNet` | `10.20.0.0/16` | Rehost 用 |
-| `Spoke2 VNet` | `10.21.0.0/16` | DB PaaS 化用 |
-| `Spoke3 VNet` | `10.22.0.0/16` | コンテナ化用 |
-| `Spoke4 VNet` | `10.23.0.0/16` | フル PaaS 化用 |
+| `AzureFirewallSubnet` | `10.10.1.0/26` | Azure Firewall |
+| `AzureFirewallManagementSubnet` | `10.10.4.0/26` | Firewall 管理 (Basic SKU 必須) |
+| `AzureBastionSubnet` | `10.10.2.0/26` | Azure Bastion |
+| `GatewaySubnet` | `10.10.255.0/27` | VPN Gateway |
+| `snet-dns-inbound` | `10.10.5.0/28` | DNS Private Resolver Inbound |
+| `snet-dns-outbound` | `10.10.5.16/28` | DNS Private Resolver Outbound |
 
-### Hub VNet の主な役割
+### Spoke VNet サブネット構成
 
-| サービス | 役割 |
+| Spoke | サブネット | CIDR | 用途 |
+|---|---|---|---|
+| Spoke1 | `snet-web` | `10.20.1.0/24` | Web VM |
+| Spoke1 | `snet-db` | `10.20.2.0/24` | SQL VM |
+| Spoke2 | `snet-web` | `10.21.1.0/24` | Web VM |
+| Spoke2 | `snet-pep` | `10.21.2.0/24` | Private Endpoint (Azure SQL) |
+| Spoke3 | `snet-aca` | `10.22.0.0/23` | Container Apps Environment |
+| Spoke3 | `snet-pep` | `10.22.3.0/24` | Private Endpoint (Azure SQL) |
+| Spoke4 | `snet-appservice` | `10.23.1.0/24` | App Service VNet Integration |
+| Spoke4 | `snet-pep` | `10.23.2.0/24` | Private Endpoint (Azure SQL) |
+
+### Hub の主なリソース (rg-hub)
+
+| リソース名 | 種別 | 役割 |
+|---|---|---|
+| `afw-hub` | Azure Firewall (Basic) | Spoke 間・外向き通信の制御 |
+| `afwp-hub` | Firewall Policy | Firewall のルール定義 |
+| `rt-spokes-to-fw` | Route Table | Spoke トラフィックを Firewall 経由に制御 |
+| `vpngw-hub` | VPN Gateway (VpnGw1AZ) | オンプレ VNet との S2S 接続 |
+| `bas-hub` | Azure Bastion (Basic) | 管理用 RDP アクセス |
+| `law-hub` | Log Analytics Workspace | 監視データ集約 (30 日保持) |
+| `dnspr-hub` | DNS Private Resolver | ハイブリッド DNS 解決 |
+| `dnsrs-hub` | DNS Forwarding Ruleset | `lab.local` をオンプレ DC01 へ転送 |
+| `privatelink.database.windows.net` | Private DNS Zone | Azure SQL の Private Endpoint 名前解決 |
+| `dash-poc-overview` | Portal Dashboard | PoC 環境の概要ダッシュボード |
+
+### サブスクリプションスコープの管理リソース
+
+| リソース | 役割 |
 |---|---|
-| Azure Firewall | Spoke 間・外向き通信の制御 |
-| VPN Gateway | OnPrem VNet との接続 |
-| Azure Bastion | 管理用アクセス |
-| Log Analytics | 監視データ集約 |
-| Azure Policy | ガバナンス |
-| Defender for Cloud | セキュリティ評価 |
-| Azure Migrate Project | 移行評価・計画 |
+| Azure Policy (計 6 ポリシー) | リージョン制限・タグ強制・パブリックアクセス監査・管理ポート監査 |
+| Defender for Cloud | VM: Standard、その他: Free |
 
 ---
 
