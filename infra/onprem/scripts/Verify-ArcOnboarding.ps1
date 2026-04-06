@@ -47,21 +47,28 @@ function Invoke-ArcCommand ([string]$VmName, [string]$Script) {
         --resource-group $ArcResourceGroupName `
         --machine-name $arcName `
         --run-command-name $cmdName `
-        --script $oneLiner `
+        --script "$oneLiner" `
         -o json 2>&1
 
     $json = ($raw | Where-Object { $_ -is [string] }) -join "`n"
-    $r = $json | ConvertFrom-Json
+    try {
+        $r = $json | ConvertFrom-Json
+    }
+    catch {
+        Write-Host "         JSON parse error: $json" -ForegroundColor DarkYellow
+        return $null
+    }
 
     $stderr = $r.instanceView.error
     if ($stderr) { Write-Host "         stderr: $stderr" -ForegroundColor DarkYellow }
 
-    # 使い終わった run-command リソースを削除
-    az connectedmachine run-command delete `
-        --resource-group $ArcResourceGroupName `
-        --machine-name $arcName `
-        --run-command-name $cmdName `
-        --yes -o none 2>$null
+    # 使い終わった run-command リソースをバックグラウンドで削除
+    Start-Job -ScriptBlock {
+        param($rg, $machine, $name)
+        az connectedmachine run-command delete `
+            --resource-group $rg --machine-name $machine `
+            --run-command-name $name --yes -o none 2>$null
+    } -ArgumentList $ArcResourceGroupName, $arcName, $cmdName | Out-Null
 
     $r.instanceView.output
 }
