@@ -48,6 +48,18 @@ param(
     [string[]]$VmNames = @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')
 )
 
+# ============================================================
+# このスクリプトは直接実行しないでください。
+# 代わりに Invoke-ArcOnboarding.ps1 を使用してください。
+# ============================================================
+Write-Host ""
+Write-Host "[警告] このスクリプト (Enable-ArcOnVMs.ps1) は直接実行しないでください。" -ForegroundColor Red
+Write-Host "       代わりに Invoke-ArcOnboarding.ps1 を使用してください。" -ForegroundColor Red
+Write-Host ""
+Write-Host "  例: .\Invoke-ArcOnboarding.ps1 -ResourceGroupName rg-onprem" -ForegroundColor Yellow
+Write-Host ""
+exit 1
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
