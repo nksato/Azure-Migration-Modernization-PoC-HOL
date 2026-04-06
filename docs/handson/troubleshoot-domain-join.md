@@ -170,4 +170,4 @@ cd infra/onprem
 .\Deploy-Lab.ps1 -ResourceGroupName "rg-onprem" -Location "japaneast"
 ```
 
-詳細は [`00a-onprem-deploy.md`](./00a-onprem-deploy.md) を参照してください。
+詳細は [`1.2-onprem-deploy.md`](./1.2-onprem-deploy.md) を参照してください。
