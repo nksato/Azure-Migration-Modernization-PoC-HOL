@@ -106,6 +106,29 @@ function Invoke-VmRunCommand {
     return $stdout
 }
 
+function Ensure-VmRunning {
+    <#
+    .SYNOPSIS
+        VM が起動中であることを確認し、停止していれば起動する
+    #>
+    param(
+        [string]$ResourceGroup,
+        [string]$VmName
+    )
+
+    $powerState = az vm get-instance-view -g $ResourceGroup -n $VmName `
+        --query "instanceView.statuses[1].displayStatus" -o tsv 2>$null
+
+    if ($powerState -ne 'VM running') {
+        Write-Host "  [$VmName] VM が停止しています ($powerState)。起動します..." -ForegroundColor Yellow
+        az vm start -g $ResourceGroup -n $VmName -o none
+        if ($LASTEXITCODE -ne 0) {
+            throw "[$VmName] VM の起動に失敗しました"
+        }
+        Write-Host "  [$VmName] VM が起動しました" -ForegroundColor Green
+    }
+}
+
 # ============================================================
 # 0. 事前準備
 # ============================================================
@@ -177,6 +200,9 @@ else {
 foreach ($vmName in $VmNames) {
     Write-Step "2. [$vmName] Arc 対応の準備"
 
+    # --- VM 起動確認 ---
+    Ensure-VmRunning -ResourceGroup $ResourceGroupName -VmName $vmName
+
     # --- 2a. 環境変数 MSFT_ARC_TEST を設定 ---
     Invoke-VmRunCommand `
         -ResourceGroup $ResourceGroupName `
@@ -208,6 +234,9 @@ foreach ($vmName in $VmNames) {
     else {
         Write-Host "  [$vmName] 削除対象の拡張機能はありません。" -ForegroundColor Green
     }
+
+    # --- 拡張機能削除後に VM が停止する場合があるため再確認 ---
+    Ensure-VmRunning -ResourceGroup $ResourceGroupName -VmName $vmName
 
     # --- 2c. Azure VM ゲスト エージェントを無効化 ---
     Invoke-VmRunCommand `
@@ -246,6 +275,9 @@ if (-not $r2) {
 
 foreach ($vmName in $VmNames) {
     Write-Step "3. [$vmName] Azure Connected Machine Agent のインストールと接続"
+
+    # --- VM 起動確認 ---
+    Ensure-VmRunning -ResourceGroup $ResourceGroupName -VmName $vmName
 
     # エージェントのダウンロードとインストール
     $installScript = @'
