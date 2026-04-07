@@ -173,42 +173,20 @@ if ($plinkResult -ne 'OK') {
 # ============================================================
 Write-Host "`n=== 6. 名前解決: クラウド → オンプレ ===" -ForegroundColor Cyan
 
-# Spoke VM が存在すれば、そこから lab.local を引く (クラウド→オンプレ方向の実テスト)
-# 存在しない場合は DC01 から DNS Resolver 経由で Forwarding Ruleset チェーンを間接検証
-$spokeVmExists = az vm show -g rg-spoke1 -n vm-spoke1-web --query "name" -o tsv 2>$null
-if ($spokeVmExists) {
-    Write-Host "  vm-spoke1-web から lab.local の名前解決を確認..." -ForegroundColor Gray
+# DC01 から DNS Resolver Inbound IP を -Server 指定して
+# Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを検証
+Write-Host "  DC01 → DNS Resolver 経由で検証中..." -ForegroundColor Gray
 
-    $spokeResolveOut = Invoke-VmCommand 'rg-spoke1' 'vm-spoke1-web' @'
-$r = Resolve-DnsName 'lab.local' -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('SPOKE_AD_RESOLVE=' + $(if ($r) {'OK'} else {'NG'}))
-$dc = Resolve-DnsName 'DC01.lab.local' -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'}))
-'@
-
-    $spokeAdResult = Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE'
-    $spokeDcResult = Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE'
-    Test-Val      'vm-spoke1-web → lab.local 解決'       $spokeAdResult 'OK'
-    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  $spokeDcResult '10.0.1.4'
-    if ($spokeAdResult -ne 'OK' -or $spokeDcResult -ne '10.0.1.4') {
-        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
-    }
-} else {
-    # Spoke VM がないため、DC01 から DNS Resolver Inbound IP を -Server 指定して
-    # Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを間接検証
-    Write-Host "  vm-spoke1-web が未作成 — DC01 → DNS Resolver 経由で間接検証..." -ForegroundColor Gray
-
-    $fallbackOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @"
+$fallbackOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @"
 `$r = Resolve-DnsName 'lab.local' -Server '$inboundIp' -DnsOnly -ErrorAction SilentlyContinue
 Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 "@
 
-    $fallbackResult = Get-Val $fallbackOut 'FALLBACK_RESOLVE'
-    Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' $fallbackResult 'OK'
-    Write-Host "         経路: DC01 → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC01" -ForegroundColor Gray
-    if ($fallbackResult -ne 'OK') {
-        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
-    }
+$fallbackResult = Get-Val $fallbackOut 'FALLBACK_RESOLVE'
+Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' $fallbackResult 'OK'
+Write-Host "         経路: DC01 → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC01" -ForegroundColor Gray
+if ($fallbackResult -ne 'OK') {
+    Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
 }
 
 # ============================================================
@@ -287,6 +265,29 @@ if ($rulesetLinkCount -ge 2) {
     }
 } else {
     Write-Host "  スキップ: Spoke VNet リンク未検出 (-LinkSpokeVnets 未実行)" -ForegroundColor DarkGray
+}
+
+# Spoke VM が存在すれば lab.local 名前解決テスト
+$spokeVmExists = az vm show -g rg-spoke1 -n vm-spoke1-web --query "name" -o tsv 2>$null
+if ($spokeVmExists) {
+    Write-Host "  vm-spoke1-web から lab.local の名前解決を確認..." -ForegroundColor Gray
+
+    $spokeResolveOut = Invoke-VmCommand 'rg-spoke1' 'vm-spoke1-web' @'
+$r = Resolve-DnsName 'lab.local' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('SPOKE_AD_RESOLVE=' + $(if ($r) {'OK'} else {'NG'}))
+$dc = Resolve-DnsName 'DC01.lab.local' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'}))
+'@
+
+    $spokeAdResult = Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE'
+    $spokeDcResult = Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE'
+    Test-Val      'vm-spoke1-web → lab.local 解決'       $spokeAdResult 'OK'
+    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  $spokeDcResult '10.0.1.4'
+    if ($spokeAdResult -ne 'OK' -or $spokeDcResult -ne '10.0.1.4') {
+        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [SKIP] Spoke VM (vm-spoke1-web) 未デプロイ — 名前解決テストスキップ" -ForegroundColor DarkGray
 }
 
 } # -LinkSpokeVnets guard
