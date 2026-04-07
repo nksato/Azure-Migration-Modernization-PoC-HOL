@@ -59,9 +59,9 @@ function Test-NotEmpty ([string]$Label, [string]$Actual) {
 }
 
 # ============================================================
-# 0. リソースグループ
+# 1. リソースグループ & 共通リソース
 # ============================================================
-Write-Host "`n=== 0. リソースグループ ===" -ForegroundColor Cyan
+Write-Host "`n=== 1. リソースグループ & 共通リソース ===" -ForegroundColor Cyan
 
 $rgExists = az group exists -n $ResourceGroupName -o tsv 2>$null
 Test-Val $ResourceGroupName $rgExists 'true'
@@ -72,10 +72,33 @@ if ($rgExists -ne 'true') {
     exit 1
 }
 
+$bastionState = az network bastion show -g $ResourceGroupName -n 'bas-onprem' `
+    --query provisioningState -o tsv 2>$null
+Test-Val 'bas-onprem (Bastion)' $bastionState 'Succeeded'
+
+$natGwState = az network nat gateway show -g $ResourceGroupName -n 'ng-onprem' `
+    --query provisioningState -o tsv 2>$null
+Test-Val 'ng-onprem (NAT Gateway)' $natGwState 'Succeeded'
+
 # ============================================================
-# 1. VM の状態 (Azure API — run-command 不要)
+# 2. VNet & サブネット
 # ============================================================
-Write-Host "`n=== 1. VM の状態 ===" -ForegroundColor Cyan
+Write-Host "`n=== 2. VNet & サブネット ===" -ForegroundColor Cyan
+
+$vnetAddr = az network vnet show -g $ResourceGroupName -n vnet-onprem `
+    --query "addressSpace.addressPrefixes[0]" -o tsv 2>$null
+Test-Val 'vnet-onprem' $vnetAddr '10.0.0.0/16'
+
+foreach ($snet in @('ServerSubnet', 'AzureBastionSubnet')) {
+    $prefix = az network vnet subnet show -g $ResourceGroupName --vnet-name vnet-onprem -n $snet `
+        --query "addressPrefix" -o tsv 2>$null
+    Test-NotEmpty "vnet-onprem/$snet" $prefix
+}
+
+# ============================================================
+# 3. VM の状態 & パブリック IP なし
+# ============================================================
+Write-Host "`n=== 3. VM の状態 ===" -ForegroundColor Cyan
 
 foreach ($vm in @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')) {
     $st = az vm get-instance-view -g $ResourceGroupName -n $vm `
@@ -83,28 +106,19 @@ foreach ($vm in @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')) {
     Test-Val $vm $st 'VM running'
 }
 
-$bastionState = az network bastion show -g $ResourceGroupName -n 'bas-onprem' `
-    --query provisioningState -o tsv 2>$null
-Test-Val 'bas-onprem (Bastion)' $bastionState 'Succeeded'
-
-# ============================================================
-# 2. パブリック IP なし (Azure API)
-# ============================================================
-Write-Host "`n=== 2. パブリック IP なし ===" -ForegroundColor Cyan
-
 foreach ($nic in @('nic-vm-onprem-ad', 'nic-vm-onprem-sql', 'nic-vm-onprem-web')) {
     $pip = az network nic show -g $ResourceGroupName -n $nic `
         --query "ipConfigurations[].publicIPAddress.id" -o tsv 2>$null
     $hasPip = -not [string]::IsNullOrWhiteSpace($pip)
     $color = if ($hasPip) { 'Red' } else { 'Green' }
-    Write-Host ("  [{0}] {1}: {2}" -f $(if ($hasPip) {'FAIL'} else {'PASS'}), $nic, $(if ($hasPip) {$pip} else {'なし'})) -ForegroundColor $color
+    Write-Host ("  [{0}] {1}: {2}" -f $(if ($hasPip) {'FAIL'} else {'PASS'}), $nic, $(if ($hasPip) {$pip} else {'PIP なし'})) -ForegroundColor $color
     $total++; if (-not $hasPip) { $passed++ }
 }
 
 # ============================================================
-# 3. DC01: Active Directory + DNS
+# 4. DC01: Active Directory + DNS
 # ============================================================
-Write-Host "`n=== 3. DC01: Active Directory + DNS ===" -ForegroundColor Cyan
+Write-Host "`n=== 4. DC01: Active Directory + DNS ===" -ForegroundColor Cyan
 Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
 $dcOut = Invoke-VmCommand 'vm-onprem-ad' @'
@@ -121,9 +135,9 @@ Test-Val      'DNS ゾーン'    (Get-Val $dcOut 'DNSZONE') $adDomain
 Test-NotEmpty 'PDC Emulator' (Get-Val $dcOut 'PDC')
 
 # ============================================================
-# 4. DB01: SQL Server + ドメイン参加
+# 5. DB01: SQL Server + ドメイン参加
 # ============================================================
-Write-Host "`n=== 4. DB01: SQL Server + ドメイン参加 ===" -ForegroundColor Cyan
+Write-Host "`n=== 5. DB01: SQL Server + ドメイン参加 ===" -ForegroundColor Cyan
 Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
 $dbOut = Invoke-VmCommand 'vm-onprem-sql' @'
@@ -140,9 +154,9 @@ Write-Host "         ドメイン名: $(Get-Val $dbOut 'DOMAIN')" -ForegroundCol
 Test-Val 'データドライブ F:\SQLData'  (Get-Val $dbOut 'DATA_DRIVE')      'True'
 
 # ============================================================
-# 5. APP01: IIS + ドメイン参加
+# 6. APP01: IIS + ドメイン参加
 # ============================================================
-Write-Host "`n=== 5. APP01: IIS + ドメイン参加 ===" -ForegroundColor Cyan
+Write-Host "`n=== 6. APP01: IIS + ドメイン参加 ===" -ForegroundColor Cyan
 Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
 $webScript = @'
@@ -161,9 +175,9 @@ Test-Val 'ドメイン参加'       (Get-Val $webOut 'PART_OF_DOMAIN')  'True'
 Write-Host "         ドメイン名: $(Get-Val $webOut 'DOMAIN')" -ForegroundColor Gray
 
 # ============================================================
-# 6. 内部疎通 (APP01 から)
+# 7. 内部疎通 (APP01 から)
 # ============================================================
-Write-Host "`n=== 6. 内部疎通 (APP01 から) ===" -ForegroundColor Cyan
+Write-Host "`n=== 7. 内部疎通 (APP01 から) ===" -ForegroundColor Cyan
 Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
 $dcFqdn = if ($adDomain) { "DC01.$adDomain" } else { 'DC01' }
@@ -183,10 +197,10 @@ Test-Val     'APP01 → DB01:3389'    (Get-Val $connOut 'DB_RDP')      'True'
 Test-NotEmpty "DNS $dcFqdn"         (Get-Val $connOut 'DNS_RESOLVE')
 
 # ============================================================
-# 7. Parts Unlimited (Setup-SqlServer / Setup-PartsUnlimited 実行後)
+# 8. Parts Unlimited (Setup-SqlServer / Setup-PartsUnlimited 実行後)
 # ============================================================
 if (-not $SkipPartsUnlimited) {
-    Write-Host "`n=== 7. Parts Unlimited ===" -ForegroundColor Cyan
+    Write-Host "`n=== 8. Parts Unlimited ===" -ForegroundColor Cyan
     Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
     $puOut = Invoke-VmCommand 'vm-onprem-web' @'
@@ -201,7 +215,7 @@ try { $b = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec
     Test-Val 'HTTP 応答'          (Get-Val $puOut 'HTTP')     '200'
     Test-Val 'Parts Unlimited'   (Get-Val $puOut 'PARTS')    'OK'
 } else {
-    Write-Host "`n=== 7. Parts Unlimited [SKIP] ===" -ForegroundColor DarkGray
+    Write-Host "`n=== 8. Parts Unlimited [SKIP] ===" -ForegroundColor DarkGray
     Write-Host '  [SKIP] APP01 → DB01:1433 — Setup-SqlServer 未実行' -ForegroundColor DarkGray
     Write-Host '  [SKIP] HTTP / Parts Unlimited — Setup-PartsUnlimited 未実行' -ForegroundColor DarkGray
 }
