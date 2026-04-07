@@ -202,28 +202,9 @@ Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 }
 
 # ============================================================
-# 7. ネットワーク疎通: オンプレ → Hub
+# 7. オプション検証: EnableCloudVmResolution (azure.internal)
 # ============================================================
-Write-Host "`n=== 7. ネットワーク疎通: オンプレ → Hub ===" -ForegroundColor Cyan
-Write-Host "  DC01 から Hub ネットワークへの疎通確認..." -ForegroundColor Gray
-
-$vpnOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
-$p1 = Test-NetConnection -ComputerName 10.10.5.4 -WarningAction SilentlyContinue
-Write-Output ('HUB_DNS_PING=' + $p1.PingSucceeded)
-$p2 = Test-NetConnection -ComputerName 10.10.1.4 -WarningAction SilentlyContinue
-Write-Output ('HUB_FW_PING=' + $p2.PingSucceeded)
-'@
-
-# DNS Private Resolver / Firewall は ICMP に応答しないことがあるため info 扱い
-$hubDnsPing = Get-Val $vpnOut 'HUB_DNS_PING'
-$hubFwPing  = Get-Val $vpnOut 'HUB_FW_PING'
-Write-Host "         DC01 → Hub DNS (10.10.5.4) ICMP: $hubDnsPing (DNS Resolver は ICMP 非応答の場合あり)" -ForegroundColor Gray
-Write-Host "         DC01 → Hub FW  (10.10.1.4) ICMP: $hubFwPing (Firewall は ICMP ブロックの場合あり)" -ForegroundColor Gray
-
-# ============================================================
-# 8. オプション検証: EnableCloudVmResolution (azure.internal)
-# ============================================================
-Write-Host "`n=== 8. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
+Write-Host "`n=== 7. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
 
 $azInternalState = az network private-dns zone show -g $HubResourceGroup -n 'azure.internal' `
     --query "provisioningState" -o tsv 2>$null
@@ -266,9 +247,9 @@ if ($z) { Write-Output ('AZ_ZONE_TYPE=' + $z.ZoneType); Write-Output ('AZ_MASTER
 }
 
 # ============================================================
-# 9. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
+# 8. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
 # ============================================================
-Write-Host "`n=== 9. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
+Write-Host "`n=== 8. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
 
 $rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
     --resource-group $HubResourceGroup -o json 2>$null
