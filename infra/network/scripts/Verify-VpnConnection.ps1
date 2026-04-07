@@ -259,7 +259,7 @@ if ($TestSpokeReachability) {
         foreach ($vm in $vms) {
             # NIC から Private IP を取得
             $privateIp = az network nic show --ids $vm.nicId `
-                --query "ipConfigurations[0].privateIpAddress" -o tsv 2>$null
+                --query "ipConfigurations[0].privateIPAddress" -o tsv 2>$null
             if ($privateIp) {
                 Write-Host "  [$($spoke.label)] $($vm.name) → $privateIp" -ForegroundColor Gray
                 $discoveredVms += @{

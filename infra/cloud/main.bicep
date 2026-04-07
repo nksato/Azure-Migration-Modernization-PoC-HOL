@@ -263,6 +263,59 @@ module routeTableSpokes 'br/public:avm/res/network/route-table:0.5.0' = if (depl
   }
 }
 
+// Route Table for GatewaySubnet (Spoke 宛トラフィックを Firewall 経由にして対称ルーティングを実現)
+module routeTableGateway 'br/public:avm/res/network/route-table:0.5.0' = if (deployFirewall) {
+  scope: rgHub
+  params: {
+    name: 'rt-gateway-to-fw'
+    location: location
+    tags: commonTags
+    routes: [
+      {
+        name: 'spoke1-to-firewall'
+        properties: {
+          addressPrefix: '10.20.0.0/16'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: firewall.outputs.privateIp
+        }
+      }
+      {
+        name: 'spoke2-to-firewall'
+        properties: {
+          addressPrefix: '10.21.0.0/16'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: firewall.outputs.privateIp
+        }
+      }
+      {
+        name: 'spoke3-to-firewall'
+        properties: {
+          addressPrefix: '10.22.0.0/16'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: firewall.outputs.privateIp
+        }
+      }
+      {
+        name: 'spoke4-to-firewall'
+        properties: {
+          addressPrefix: '10.23.0.0/16'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: firewall.outputs.privateIp
+        }
+      }
+    ]
+  }
+}
+
+// GatewaySubnet に Route Table を関連付け (循環依存を回避するため別モジュールで更新)
+module gatewaySubnetRt 'modules/network/gateway-subnet-rt.bicep' = if (deployFirewall) {
+  scope: rgHub
+  name: 'update-gateway-subnet-rt'
+  params: {
+    routeTableId: routeTableGateway.outputs.resourceId
+  }
+}
+
 // ============================================================
 // Spoke VNets (created after Route Table is available)
 // ============================================================
