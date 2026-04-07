@@ -10,6 +10,7 @@
 # 使い方:
 #   .\Setup-HybridDns.ps1
 #   .\Setup-HybridDns.ps1 -OnpremResourceGroup rg-onprem -HubResourceGroup rg-hub
+#   .\Setup-HybridDns.ps1 -LinkSpokeVnets  # Spoke VNet にも Ruleset をリンク
 # ============================================================
 
 param(
@@ -21,7 +22,8 @@ param(
     [string]$VmName = 'vm-onprem-ad',
     [string]$ForwardZone = 'privatelink.database.windows.net',
     [string]$OnpremDnsTarget = '10.0.1.4',
-    [string]$OnpremDomain = 'lab.local'
+    [string]$OnpremDomain = 'lab.local',
+    [switch]$LinkSpokeVnets
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,6 +88,7 @@ az dns-resolver vnet-link create `
     --only-show-errors 2>$null
 
 # ルールセットを Spoke VNet にもリンク (Spoke VM からオンプレ名前解決に必要)
+if ($LinkSpokeVnets) {
 $spokeVnets = @(
     @{ rg = 'rg-spoke1'; vnet = 'vnet-spoke1'; link = 'link-vnet-spoke1' }
     @{ rg = 'rg-spoke2'; vnet = 'vnet-spoke2'; link = 'link-vnet-spoke2' }
@@ -105,6 +108,9 @@ foreach ($spoke in $spokeVnets) {
     } else {
         Write-Host "  $($spoke.vnet) not found, skipping link." -ForegroundColor DarkGray
     }
+}
+} else {
+    Write-Host '  Spoke VNet linking skipped (use -LinkSpokeVnets to enable).' -ForegroundColor DarkGray
 }
 
 Write-Host '  Cloud to On-premises DNS forwarding configured.' -ForegroundColor Green
