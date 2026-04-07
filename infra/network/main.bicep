@@ -94,7 +94,13 @@ module vpnConnection 'modules/vpn-connection.bicep' = {
     vpnSharedKey: vpnSharedKey
     onpremVpnGatewayId: onpremVpnGateway.outputs.vpnGatewayId
     remoteGatewayIp: getHubVpnPip.outputs.ipAddress
-    remoteAddressPrefix: '10.10.0.0/16'
+    remoteAddressPrefixes: [
+      '10.10.0.0/16'  // Hub
+      '10.20.0.0/16'  // Spoke1
+      '10.21.0.0/16'  // Spoke2
+      '10.22.0.0/16'  // Spoke3
+      '10.23.0.0/16'  // Spoke4
+    ]
   }
 }
 

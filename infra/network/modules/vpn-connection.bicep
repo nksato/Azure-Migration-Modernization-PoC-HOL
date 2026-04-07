@@ -11,7 +11,7 @@ param vpnSharedKey string
 
 param onpremVpnGatewayId string
 param remoteGatewayIp string
-param remoteAddressPrefix string
+param remoteAddressPrefixes string[]
 
 // Local Network Gateway (Hub 側を表す)
 resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2024-05-01' = {
@@ -21,9 +21,7 @@ resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2024-05-01'
   properties: {
     gatewayIpAddress: remoteGatewayIp
     localNetworkAddressSpace: {
-      addressPrefixes: [
-        remoteAddressPrefix
-      ]
+      addressPrefixes: remoteAddressPrefixes
     }
   }
 }
