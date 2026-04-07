@@ -32,6 +32,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Azure CLI ログイン確認
+$account = az account show -o json 2>$null | ConvertFrom-Json
+if (-not $account) {
+    throw "Azure CLI にログインしてください: az login"
+}
+Write-Host "サブスクリプション: $($account.name) ($($account.id))" -ForegroundColor Green
+
 Write-Host '=== Hybrid DNS Setup ===' -ForegroundColor Cyan
 Write-Host '  [1/3] クラウド → オンプレ: DNS Forwarding Ruleset で AD ドメインを DC01 へ転送' -ForegroundColor Cyan
 Write-Host '  [2/3] オンプレ → クラウド: DC01 の条件付きフォワーダーで Private DNS Zone を Resolver へ転送' -ForegroundColor Cyan
