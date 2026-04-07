@@ -83,6 +83,10 @@ foreach ($vm in @('vm-onprem-ad', 'vm-onprem-sql', 'vm-onprem-web')) {
     Test-Val $vm $st 'VM running'
 }
 
+$bastionState = az network bastion show -g $ResourceGroupName -n 'bas-onprem' `
+    --query provisioningState -o tsv 2>$null
+Test-Val 'bas-onprem (Bastion)' $bastionState 'Succeeded'
+
 # ============================================================
 # 2. パブリック IP なし (Azure API)
 # ============================================================
@@ -149,27 +153,12 @@ Write-Output ('IIS=' + (Get-WindowsFeature Web-Server).InstallState)
 Write-Output ('ASPNET45=' + (Get-WindowsFeature Web-Asp-Net45).InstallState)
 '@
 
-if (-not $SkipPartsUnlimited) {
-    $webScript += "`n" + @'
-try { $c = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5).StatusCode } catch { $c = 'Error' }
-Write-Output ('HTTP=' + $c)
-try { $b = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5).Content; if ($b -match 'Parts Unlimited') { Write-Output 'PARTS=OK' } else { Write-Output 'PARTS=NotFound' } } catch { Write-Output 'PARTS=Error' }
-'@
-}
-
 $webOut = Invoke-VmCommand 'vm-onprem-web' $webScript
 
 Test-Val 'IIS インストール'  (Get-Val $webOut 'IIS')            'Installed'
 Test-Val 'ASP.NET 4.5'       (Get-Val $webOut 'ASPNET45')        'Installed'
 Test-Val 'ドメイン参加'       (Get-Val $webOut 'PART_OF_DOMAIN')  'True'
 Write-Host "         ドメイン名: $(Get-Val $webOut 'DOMAIN')" -ForegroundColor Gray
-
-if (-not $SkipPartsUnlimited) {
-    Test-Val 'HTTP 応答'          (Get-Val $webOut 'HTTP')            '200'
-    Test-Val 'Parts Unlimited' (Get-Val $webOut 'PARTS') 'OK'
-} else {
-    Write-Host '  [SKIP] HTTP 応答 — Setup-PartsUnlimited 未実行 (-SkipPartsUnlimited)' -ForegroundColor DarkGray
-}
 
 # ============================================================
 # 6. 内部疎通 (APP01 から)
@@ -187,23 +176,33 @@ Write-Output ('DB_RDP=' + `$b.TcpTestSucceeded)
 Write-Output ('DNS_RESOLVE=' + `$r[0].IPAddress)
 "@
 
-if (-not $SkipPartsUnlimited) {
-    $connScript += @"
-`n`$s = Test-NetConnection -ComputerName 10.0.1.5 -Port 1433 -WarningAction SilentlyContinue
-Write-Output ('SQL_PORT=' + `$s.TcpTestSucceeded)
-"@
-}
-
 $connOut = Invoke-VmCommand 'vm-onprem-web' $connScript
 
 Test-Val     'APP01 → DC01:3389'    (Get-Val $connOut 'DC_RDP')      'True'
 Test-Val     'APP01 → DB01:3389'    (Get-Val $connOut 'DB_RDP')      'True'
 Test-NotEmpty "DNS $dcFqdn"         (Get-Val $connOut 'DNS_RESOLVE')
 
+# ============================================================
+# 7. Parts Unlimited (Setup-SqlServer / Setup-PartsUnlimited 実行後)
+# ============================================================
 if (-not $SkipPartsUnlimited) {
-    Test-Val 'APP01 → DB01:1433'    (Get-Val $connOut 'SQL_PORT')    'True'
+    Write-Host "`n=== 7. Parts Unlimited ===" -ForegroundColor Cyan
+    Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
+
+    $puOut = Invoke-VmCommand 'vm-onprem-web' @'
+$s = Test-NetConnection -ComputerName 10.0.1.5 -Port 1433 -WarningAction SilentlyContinue
+Write-Output ('SQL_PORT=' + $s.TcpTestSucceeded)
+try { $c = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5).StatusCode } catch { $c = 'Error' }
+Write-Output ('HTTP=' + $c)
+try { $b = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec 5).Content; if ($b -match 'Parts Unlimited') { Write-Output 'PARTS=OK' } else { Write-Output 'PARTS=NotFound' } } catch { Write-Output 'PARTS=Error' }
+'@
+
+    Test-Val 'APP01 → DB01:1433' (Get-Val $puOut 'SQL_PORT') 'True'
+    Test-Val 'HTTP 応答'          (Get-Val $puOut 'HTTP')     '200'
+    Test-Val 'Parts Unlimited'   (Get-Val $puOut 'PARTS')    'OK'
 } else {
-    Write-Host '  [SKIP] APP01 → DB01:1433 — Setup-SqlServer 未実行 (-SkipPartsUnlimited)' -ForegroundColor DarkGray
+    Write-Host "`n=== 7. Parts Unlimited [SKIP] ===" -ForegroundColor DarkGray
+    Write-Host '  Setup-SqlServer / Setup-PartsUnlimited 未実行 (-SkipPartsUnlimited)' -ForegroundColor DarkGray
 }
 
 # ============================================================
