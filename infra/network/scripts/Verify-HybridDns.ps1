@@ -160,16 +160,13 @@ Write-Host "  DC01 から名前解決テスト実行中..." -ForegroundColor Gra
 $resolveOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
 $r1 = Resolve-DnsName 'privatelink.database.windows.net' -DnsOnly -ErrorAction SilentlyContinue
 Write-Output ('PLINK_RESOLVE=' + $(if ($r1) {'OK'} else {'NG'}))
-$r2 = Resolve-DnsName 'dnspr-hub.lab.local' -Server 10.10.5.4 -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('DNS_QUERY=' + $(if ($r2 -or $LASTEXITCODE -eq 0) {'OK'} else {'NG'}))
-$t = Test-NetConnection -ComputerName 10.10.5.4 -Port 53 -WarningAction SilentlyContinue
-Write-Output ('DNS_TCP=' + $t.TcpTestSucceeded)
 '@
 
-Test-Val 'DC01 → privatelink.database.windows.net 解決'  (Get-Val $resolveOut 'PLINK_RESOLVE') 'OK'
-# DNS は通常 UDP:53。TCP:53 は閉じている場合があるため参考値
-$dnsTcp = Get-Val $resolveOut 'DNS_TCP'
-Write-Host "         DC01 → DNS Resolver (10.10.5.4) TCP:53: $dnsTcp (DNS は主に UDP のため参考値)" -ForegroundColor Gray
+$plinkResult = Get-Val $resolveOut 'PLINK_RESOLVE'
+Test-Val 'DC01 → privatelink.database.windows.net 解決' $plinkResult 'OK'
+if ($plinkResult -ne 'OK') {
+    Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
+}
 
 # ============================================================
 # 6. 名前解決: クラウド → オンプレ
@@ -189,8 +186,13 @@ $dc = Resolve-DnsName 'DC01.lab.local' -DnsOnly -ErrorAction SilentlyContinue
 Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'}))
 '@
 
-    Test-Val      'vm-spoke1-web → lab.local 解決'       (Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE') 'OK'
-    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  (Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE') '10.0.1.4'
+    $spokeAdResult = Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE'
+    $spokeDcResult = Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE'
+    Test-Val      'vm-spoke1-web → lab.local 解決'       $spokeAdResult 'OK'
+    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  $spokeDcResult '10.0.1.4'
+    if ($spokeAdResult -ne 'OK' -or $spokeDcResult -ne '10.0.1.4') {
+        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
+    }
 } else {
     # Spoke VM がないため、DC01 から DNS Resolver Inbound IP を -Server 指定して
     # Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを間接検証
@@ -201,8 +203,12 @@ Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'})
 Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 "@
 
-    Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' (Get-Val $fallbackOut 'FALLBACK_RESOLVE') 'OK'
+    $fallbackResult = Get-Val $fallbackOut 'FALLBACK_RESOLVE'
+    Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' $fallbackResult 'OK'
     Write-Host "         経路: DC01 → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC01" -ForegroundColor Gray
+    if ($fallbackResult -ne 'OK') {
+        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
+    }
 }
 
 # ============================================================
