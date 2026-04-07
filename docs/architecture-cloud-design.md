@@ -69,6 +69,7 @@
 | `afw-hub` | Azure Firewall (Basic) | Spoke 間・外向き通信の制御 |
 | `afwp-hub` | Firewall Policy | Firewall のルール定義 |
 | `rt-spokes-to-fw` | Route Table | Spoke トラフィックを Firewall 経由に制御 |
+| `rt-gateway-to-fw` | Route Table | GatewaySubnet の Spoke 宛トラフィックを Firewall 経由に制御 |
 | `vpngw-hub` | VPN Gateway (VpnGw1AZ) | オンプレ VNet との S2S 接続 |
 | `bas-hub` | Azure Bastion (Basic) | 管理用 RDP アクセス |
 | `log-hub` | Log Analytics Workspace | 監視データ集約 (30 日保持) |
@@ -131,12 +132,25 @@ Hub ↔ Spoke1〜4 の間で VNet ピアリングを設定します。VPN Gatewa
 
 ### ルートテーブル
 
-`rt-spokes-to-fw` を全 Spoke サブネットに関連付け、トラフィックを Firewall 経由に制御します。
+#### rt-spokes-to-fw（Spoke サブネット用）
+
+全 Spoke サブネットに関連付け、トラフィックを Firewall 経由に制御します。
 
 | ルート名 | アドレスプレフィックス | ネクストホップ |
 |---|---|---|
 | `default-to-firewall` | `0.0.0.0/0` | Firewall Private IP |
 | `onprem-to-firewall` | `10.0.0.0/16` | Firewall Private IP |
+
+#### rt-gateway-to-fw（GatewaySubnet 用）
+
+GatewaySubnet に関連付け、VPN 経由で Hub に着信した Spoke 宛トラフィックを Firewall 経由にすることで**対称ルーティング**を実現します。VPN Gateway 配置前（Step 3）に設定されるため、VPN 接続確立直後からセキュリティが適用されます。
+
+| ルート名 | アドレスプレフィックス | ネクストホップ |
+|---|---|---|
+| `spoke1-to-firewall` | `10.20.0.0/16` | Firewall Private IP |
+| `spoke2-to-firewall` | `10.21.0.0/16` | Firewall Private IP |
+| `spoke3-to-firewall` | `10.22.0.0/16` | Firewall Private IP |
+| `spoke4-to-firewall` | `10.23.0.0/16` | Firewall Private IP |
 
 ---
 
