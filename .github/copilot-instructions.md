@@ -48,7 +48,6 @@ CAF 推奨: `snet`
 | `snet-aca` | Container Apps Environment 用 |
 | `snet-appservice` | App Service VNet Integration 用 |
 | `snet-management` | 管理 VM 等（予備） |
-| `AzureMigrateSubnet` | Azure Migrate アプライアンス用（NAT Gateway 付き） |
 | `GatewaySubnet` | Azure 予約名（変更不可） |
 | `AzureFirewallSubnet` | Azure 予約名（変更不可） |
 | `AzureBastionSubnet` | Azure 予約名（変更不可） |
