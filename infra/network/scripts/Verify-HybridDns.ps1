@@ -221,6 +221,74 @@ Write-Host "         DC01 → Hub DNS (10.10.5.4) ICMP: $hubDnsPing (DNS Resolve
 Write-Host "         DC01 → Hub FW  (10.10.1.4) ICMP: $hubFwPing (Firewall は ICMP ブロックの場合あり)" -ForegroundColor Gray
 
 # ============================================================
+# 8. オプション検証: EnableCloudVmResolution (azure.internal)
+# ============================================================
+Write-Host "`n=== 8. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
+
+$azInternalState = az network private-dns zone show -g $HubResourceGroup -n 'azure.internal' `
+    --query "provisioningState" -o tsv 2>$null
+
+if ($azInternalState) {
+    Test-Val 'azure.internal ゾーン プロビジョニング' $azInternalState 'Succeeded'
+
+    # VNet リンク数
+    $zoneLinksJson = az network private-dns link vnet list -g $HubResourceGroup -z 'azure.internal' `
+        -o json 2>$null
+    $zoneLinks = if ($zoneLinksJson) { $zoneLinksJson | ConvertFrom-Json } else { @() }
+    $zoneLinkCount = if ($zoneLinks) { $zoneLinks.Count } else { 0 }
+    Test-Bool "azure.internal VNet リンク数 >= 1 (実際: $zoneLinkCount)" ($zoneLinkCount -ge 1)
+    if ($zoneLinks) {
+        foreach ($zl in $zoneLinks) {
+            $vn = ($zl.virtualNetwork.id -split '/')[-1]
+            $reg = if ($zl.registrationEnabled) { '自動登録:有効' } else { '自動登録:無効' }
+            Write-Host "         $($zl.name) → $vn ($reg)" -ForegroundColor Gray
+        }
+    }
+
+    # DC01 条件付きフォワーダー (azure.internal)
+    Write-Host "  DC01 の azure.internal 条件付きフォワーダーを確認中..." -ForegroundColor Gray
+
+    $azFwdOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
+$z = Get-DnsServerZone -Name 'azure.internal' -ErrorAction SilentlyContinue
+if ($z) { Write-Output ('AZ_ZONE_TYPE=' + $z.ZoneType); Write-Output ('AZ_MASTERS=' + ($z.MasterServers -join ',')) } else { Write-Output 'AZ_ZONE_TYPE='; Write-Output 'AZ_MASTERS=' }
+'@
+
+    $azZoneType = Get-Val $azFwdOut 'AZ_ZONE_TYPE'
+    $azMasters  = Get-Val $azFwdOut 'AZ_MASTERS'
+    Test-Val '条件付きフォワーダー種別 (azure.internal)' $azZoneType 'Forwarder'
+    if ($inboundIp -and $azMasters) {
+        Test-Bool "転送先が Inbound IP ($inboundIp) と一致" ($azMasters -match [regex]::Escape($inboundIp))
+    } else {
+        Test-Bool "転送先が Inbound IP と一致 (azure.internal)" $false
+    }
+} else {
+    Write-Host "  スキップ: azure.internal ゾーン未検出 (-EnableCloudVmResolution 未実行)" -ForegroundColor DarkGray
+}
+
+# ============================================================
+# 9. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
+# ============================================================
+Write-Host "`n=== 9. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
+
+$rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
+    --resource-group $HubResourceGroup -o json 2>$null
+$rulesetLinks = if ($rulesetLinksJson) { $rulesetLinksJson | ConvertFrom-Json } else { @() }
+$rulesetLinkCount = if ($rulesetLinks) { $rulesetLinks.Count } else { 0 }
+
+if ($rulesetLinkCount -ge 2) {
+    # Hub + Spoke が紐付いている → -LinkSpokeVnets 実行済み
+    Test-Bool "Ruleset VNet リンク数 >= 2 (Hub + Spoke) (実際: $rulesetLinkCount)" $true
+
+    $spokeOnlyLinks = $rulesetLinks | Where-Object { ($_.virtualNetwork.id -split '/')[-1] -ne 'vnet-hub' }
+    foreach ($sl in $spokeOnlyLinks) {
+        $svn = ($sl.virtualNetwork.id -split '/')[-1]
+        Write-Host "         Spoke リンク: $($sl.name) → $svn" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  スキップ: Spoke VNet リンク未検出 (-LinkSpokeVnets 未実行)" -ForegroundColor DarkGray
+}
+
+# ============================================================
 # サマリ
 # ============================================================
 $color = if ($passed -eq $total) { 'Green' } else { 'Yellow' }
