@@ -17,6 +17,9 @@ var commonTags = {
   SecurityControl: 'ignore'
 }
 
+// Hub VNet CIDR (複数箇所で参照するため var で一元管理)
+var hubAddressPrefixes = ['10.10.0.0/16']
+
 // ============================================================
 // Resource Groups
 // ============================================================
@@ -60,7 +63,7 @@ module hubVnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
   params: {
     name: 'vnet-hub'
     location: location
-    addressPrefixes: ['10.10.0.0/16']
+    addressPrefixes: hubAddressPrefixes
     tags: commonTags
     subnets: [
       { name: 'AzureFirewallSubnet', addressPrefix: '10.10.1.0/26' }
@@ -88,7 +91,7 @@ module hubVnet 'br/public:avm/res/network/virtual-network:0.7.2' = {
 module logAnalytics 'br/public:avm/res/operational-insights/workspace:0.15.0' = {
   scope: rgHub
   params: {
-    name: 'law-hub'
+    name: 'log-hub'
     location: location
     dataRetention: 30
     tags: commonTags
@@ -382,7 +385,7 @@ module hubPeering 'br/public:avm/res/network/virtual-network:0.7.2' = {
   params: {
     name: 'vnet-hub'
     location: location
-    addressPrefixes: ['10.10.0.0/16']
+    addressPrefixes: hubAddressPrefixes
     peerings: [
       {
         remoteVirtualNetworkResourceId: spoke1Vnet.outputs.resourceId

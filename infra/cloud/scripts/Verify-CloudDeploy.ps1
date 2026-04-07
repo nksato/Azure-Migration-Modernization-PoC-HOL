@@ -193,9 +193,9 @@ Test-Bool "Private DNS Zone VNet リンク数 >= 4 (実際: $linkCount)" ($linkC
 # ============================================================
 Write-Host "`n=== 9. Log Analytics Workspace ===" -ForegroundColor Cyan
 
-$lawState = az monitor log-analytics workspace show -g rg-hub -n law-hub `
+$lawState = az monitor log-analytics workspace show -g rg-hub -n log-hub `
     --query "provisioningState" -o tsv 2>$null
-Test-Val 'law-hub プロビジョニング' $lawState 'Succeeded'
+Test-Val 'log-hub プロビジョニング' $lawState 'Succeeded'
 
 # ============================================================
 # 10. ポリシー割り当て

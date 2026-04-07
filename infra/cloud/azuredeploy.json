@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "9934141181632825272"
+      "templateHash": "10247709412215847566"
     }
   },
   "parameters": {
@@ -36,7 +36,10 @@
     "commonTags": {
       "Environment": "PoC",
       "SecurityControl": "ignore"
-    }
+    },
+    "hubAddressPrefixes": [
+      "10.10.0.0/16"
+    ]
   },
   "resources": {
     "rgHub": {
@@ -92,9 +95,7 @@
             "value": "[parameters('location')]"
           },
           "addressPrefixes": {
-            "value": [
-              "10.10.0.0/16"
-            ]
+            "value": "[variables('hubAddressPrefixes')]"
           },
           "tags": {
             "value": "[variables('commonTags')]"
@@ -1778,7 +1779,7 @@
         "mode": "Incremental",
         "parameters": {
           "name": {
-            "value": "law-hub"
+            "value": "log-hub"
           },
           "location": {
             "value": "[parameters('location')]"
@@ -19254,9 +19255,7 @@
             "value": "[parameters('location')]"
           },
           "addressPrefixes": {
-            "value": [
-              "10.10.0.0/16"
-            ]
+            "value": "[variables('hubAddressPrefixes')]"
           },
           "peerings": {
             "value": [
@@ -26504,7 +26503,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "4074942590950783895"
+              "templateHash": "13110684162391533218"
             }
           },
           "parameters": {
@@ -26555,7 +26554,7 @@
                           "settings": {
                             "content": {
                               "settings": {
-                                "content": "# Azure Migration & Modernization PoC\n\n```\nOn-Prem (10.0.0.0/16) ──VPN── Hub (10.10.0.0/16) ──Peering── Spoke1 (10.20.0.0/16) Rehost\n  Hyper-V Host (D8s_v5)         FW / Bastion / VPN GW           Spoke2 (10.21.0.0/16) DB PaaS\n  DC01 / WEB01 / SQL01          Log Analytics                   Spoke3 (10.22.0.0/16) Container\n  Migrate Appliance             Route Table                     Spoke4 (10.23.0.0/16) Full PaaS\n```",
+                                "content": "# Azure Migration & Modernization PoC\n\n```\nOn-Prem (10.0.0.0/16) ──VPN── Hub (10.10.0.0/16) ──Peering── Spoke1 (10.20.0.0/16) Rehost\n  DC01 / APP01 / DB01           FW / Bastion / VPN GW           Spoke2 (10.21.0.0/16) DB PaaS\n  (3x Standard_D2s_v3)          Log Analytics / DNS Resolver     Spoke3 (10.22.0.0/16) Container\n                                Route Table                     Spoke4 (10.23.0.0/16) Full PaaS\n```",
                                 "title": "",
                                 "subtitle": "",
                                 "markdownSource": 1
@@ -26577,7 +26576,7 @@
                           "settings": {
                             "content": {
                               "settings": {
-                                "content": "[format('## Hub Resources (rg-hub)\n\n| Resource | Type |\n|----------|------|\n| [afw-hub]({0}/resourceGroups/rg-hub/providers/Microsoft.Network/azureFirewalls/afw-hub/overview) | Firewall Basic |\n| [bas-hub]({1}/resourceGroups/rg-hub/providers/Microsoft.Network/bastionHosts/bas-hub/overview) | Bastion Basic |\n| [vpngw-hub]({2}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworkGateways/vpngw-hub/overview) | VPN GW VpnGw1AZ |\n| [dnspr-hub]({3}/resourceGroups/rg-hub/providers/Microsoft.Network/dnsResolvers/dnspr-hub/overview) | DNS Private Resolver |\n| [privatelink.database.windows.net]({4}/resourceGroups/rg-hub/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/overview) | Private DNS Zone |\n| [law-hub]({5}/resourceGroups/rg-hub/providers/Microsoft.OperationalInsights/workspaces/law-hub/overview) | Log Analytics |\n| [rt-spokes-to-fw]({6}/resourceGroups/rg-hub/providers/Microsoft.Network/routeTables/rt-spokes-to-fw/overview) | Route Table |', variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'))]",
+                                "content": "[format('## Hub Resources (rg-hub)\n\n| Resource | Type |\n|----------|------|\n| [afw-hub]({0}/resourceGroups/rg-hub/providers/Microsoft.Network/azureFirewalls/afw-hub/overview) | Firewall Basic |\n| [afwp-hub]({1}/resourceGroups/rg-hub/providers/Microsoft.Network/firewallPolicies/afwp-hub/overview) | Firewall Policy |\n| [bas-hub]({2}/resourceGroups/rg-hub/providers/Microsoft.Network/bastionHosts/bas-hub/overview) | Bastion Basic |\n| [vpngw-hub]({3}/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworkGateways/vpngw-hub/overview) | VPN GW VpnGw1AZ |\n| [dnspr-hub]({4}/resourceGroups/rg-hub/providers/Microsoft.Network/dnsResolvers/dnspr-hub/overview) | DNS Private Resolver |\n| [privatelink.database.windows.net]({5}/resourceGroups/rg-hub/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net/overview) | Private DNS Zone |\n| [log-hub]({6}/resourceGroups/rg-hub/providers/Microsoft.OperationalInsights/workspaces/log-hub/overview) | Log Analytics |\n| [rt-spokes-to-fw]({7}/resourceGroups/rg-hub/providers/Microsoft.Network/routeTables/rt-spokes-to-fw/overview) | Route Table |', variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'), variables('portalBase'))]",
                                 "title": "",
                                 "subtitle": "",
                                 "markdownSource": 1

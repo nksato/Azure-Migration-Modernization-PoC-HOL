@@ -71,7 +71,7 @@
 | `rt-spokes-to-fw` | Route Table | Spoke トラフィックを Firewall 経由に制御 |
 | `vpngw-hub` | VPN Gateway (VpnGw1AZ) | オンプレ VNet との S2S 接続 |
 | `bas-hub` | Azure Bastion (Basic) | 管理用 RDP アクセス |
-| `law-hub` | Log Analytics Workspace | 監視データ集約 (30 日保持) |
+| `log-hub` | Log Analytics Workspace | 監視データ集約 (30 日保持) |
 | `dnspr-hub` | DNS Private Resolver | ハイブリッド DNS 解決 |
 | `dnsrs-hub` | DNS Forwarding Ruleset | `lab.local` をオンプレ DC01 へ転送 |
 | `privatelink.database.windows.net` | Private DNS Zone | Azure SQL の Private Endpoint 名前解決 |

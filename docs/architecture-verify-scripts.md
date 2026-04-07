@@ -96,7 +96,7 @@ Azure API のみで完結し、VM 内部への接続は行いません。
 | 6 | Azure Firewall | `afw-hub` のプロビジョニング、`afwp-hub` ポリシー、`rt-spokes-to-fw` ルートテーブル |
 | 7 | Azure Bastion | `bas-hub` のプロビジョニング |
 | 8 | DNS | `dnspr-hub` (Resolver + Inbound/Outbound Endpoint)、`privatelink.database.windows.net` (Private DNS Zone + VNet リンク ≥ 4) |
-| 9 | Log Analytics | `law-hub` のプロビジョニング |
+| 9 | Log Analytics | `log-hub` のプロビジョニング |
 | 10 | ポリシー割り当て | 7 ポリシー (`policy-allowed-locations`, `policy-storage-no-public`, `policy-sql-auditing`, `policy-sql-no-public`, `policy-require-env-tag`, `policy-mgmt-ports-audit`, `policy-appservice-no-public`) |
 
 ---
