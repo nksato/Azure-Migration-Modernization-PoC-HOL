@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "10469883202483502809"
+      "templateHash": "10810860913155710088"
     }
   },
   "parameters": {
@@ -45,6 +45,8 @@
       "location": "[parameters('location')]",
       "tags": {
         "Environment": "PoC",
+        "Project": "Migration-Handson",
+        "SecurityControl": "Ignore",
         "Purpose": "OnPrem-Simulation"
       }
     },

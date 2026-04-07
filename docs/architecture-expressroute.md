@@ -28,7 +28,7 @@
 
 ```
 rg-hub
-  ├── vgw-hub              (VPN Gateway, SKU: VpnGw1)
+  ├── vpngw-hub            (VPN Gateway, SKU: VpnGw1AZ)
   ├── lgw-onprem           (Local Network Gateway)
   └── cn-hub-to-onprem     (Connection, type: IPsec)
 ```
@@ -49,7 +49,7 @@ rg-hub
 
 | リソース | S2S VPN | ExpressRoute | 備考 |
 |---------|---------|-------------|------|
-| VPN Gateway | `vgw-hub` | - | 不要（ER Gateway に置き換え） |
+| VPN Gateway | `vpngw-hub` | - | 不要（ER Gateway に置き換え） |
 | ExpressRoute Gateway | - | `ergw-hub` | GatewaySubnet に配置 |
 | Local Network Gateway | `lgw-onprem` | - | **不要**（ER は BGP で経路交換） |
 | Connection | `cn-hub-to-onprem` (IPsec) | `cn-hub-to-onprem` (ExpressRoute) | type が異なる |
@@ -172,7 +172,7 @@ ER:       BGP で 10.0.0.0/16 を自動学習           ← 動的
 
 | 変更箇所 | S2S VPN（現在） | ExpressRoute |
 |---------|---------------|-------------|
-| `rg-hub` の Gateway | `vgw-hub` (VpnGw1) | `ergw-hub` (Standard) |
+| `rg-hub` の Gateway | `vpngw-hub` (VpnGw1AZ) | `ergw-hub` (Standard) |
 | `rg-hub` の LGW | `lgw-onprem` — 削除 | 不要 |
 | `rg-hub` の Connection | type: IPsec + sharedKey | type: ExpressRoute + Circuit ID |
 | `rg-onprem` の Gateway | `vgw-onprem` — 削除 | 不要（キャリア側が担当） |
@@ -190,7 +190,7 @@ ExpressRoute と S2S VPN を同一 Hub VNet で共存させることも可能で
 ```
 rg-hub / GatewaySubnet
   ├── ergw-hub     (ExpressRoute Gateway)  ← メイン経路
-  └── vgw-hub      (VPN Gateway)           ← フェイルオーバー経路
+  └── vpngw-hub    (VPN Gateway)           ← フェイルオーバー経路
 ```
 
 - ExpressRoute が優先（より具体的なルート / BGP weight）

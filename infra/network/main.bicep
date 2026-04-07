@@ -30,7 +30,8 @@ resource rgHub 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
 // タグ定義
 var commonTags = {
   Environment: 'PoC'
-  SecurityControl: 'ignore'
+  Project: 'Migration-Handson'
+  SecurityControl: 'Ignore'
 }
 
 // ============================================================

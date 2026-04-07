@@ -23,7 +23,7 @@ Azure 側のみ:
 Azure VPN Gateway は **受動的** で、自分宛の Connection リソースが定義されていない限り接続を確立しません。そのため **両側に明示的な設定が必要** です。
 
 ```
-OnPrem 側 (vgw-onprem):                    Hub 側 (vgw-hub):
+OnPrem 側 (vgw-onprem):                    Hub 側 (vpngw-hub):
   ├── lgw-hub (Hub GW の Public IP)           ├── lgw-onprem (OnPrem GW の Public IP)
   │   └── addressPrefixes:                   │   └── addressPrefixes: 10.0.0.0/16
   │       10.10.0.0/16 (Hub)                  │
@@ -45,7 +45,7 @@ OnPrem 側 (vgw-onprem):                    Hub 側 (vgw-hub):
 | 1 | `vgw-onprem` | rg-onprem | OnPrem 側 VPN Gateway |
 | 2 | `lgw-hub` | rg-onprem | Hub VPN GW の Public IP とアドレス空間を定義 (Hub + Spoke1-4) |
 | 3 | `cn-onprem-to-hub` | rg-onprem | OnPrem GW → Hub への S2S 接続 |
-| 4 | `vgw-hub` | rg-hub | Hub 側 VPN Gateway |
+| 4 | `vpngw-hub` | rg-hub | Hub 側 VPN Gateway |
 | 5 | `lgw-onprem` | rg-hub | OnPrem VPN GW の Public IP とアドレス空間を定義 |
 | 6 | `cn-hub-to-onprem` | rg-hub | Hub GW → OnPrem への S2S 接続 |
 

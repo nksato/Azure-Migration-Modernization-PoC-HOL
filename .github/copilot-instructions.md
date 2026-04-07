@@ -68,7 +68,7 @@ CAF 推奨: `snet`
 | `afw-hub` | `afw` | Azure Firewall Basic |
 | `afwp-hub` | `afwp` | Firewall Policy |
 | `bas-hub` | `bas` | Azure Bastion |
-| `vgw-hub` | `vgw` | VPN Gateway (Hub 側) |
+| `vpngw-hub` | `vgw` | VPN Gateway (Hub 側) |
 | `vgw-onprem` | `vgw` | VPN Gateway (OnPrem 側) |
 | `log-hub` | `log` | Log Analytics Workspace |
 | `dnspr-hub` | `dnspr` | DNS Private Resolver |

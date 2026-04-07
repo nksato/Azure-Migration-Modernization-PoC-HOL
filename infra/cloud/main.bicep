@@ -14,7 +14,8 @@ param deployBastion bool = true
 // Common tags applied to all resources
 var commonTags = {
   Environment: 'PoC'
-  SecurityControl: 'ignore'
+  Project: 'Migration-Handson'
+  SecurityControl: 'Ignore'
 }
 
 // Hub VNet CIDR (複数箇所で参照するため var で一元管理)

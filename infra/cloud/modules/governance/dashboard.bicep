@@ -164,7 +164,7 @@ resource dashboard 'Microsoft.Portal/dashboards@2020-09-01-preview' = {
               settings: {
                 content: {
                   settings: {
-                    content: '## Route Table (rt-spokes-to-fw)\n\n| Route | Prefix | Next Hop |\n|-------|--------|----------|\n| default-to-firewall | 0.0.0.0/0 | FW Private IP |\n| onprem-to-firewall | 10.0.0.0/16 | FW Private IP |\n\n## Tags (All Resources)\n\n| Tag | Value |\n|-----|-------|\n| Environment | PoC |\n| SecurityControl | ignore |'
+                    content: '## Route Table (rt-spokes-to-fw)\n\n| Route | Prefix | Next Hop |\n|-------|--------|----------|\n| default-to-firewall | 0.0.0.0/0 | FW Private IP |\n| onprem-to-firewall | 10.0.0.0/16 | FW Private IP |\n\n## Tags (All Resources)\n\n| Tag | Value |\n|-----|-------|\n| Environment | PoC |\n| SecurityControl | Ignore |'
                     title: ''
                     subtitle: ''
                     markdownSource: 1

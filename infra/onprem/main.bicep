@@ -41,6 +41,8 @@ resource rgOnprem 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   location: location
   tags: {
     Environment: 'PoC'
+    Project: 'Migration-Handson'
+    SecurityControl: 'Ignore'
     Purpose: 'OnPrem-Simulation'
   }
 }
