@@ -148,9 +148,9 @@ Write-Host "  転送ルール (→ オンプレ)  : lab.local → 10.0.1.4" -For
 Write-Host "  条件付きフォワーダー     : privatelink.database.windows.net → $masterServers" -ForegroundColor Gray
 
 # ============================================================
-# 5. 疎通テスト: オンプレ → クラウド (名前解決)
+# 5. 名前解決: オンプレ → クラウド
 # ============================================================
-Write-Host "`n=== 5. 疎通テスト: オンプレ → クラウド ===" -ForegroundColor Cyan
+Write-Host "`n=== 5. 名前解決: オンプレ → クラウド ===" -ForegroundColor Cyan
 Write-Host "  DC01 から名前解決テスト実行中..." -ForegroundColor Gray
 
 $resolveOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
@@ -168,52 +168,43 @@ $dnsTcp = Get-Val $resolveOut 'DNS_TCP'
 Write-Host "         DC01 → DNS Resolver (10.10.5.4) TCP:53: $dnsTcp (DNS は主に UDP のため参考値)" -ForegroundColor Gray
 
 # ============================================================
-# 6. 疎通テスト: クラウド → オンプレ (名前解決)
+# 6. 名前解決: クラウド → オンプレ
 # ============================================================
-Write-Host "`n=== 6. 疎通テスト: クラウド → オンプレ ===" -ForegroundColor Cyan
-
-# Spoke 側の VM が存在するか確認 (spoke1 の Web VM をテストに使う)
-# 存在しない場合は Hub 側の Bastion 等から確認するしかないが、
-# ここでは Azure CLI の az network dns-resolver で間接確認する
-
-# 方法: DC01 自身で自分のドメインが引けるか (基本確認)
-Write-Host "  DC01 から AD ドメインの名前解決を確認..." -ForegroundColor Gray
-
-$adResolveOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
-$d = Get-ADDomain
-$r = Resolve-DnsName $d.DNSRoot -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('AD_DOMAIN=' + $d.DNSRoot)
-Write-Output ('AD_RESOLVE=' + $(if ($r) {'OK'} else {'NG'}))
-$dc = Resolve-DnsName ('DC01.' + $d.DNSRoot) -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'}))
-'@
-
-$adDomain = Get-Val $adResolveOut 'AD_DOMAIN'
-Test-Val      "DC01 → $adDomain 解決"       (Get-Val $adResolveOut 'AD_RESOLVE') 'OK'
-Test-NotEmpty "DC01 → DC01.$adDomain 解決"   (Get-Val $adResolveOut 'DC_RESOLVE')
+Write-Host "`n=== 6. 名前解決: クラウド → オンプレ ===" -ForegroundColor Cyan
 
 # Spoke VM が存在すれば、そこから lab.local を引く (クラウド→オンプレ方向の実テスト)
+# 存在しない場合は DC01 から DNS Resolver 経由で Forwarding Ruleset チェーンを間接検証
 $spokeVmExists = az vm show -g rg-spoke1 -n vm-spoke1-web --query "name" -o tsv 2>$null
 if ($spokeVmExists) {
-    Write-Host "  vm-spoke1-web から $adDomain の名前解決を確認..." -ForegroundColor Gray
+    Write-Host "  vm-spoke1-web から lab.local の名前解決を確認..." -ForegroundColor Gray
 
-    $spokeResolveOut = Invoke-VmCommand 'rg-spoke1' 'vm-spoke1-web' @"
-`$r = Resolve-DnsName '$adDomain' -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('SPOKE_AD_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
-`$dc = Resolve-DnsName 'DC01.$adDomain' -DnsOnly -ErrorAction SilentlyContinue
-Write-Output ('SPOKE_DC_RESOLVE=' + `$(if (`$dc) { `$dc[0].IPAddress } else {'NG'}))
+    $spokeResolveOut = Invoke-VmCommand 'rg-spoke1' 'vm-spoke1-web' @'
+$r = Resolve-DnsName 'lab.local' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('SPOKE_AD_RESOLVE=' + $(if ($r) {'OK'} else {'NG'}))
+$dc = Resolve-DnsName 'DC01.lab.local' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'}))
+'@
+
+    Test-Val      'vm-spoke1-web → lab.local 解決'       (Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE') 'OK'
+    Test-NotEmpty 'vm-spoke1-web → DC01.lab.local 解決'   (Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE')
+} else {
+    # Spoke VM がないため、DC01 から DNS Resolver Inbound IP を -Server 指定して
+    # Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを間接検証
+    Write-Host "  vm-spoke1-web が未作成 — DC01 → DNS Resolver 経由で間接検証..." -ForegroundColor Gray
+
+    $fallbackOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @"
+`$r = Resolve-DnsName 'lab.local' -Server '$inboundIp' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 "@
 
-    Test-Val      "vm-spoke1-web → $adDomain 解決"       (Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE') 'OK'
-    Test-NotEmpty "vm-spoke1-web → DC01.$adDomain 解決"   (Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE')
-} else {
-    Write-Host "  vm-spoke1-web が未作成のため、Spoke→オンプレ方向のテストはスキップ" -ForegroundColor DarkGray
+    Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' (Get-Val $fallbackOut 'FALLBACK_RESOLVE') 'OK'
+    Write-Host "         経路: DC01 → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC01" -ForegroundColor Gray
 }
 
 # ============================================================
-# 7. VPN 経由の基本疎通 (オンプレ → Hub)
+# 7. ネットワーク疎通: オンプレ → Hub
 # ============================================================
-Write-Host "`n=== 7. VPN 経由の基本疎通 ===" -ForegroundColor Cyan
+Write-Host "`n=== 7. ネットワーク疎通: オンプレ → Hub ===" -ForegroundColor Cyan
 Write-Host "  DC01 から Hub ネットワークへの疎通確認..." -ForegroundColor Gray
 
 $vpnOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
