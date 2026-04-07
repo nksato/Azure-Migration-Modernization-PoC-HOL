@@ -4,18 +4,19 @@
 
 本 HOL では、疑似オンプレ環境（`rg-onprem`）とクラウド Hub-Spoke 環境の間で **Azure DNS Private Resolver** を中心にした双方向 DNS 転送を構成しています。VPN 接続だけでは名前解決ができないため、DNS 転送設定が必要です。
 
-`Setup-HybridDns.ps1` は 3 段階のステップと 2 つのオプションスイッチで、基本構成から発展構成までカバーします。
+`Setup-HybridDns.ps1` は 4 段階のステップと 2 つのオプションスイッチで、基本構成から発展構成までカバーします。
 
 | ステップ | 方向 | 内容 | 必須/オプション |
 |---------|------|------|---------------|
-| [1/3] | クラウド → オンプレ | DNS Forwarding Ruleset で `lab.local` を DC01 へ転送 | 必須 |
-| [2/3] | オンプレ → クラウド PaaS | DC01 に `privatelink.database.windows.net` の条件付きフォワーダーを追加 | 必須 |
-| [3/3] | オンプレ → クラウド VM | Private DNS Zone (`azure.internal`) + DC01 条件付きフォワーダー | `-EnableCloudVmResolution` |
+| [1/4] | オンプレ → クラウド PaaS | DC01 に `privatelink.database.windows.net` の条件付きフォワーダーを追加 | 必須 |
+| [2/4] | クラウド → オンプレ | DNS Forwarding Ruleset で `lab.local` を DC01 へ転送 | 必須 |
+| [3/4] | オンプレ → クラウド VM | Private DNS Zone (`azure.internal`) + DC01 条件付きフォワーダー | `-EnableCloudVmResolution` |
+| [4/4] | Spoke VNet リンク | Forwarding Ruleset を Spoke1〜4 VNet にもリンク | `-LinkSpokeVnets` |
 
 | スイッチ | 効果 |
 |---------|------|
-| `-LinkSpokeVnets` | Forwarding Ruleset を Spoke VNet にもリンク（Spoke VM → オンプレ名前解決） |
-| `-EnableCloudVmResolution` | [3/3] を有効化（オンプレ → クラウド VM ホスト名解決） |
+| `-EnableCloudVmResolution` | [3/4] を有効化（オンプレ → クラウド VM ホスト名解決） |
+| `-LinkSpokeVnets` | [4/4] を有効化。Forwarding Ruleset を Spoke VNet にもリンク（Spoke VM → オンプレ名前解決） |
 
 本ドキュメントでは、ハイブリッド DNS の設計思想、構成要素、および Azure 閉域内での名前解決パターンをまとめます。
 
@@ -28,24 +29,24 @@
 ┌─────────────────────┐                      ┌──────────────────────────────────────┐
 │  DC01 (10.0.1.4)    │                      │  DNS Private Resolver (dnspr-hub)    │
 │  ┌────────────────┐ │   VPN (S2S)          │  ┌────────────┐                     │
-│  │ DNS Server     │◄├──────────────────────├──┤ Outbound   │ [1/3] lab.local     │
+│  │ DNS Server     │◄├──────────────────────├──┤ Outbound   │ [2/4] lab.local     │
 │  │                │ │  Forwarding          │  │ Endpoint   │ → DC01 へ転送       │
 │  │ 条件付き FW:   │ │  Ruleset             │  └────────────┘                     │
 │  │                │ │                      │                                      │
 │  │ privatelink.*  │─├──────────────────────├─►┌────────────┐                     │
-│  │ [2/3]          │ │                      │  │ Inbound    │ Azure DNS に         │
+│  │ [1/4]          │ │                      │  │ Inbound    │ Azure DNS に         │
 │  │                │ │                      │  │ Endpoint   │ 中継解決             │
 │  │ azure.internal │─├──────────────────────├─►│ 10.10.5.4  │                     │
-│  │ [3/3] オプション │ │                      │  └─────┬──────┘                     │
+│  │ [3/4] オプション │ │                      │  └─────┬──────┘                     │
 │  └────────────────┘ │                      │        │                              │
 └─────────────────────┘                      │  ┌─────▼────────────────────────┐    │
                                              │  │ Private DNS Zones            │    │
                                              │  │                              │    │
                                              │  │ privatelink.database.        │    │
-                                             │  │   windows.net [2/3]          │    │
+                                             │  │   windows.net [1/4]          │    │
                                              │  │   → PE の IP を解決           │    │
                                              │  │                              │    │
-                                             │  │ azure.internal [3/3]         │    │
+                                             │  │ azure.internal [3/4]         │    │
                                              │  │   → VM ホスト名を解決         │    │
                                              │  └──────────────────────────────┘    │
                                              └──────────────────────────────────────┘
@@ -102,16 +103,26 @@ Spoke VM                    Hub                          オンプレ
 
 | ステップ | 方向 | 転送元 | 転送先 | 対象ゾーン | 仕組み | スイッチ |
 |---------|------|--------|--------|-----------|--------|---------|
-| [1/3] | クラウド → オンプレ | DNS Private Resolver（Outbound） | DC01（`10.0.1.4:53`） | `lab.local` | DNS Forwarding Ruleset | — |
-| [1/3] | Spoke → オンプレ | 同上（Spoke VNet からも） | 同上 | `lab.local` | Ruleset VNet Link | `-LinkSpokeVnets` |
-| [2/3] | オンプレ → クラウド PaaS | DC01（条件付きフォワーダー） | DNS Private Resolver（Inbound `10.10.5.4`） | `privatelink.database.windows.net` | Windows DNS 条件付きフォワーダー | — |
-| [3/3] | オンプレ → クラウド VM | DC01（条件付きフォワーダー） | DNS Private Resolver（Inbound `10.10.5.4`） | `azure.internal` | Private DNS Zone + 条件付きフォワーダー | `-EnableCloudVmResolution` |
+| [1/4] | オンプレ → クラウド PaaS | DC01（条件付きフォワーダー） | DNS Private Resolver（Inbound `10.10.5.4`） | `privatelink.database.windows.net` | Windows DNS 条件付きフォワーダー | — |
+| [2/4] | クラウド → オンプレ | DNS Private Resolver（Outbound） | DC01（`10.0.1.4:53`） | `lab.local` | DNS Forwarding Ruleset | — |
+| [3/4] | オンプレ → クラウド VM | DC01（条件付きフォワーダー） | DNS Private Resolver（Inbound `10.10.5.4`） | `azure.internal` | Private DNS Zone + 条件付きフォワーダー | `-EnableCloudVmResolution` |
+| [4/4] | Spoke → オンプレ | Spoke VNet 内の VM | DC01（`10.0.1.4:53`） | `lab.local` | Ruleset VNet Link | `-LinkSpokeVnets` |
 
 ---
 
 ## 必要なリソース
 
-### [1/3] クラウド → オンプレ（Forwarding Ruleset）
+### [1/4] オンプレ → クラウド PaaS（条件付きフォワーダー）
+
+#### オンプレ側（DC01）
+
+| # | 設定 | 内容 |
+|---|------|------|
+| 1 | 条件付きフォワーダー | `privatelink.database.windows.net` → `10.10.5.4`（Inbound Endpoint） |
+
+> Inbound Endpoint が受けたクエリは Azure DNS に中継され、Hub VNet にリンクされた Private DNS Zone のレコードを解決します。
+
+### [2/4] クラウド → オンプレ（Forwarding Ruleset）
 
 #### Azure 側（rg-hub）
 
@@ -124,23 +135,7 @@ Spoke VM                    Hub                          オンプレ
 | 5 | `rule-lab-local` | Forwarding Rule | `lab.local.` → DC01（`10.0.1.4:53`）への転送ルール |
 | 6 | `link-vnet-hub` | VNet Link（Ruleset） | Forwarding Ruleset を Hub VNet にリンク |
 
-**`-LinkSpokeVnets` 指定時に追加:**
-
-| # | リソース名 | リソースタイプ | 役割 |
-|---|-----------|--------------|------|
-| 7 | `link-vnet-spoke1` ～ `link-vnet-spoke4` | VNet Link（Ruleset） | Forwarding Ruleset を Spoke VNet にリンク。Spoke VM から `lab.local` を解決可能にする |
-
-### [2/3] オンプレ → クラウド PaaS（条件付きフォワーダー）
-
-#### オンプレ側（DC01）
-
-| # | 設定 | 内容 |
-|---|------|------|
-| 1 | 条件付きフォワーダー | `privatelink.database.windows.net` → `10.10.5.4`（Inbound Endpoint） |
-
-> Inbound Endpoint が受けたクエリは Azure DNS に中継され、Hub VNet にリンクされた Private DNS Zone のレコードを解決します。
-
-### [3/3] オンプレ → クラウド VM（`-EnableCloudVmResolution` 指定時のみ）
+### [3/4] オンプレ → クラウド VM（`-EnableCloudVmResolution` 指定時のみ）
 
 #### Azure 側（rg-hub）
 
@@ -158,6 +153,14 @@ Spoke VM                    Hub                          オンプレ
 
 > Spoke VNet にリンクした Private DNS Zone は、VM の NIC に対して A レコードを自動登録します。
 > 例: `vm-spoke1-web.azure.internal` → `10.20.1.4`
+
+### [4/4] Spoke VNet リンク（`-LinkSpokeVnets` 指定時のみ）
+
+#### Azure 側（rg-hub）
+
+| # | リソース名 | リソースタイプ | 役割 |
+|---|-----------|--------------|------|
+| 1 | `link-vnet-spoke1` ～ `link-vnet-spoke4` | VNet Link（Ruleset） | Forwarding Ruleset を Spoke VNet にリンク。Spoke VM から `lab.local` を解決可能にする |
 
 ---
 
@@ -238,20 +241,6 @@ vnet-hub → 解決可能
 | Hub → オンプレ | AD ドメイン名 | `app01.lab.local` → `10.0.1.5` |
 | オンプレ → クラウド PaaS | Private Endpoint の FQDN | `sql-spoke2.database.windows.net` → PE の IP |
 
-### Spoke VM ↔ オンプレ の名前解決を追加
-
-```powershell
-.\Setup-HybridDns.ps1 -LinkSpokeVnets
-```
-
-基本構成に加えて:
-
-| 方向 | 解決可能な名前 | 例 |
-|------|--------------|-----|
-| Spoke → オンプレ | AD ドメイン名 | `db01.lab.local` → `10.0.2.4` |
-
-> Spoke VNet に Forwarding Ruleset のリンクを追加することで、Spoke VM が Azure DNS 経由で `lab.local` を解決できるようになります。
-
 ### オンプレ → クラウド VM 名の解決を追加
 
 ```powershell
@@ -266,19 +255,33 @@ vnet-hub → 解決可能
 
 > Private DNS Zone `azure.internal` に Spoke VNet を自動登録リンクし、DC01 に条件付きフォワーダーを追加します。
 
+### Spoke VM ↔ オンプレ の名前解決を追加
+
+```powershell
+.\Setup-HybridDns.ps1 -LinkSpokeVnets
+```
+
+基本構成に加えて:
+
+| 方向 | 解決可能な名前 | 例 |
+|------|--------------|-----|
+| Spoke → オンプレ | AD ドメイン名 | `db01.lab.local` → `10.0.2.4` |
+
+> Spoke VNet に Forwarding Ruleset のリンクを追加することで、Spoke VM が Azure DNS 経由で `lab.local` を解決できるようになります。
+
 ### フル構成（全オプション有効）
 
 ```powershell
-.\Setup-HybridDns.ps1 -LinkSpokeVnets -EnableCloudVmResolution
+.\Setup-HybridDns.ps1 -EnableCloudVmResolution -LinkSpokeVnets
 ```
 
 すべての方向で名前解決が可能:
 
 ```
-オンプレ ←──── lab.local ─────────── Hub / Spoke [1/3]
-オンプレ ────► privatelink.*.net ──► クラウド PaaS [2/3]
-オンプレ ────► azure.internal ────► クラウド VM  [3/3]
-Spoke   ────► lab.local ──────────► オンプレ     [1/3 + -LinkSpokeVnets]
+オンプレ ────► privatelink.*.net ──► クラウド PaaS [1/4]
+オンプレ ←──── lab.local ─────────── Hub          [2/4]
+オンプレ ────► azure.internal ────► クラウド VM  [3/4]
+Spoke   ────► lab.local ──────────► オンプレ     [4/4]
 ```
 
 > **注意**: DNS は名前解決のみを提供します。実際の通信は VPN のルーティング（LGW addressPrefixes）と Firewall / NSG のアクセス制御に依存します。
