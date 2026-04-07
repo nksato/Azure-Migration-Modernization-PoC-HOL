@@ -7,10 +7,14 @@
     Azure API のみで完結する簡易チェック。
 .EXAMPLE
     .\Verify-VpnConnection.ps1
+.EXAMPLE
+    .\Verify-VpnConnection.ps1 -TestSpokeReachability  # Spoke VM を動的検出して双方向到達性テスト
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [switch]$TestSpokeReachability
+)
 
 $ErrorActionPreference = 'Continue'
 $total = 0; $passed = 0
@@ -218,6 +222,84 @@ foreach ($test in $connectivityTests) {
 
     $reachable = $result -match 'True'
     Test-Bool $test.label $reachable
+}
+
+# ============================================================
+# 9. Spoke VM 動的検出 + 双方向到達性テスト (-TestSpokeReachability)
+# ============================================================
+if ($TestSpokeReachability) {
+    Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
+    Write-Host "  Spoke RG 内の VM を検索し、オンプレ↔Spoke 間の IP 到達性をテストします" -ForegroundColor DarkGray
+    Write-Host "  (各テストに 30～60 秒かかります。FW ポリシーにより FAIL になる場合があります)" -ForegroundColor DarkGray
+
+    $spokeRgs = @(
+        @{ rg = 'rg-spoke1'; label = 'Spoke1' }
+        @{ rg = 'rg-spoke2'; label = 'Spoke2' }
+        @{ rg = 'rg-spoke3'; label = 'Spoke3' }
+        @{ rg = 'rg-spoke4'; label = 'Spoke4' }
+    )
+
+    $discoveredVms = @()
+
+    foreach ($spoke in $spokeRgs) {
+        # Spoke RG 内の VM 一覧を取得
+        $vmsJson = az vm list -g $spoke.rg `
+            --query "[].{name:name, nicId:networkProfile.networkInterfaces[0].id}" `
+            -o json 2>$null
+        if (-not $vmsJson -or $vmsJson -eq '[]') {
+            Write-Host "  [$($spoke.label)] VM なし — スキップ" -ForegroundColor DarkGray
+            continue
+        }
+        $vms = $vmsJson | ConvertFrom-Json
+        foreach ($vm in $vms) {
+            # NIC から Private IP を取得
+            $privateIp = az network nic show --ids $vm.nicId `
+                --query "ipConfigurations[0].privateIpAddress" -o tsv 2>$null
+            if ($privateIp) {
+                Write-Host "  [$($spoke.label)] $($vm.name) → $privateIp" -ForegroundColor Gray
+                $discoveredVms += @{
+                    rg    = $spoke.rg
+                    label = $spoke.label
+                    name  = $vm.name
+                    ip    = $privateIp
+                }
+            }
+        }
+    }
+
+    if ($discoveredVms.Count -eq 0) {
+        Write-Host "  Spoke VM が見つかりませんでした。テストをスキップします。" -ForegroundColor DarkGray
+    } else {
+        Write-Host "  $($discoveredVms.Count) 台の Spoke VM を検出しました" -ForegroundColor Green
+
+        foreach ($vm in $discoveredVms) {
+            # OnPrem (DC01) → Spoke VM
+            $fwdLabel = "OnPrem (DC01) → $($vm.label) ($($vm.name) $($vm.ip))"
+            Write-Host "  リモートコマンド実行中: $fwdLabel..." -ForegroundColor Gray
+            $fwdScript = "Test-NetConnection -ComputerName '$($vm.ip)' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+            $fwdResult = az vm run-command invoke `
+                --resource-group rg-onprem `
+                --name vm-onprem-ad `
+                --command-id RunPowerShellScript `
+                --scripts $fwdScript `
+                --query "value[0].message" -o tsv 2>$null
+            Test-Bool $fwdLabel ($fwdResult -match 'True')
+
+            # Spoke VM → OnPrem (DC01)
+            $revLabel = "$($vm.label) ($($vm.name)) → OnPrem (DC01 $onpremDcIp)"
+            Write-Host "  リモートコマンド実行中: $revLabel..." -ForegroundColor Gray
+            $revScript = "Test-NetConnection -ComputerName '$onpremDcIp' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+            $revResult = az vm run-command invoke `
+                --resource-group $vm.rg `
+                --name $vm.name `
+                --command-id RunPowerShellScript `
+                --scripts $revScript `
+                --query "value[0].message" -o tsv 2>$null
+            Test-Bool $revLabel ($revResult -match 'True')
+        }
+    }
+} else {
+    Write-Host "`n=== 9. Spoke VM 到達性テスト: スキップ (use -TestSpokeReachability to enable) ===" -ForegroundColor DarkGray
 }
 
 # ============================================================
