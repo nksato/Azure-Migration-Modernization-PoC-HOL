@@ -93,11 +93,13 @@ foreach ($rg in @('rg-hub', 'rg-spoke1', 'rg-spoke2', 'rg-spoke3', 'rg-spoke4'))
             location = $rgInfo.location
             tags     = $rgInfo.tags
         }
-        Write-Detail "location: $($rgInfo.location)"
-        $tagStr = ($rgInfo.tags.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ', '
-        Write-Detail "tags: $tagStr"
     }
     Test-Val $sectionName $rg $exists 'true' $detailData
+    if ($detailData) {
+        Write-Detail "location: $($detailData.location)"
+        $tagStr = ($detailData.tags.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ', '
+        Write-Detail "tags: $tagStr"
+    }
 }
 
 # ============================================================
@@ -126,12 +128,14 @@ foreach ($vnet in $vnets.GetEnumerator()) {
             dnsServers     = $vnetJson.dhcpOptions.dnsServers
             enableDdos     = $vnetJson.enableDdosProtection
         }
-        Write-Detail "subnets: $subnetNames"
-        if ($vnetJson.dhcpOptions.dnsServers) {
-            Write-Detail "dnsServers: $($vnetJson.dhcpOptions.dnsServers -join ', ')"
-        }
     }
     Test-Val $sectionName $vnet.Key $addr $vnet.Value.cidr $detailData
+    if ($detailData) {
+        Write-Detail "subnets: $subnetNames"
+        if ($detailData.dnsServers) {
+            Write-Detail "dnsServers: $($detailData.dnsServers -join ', ')"
+        }
+    }
 }
 
 # ============================================================
@@ -159,8 +163,6 @@ foreach ($snet in $hubSubnets) {
                 nsg           = if ($subnetJson.networkSecurityGroup) { $subnetJson.networkSecurityGroup.id.Split('/')[-1] } else { $null }
                 routeTable    = if ($subnetJson.routeTable) { $subnetJson.routeTable.id.Split('/')[-1] } else { $null }
             }
-            if ($detailData.nsg) { Write-Detail "NSG: $($detailData.nsg)" }
-            if ($detailData.routeTable) { Write-Detail "RouteTable: $($detailData.routeTable)" }
         }
         $prefix = $subnetJson.addressPrefix
     } else {
@@ -168,6 +170,10 @@ foreach ($snet in $hubSubnets) {
             --query "addressPrefix" -o tsv 2>$null
     }
     Test-NotEmpty $sectionName "vnet-hub/$snet" $prefix $detailData
+    if ($detailData) {
+        if ($detailData.nsg) { Write-Detail "NSG: $($detailData.nsg)" }
+        if ($detailData.routeTable) { Write-Detail "RouteTable: $($detailData.routeTable)" }
+    }
 }
 
 # ============================================================
@@ -195,8 +201,6 @@ foreach ($spoke in $spokeSubnets.GetEnumerator()) {
                     routeTable    = if ($subnetJson.routeTable) { $subnetJson.routeTable.id.Split('/')[-1] } else { $null }
                     delegations   = $subnetJson.delegations | ForEach-Object { $_.serviceName }
                 }
-                if ($detailData.routeTable) { Write-Detail "RouteTable: $($detailData.routeTable)" }
-                if ($detailData.delegations) { Write-Detail "Delegation: $($detailData.delegations -join ', ')" }
             }
             $prefix = $subnetJson.addressPrefix
         } else {
@@ -204,6 +208,10 @@ foreach ($spoke in $spokeSubnets.GetEnumerator()) {
                 --query "addressPrefix" -o tsv 2>$null
         }
         Test-NotEmpty $sectionName "$($spoke.Key)/$snet" $prefix $detailData
+        if ($detailData) {
+            if ($detailData.routeTable) { Write-Detail "RouteTable: $($detailData.routeTable)" }
+            if ($detailData.delegations) { Write-Detail "Delegation: $($detailData.delegations -join ', ')" }
+        }
     }
 }
 
@@ -227,9 +235,11 @@ foreach ($spoke in @('vnet-spoke1', 'vnet-spoke2', 'vnet-spoke3', 'vnet-spoke4')
                 allowGatewayTransit   = $p.allowGatewayTransit
                 useRemoteGateways     = $p.useRemoteGateways
             }
-            Write-Detail "allowForwardedTraffic: $($p.allowForwardedTraffic), allowGatewayTransit: $($p.allowGatewayTransit), useRemoteGateways: $($p.useRemoteGateways)"
         }
         Test-Val $sectionName "Hub → $spoke" $p.state 'Connected' $detailData
+        if ($detailData) {
+            Write-Detail "allowForwardedTraffic: $($p.allowForwardedTraffic), allowGatewayTransit: $($p.allowGatewayTransit), useRemoteGateways: $($p.useRemoteGateways)"
+        }
     } else {
         Test-Val $sectionName "Hub → $spoke" '(未検出)' 'Connected'
     }
@@ -252,9 +262,11 @@ if (-not $SkipFirewall) {
             privateIp  = $fwJson.ipConfigurations[0].privateIPAddress
             threatMode = $fwJson.threatIntelMode
         }
-        Write-Detail "SKU: $($fwDetail.sku), PrivateIP: $($fwDetail.privateIp)"
     }
     Test-Val $sectionName 'afw-hub プロビジョニング' $fwState 'Succeeded' $fwDetail
+    if ($fwDetail) {
+        Write-Detail "SKU: $($fwDetail.sku), PrivateIP: $($fwDetail.privateIp)"
+    }
 
     $fwPolicy = az network firewall policy show -g rg-hub -n afwp-hub `
         --query "provisioningState" -o tsv 2>$null
@@ -274,11 +286,13 @@ if (-not $SkipFirewall) {
                 @{ name = $_.name; prefix = $_.addressPrefix; nextHop = $_.nextHopType; nextHopIp = $_.nextHopIpAddress }
             }
             $rtDetail = @{ routes = $routes; disableBgpPropagation = $rtJson.disableBgpRoutePropagation }
-            foreach ($r in $rtJson.routes) {
-                Write-Detail "$($r.name): $($r.addressPrefix) → $($r.nextHopType) ($($r.nextHopIpAddress))"
-            }
         }
         Test-Val $sectionName $rtInfo.label $rtState 'Succeeded' $rtDetail
+        if ($rtDetail) {
+            foreach ($r in $rtDetail.routes) {
+                Write-Detail "$($r.name): $($r.prefix) → $($r.nextHop) ($($r.nextHopIp))"
+            }
+        }
     }
 } else {
     Write-Host "`n=== 6. Azure Firewall (スキップ) ===" -ForegroundColor DarkGray
@@ -374,9 +388,11 @@ if (-not $SkipBastion) {
     if ($Detail -and $basState -eq 'Succeeded') {
         $basJson = az network bastion show -g rg-hub -n bas-hub -o json 2>$null | ConvertFrom-Json
         $basDetail = @{ sku = $basJson.sku.name }
-        Write-Detail "SKU: $($basJson.sku.name)"
     }
     Test-Val $sectionName 'bas-hub プロビジョニング' $basState 'Succeeded' $basDetail
+    if ($basDetail) {
+        Write-Detail "SKU: $($basDetail.sku)"
+    }
 } else {
     Write-Host "`n=== 7. Azure Bastion (スキップ) ===" -ForegroundColor DarkGray
 }
@@ -399,10 +415,12 @@ if ($Detail) {
     if ($inboundJson -and $inboundJson.Count -gt 0) {
         $ip = $inboundJson[0].ipConfigurations[0].privateIpAddress
         $inboundDetail = @{ privateIp = $ip }
-        Write-Detail "Inbound IP: $ip"
     }
 }
 Test-Val $sectionName 'Inbound Endpoint' $inbound 'Succeeded' $inboundDetail
+if ($inboundDetail) {
+    Write-Detail "Inbound IP: $($inboundDetail.privateIp)"
+}
 
 $outbound = az dns-resolver outbound-endpoint list -g rg-hub --dns-resolver-name dnspr-hub `
     --query "[0].provisioningState" -o tsv 2>$null
@@ -433,12 +451,14 @@ $linkCount = if ($links) { $links.Count } else { 0 }
 $linkDetail = $null
 if ($Detail -and $links) {
     $linkDetail = @{ links = $links | ForEach-Object { @{ name = $_.name; vnetId = $_.virtualNetwork.id.Split('/')[-1]; registrationEnabled = $_.registrationEnabled } } }
+}
+Test-Bool $sectionName "Private DNS Zone VNet リンク数 >= 4 (実際: $linkCount)" ($linkCount -ge 4) $linkDetail
+if ($linkDetail) {
     foreach ($lnk in $links) {
         $vnetShort = $lnk.virtualNetwork.id.Split('/')[-1]
         Write-Detail "VNet Link: $($lnk.name) → $vnetShort (registration=$($lnk.registrationEnabled))"
     }
 }
-Test-Bool $sectionName "Private DNS Zone VNet リンク数 >= 4 (実際: $linkCount)" ($linkCount -ge 4) $linkDetail
 
 # ============================================================
 # 9. Log Analytics Workspace
@@ -456,9 +476,11 @@ if ($Detail -and $lawState -eq 'Succeeded') {
         retentionDays  = $lawJson.retentionInDays
         dailyCapGb     = $lawJson.workspaceCapping.dailyQuotaGb
     }
-    Write-Detail "SKU: $($lawDetail.sku), Retention: $($lawDetail.retentionDays) days"
 }
 Test-Val $sectionName 'log-hub プロビジョニング' $lawState 'Succeeded' $lawDetail
+if ($lawDetail) {
+    Write-Detail "SKU: $($lawDetail.sku), Retention: $($lawDetail.retentionDays) days"
+}
 
 # ============================================================
 # 10. ポリシー割り当て
@@ -490,14 +512,16 @@ foreach ($pn in $policyNames) {
             scope          = $pa.scope
             policyDefId    = $pa.policyDefinitionId.Split('/')[-1]
         }
-        Write-Detail "displayName: $($pa.displayName)"
-        Write-Detail "enforcement: $($pa.enforcementMode), scope: $($pa.scope)"
+    }
+    Test-Bool $sectionName "ポリシー: $pn" $found $policyDetail
+    if ($policyDetail) {
+        Write-Detail "displayName: $($policyDetail.displayName)"
+        Write-Detail "enforcement: $($policyDetail.enforcementMode), scope: $($policyDetail.scope)"
         if ($pa.parameters) {
             $paramStr = ($pa.parameters.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value.value)" }) -join ', '
             if ($paramStr) { Write-Detail "params: $paramStr" }
         }
     }
-    Test-Bool $sectionName "ポリシー: $pn" $found $policyDetail
 }
 
 # ============================================================
