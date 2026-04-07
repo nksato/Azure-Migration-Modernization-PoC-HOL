@@ -1,8 +1,8 @@
 ﻿# ============================================================
 # Setup-HybridDns.ps1
 # ハイブリッド DNS 転送設定 (VPN 接続確立後に実行)
-# [1/3] クラウド→オンプレ: DNS Forwarding Ruleset で lab.local を DC01 へ転送
-# [2/3] オンプレ→クラウド: DC01 に privatelink.database.windows.net の条件付きフォワーダーを追加
+# [1/3] オンプレ→クラウド: DC01 に privatelink.database.windows.net の条件付きフォワーダーを追加
+# [2/3] クラウド→オンプレ: DNS Forwarding Ruleset で lab.local を DC01 へ転送
 # [3/3] オンプレ→クラウド VM: Private DNS Zone (azure.internal) + DC01 条件付きフォワーダー (オプション)
 # ============================================================
 # 前提条件:
@@ -40,8 +40,8 @@ if (-not $account) {
 Write-Host "サブスクリプション: $($account.name) ($($account.id))" -ForegroundColor Green
 
 Write-Host '=== Hybrid DNS Setup ===' -ForegroundColor Cyan
-Write-Host '  [1/3] クラウド → オンプレ: DNS Forwarding Ruleset で AD ドメインを DC01 へ転送' -ForegroundColor Cyan
-Write-Host '  [2/3] オンプレ → クラウド: DC01 の条件付きフォワーダーで Private DNS Zone を Resolver へ転送' -ForegroundColor Cyan
+Write-Host '  [1/3] オンプレ → クラウド: DC01 の条件付きフォワーダーで Private DNS Zone を Resolver へ転送' -ForegroundColor Cyan
+Write-Host '  [2/3] クラウド → オンプレ: DNS Forwarding Ruleset で AD ドメインを DC01 へ転送' -ForegroundColor Cyan
 if ($EnableCloudVmResolution) {
     Write-Host '  [3/3] オンプレ → クラウド VM: Private DNS Zone + DC01 条件付きフォワーダー' -ForegroundColor Cyan
 } else {
@@ -49,9 +49,50 @@ if ($EnableCloudVmResolution) {
 }
 
 # ============================================================
-# [1/3] クラウド→オンプレ: DNS Forwarding Ruleset 作成
+# DNS Private Resolver インバウンド IP 取得 ([1/3] と [3/3] で共用)
 # ============================================================
-Write-Host '[1/3] クラウド → オンプレ: DNS Forwarding Ruleset を作成中...' -ForegroundColor Yellow
+Write-Host '  Getting DNS Resolver inbound IP...' -ForegroundColor Yellow
+$dnsInboundIp = az dns-resolver inbound-endpoint show `
+    --resource-group $HubResourceGroup `
+    --dns-resolver-name $DnsResolverName `
+    --name $InboundEndpointName `
+    --query "ipConfigurations[0].privateIpAddress" -o tsv
+
+if (-not $dnsInboundIp) {
+    Write-Error "DNS Resolver inbound IP not found: $HubResourceGroup/$DnsResolverName/$InboundEndpointName"
+    exit 1
+}
+Write-Host "  DNS Resolver inbound IP: $dnsInboundIp" -ForegroundColor Green
+
+# ============================================================
+# [1/3] オンプレ→クラウド: DC01 に条件付きフォワーダーを追加
+# ============================================================
+Write-Host '[1/3] オンプレ → クラウド: DC01 に条件付きフォワーダーを追加中...' -ForegroundColor Yellow
+Write-Host "  $ForwardZone のクエリを DNS Resolver ($dnsInboundIp) へ転送します" -ForegroundColor Yellow
+
+# DC01 に条件付きフォワーダーを追加
+Write-Host "  Adding conditional forwarder on $VmName for $ForwardZone..." -ForegroundColor Yellow
+
+$script = "`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue; if (`$zone) { Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' } else { Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest }"
+
+az vm run-command invoke `
+    --resource-group $OnpremResourceGroup `
+    --name $VmName `
+    --command-id RunPowerShellScript `
+    --scripts $script `
+    --query "value[].message" -o tsv
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to add conditional forwarder on $VmName."
+    exit 1
+}
+
+Write-Host '  Conditional forwarder configured.' -ForegroundColor Green
+
+# ============================================================
+# [2/3] クラウド→オンプレ: DNS Forwarding Ruleset 作成
+# ============================================================
+Write-Host '[2/3] クラウド → オンプレ: DNS Forwarding Ruleset を作成中...' -ForegroundColor Yellow
 Write-Host "  $OnpremDomain のクエリを DC01 ($OnpremDnsTarget) へ転送します" -ForegroundColor Yellow
 
 # DNS Resolver の Outbound Endpoint ID を取得
@@ -132,47 +173,6 @@ foreach ($spoke in $spokeVnets) {
 Write-Host '  Cloud to On-premises DNS forwarding configured.' -ForegroundColor Green
 
 # ============================================================
-# DNS Private Resolver インバウンド IP 取得 ([2/3] と [3/3] で共用)
-# ============================================================
-Write-Host '  Getting DNS Resolver inbound IP...' -ForegroundColor Yellow
-$dnsInboundIp = az dns-resolver inbound-endpoint show `
-    --resource-group $HubResourceGroup `
-    --dns-resolver-name $DnsResolverName `
-    --name $InboundEndpointName `
-    --query "ipConfigurations[0].privateIpAddress" -o tsv
-
-if (-not $dnsInboundIp) {
-    Write-Error "DNS Resolver inbound IP not found: $HubResourceGroup/$DnsResolverName/$InboundEndpointName"
-    exit 1
-}
-Write-Host "  DNS Resolver inbound IP: $dnsInboundIp" -ForegroundColor Green
-
-# ============================================================
-# [2/3] オンプレ→クラウド: DC01 に条件付きフォワーダーを追加
-# ============================================================
-Write-Host '[2/3] オンプレ → クラウド: DC01 に条件付きフォワーダーを追加中...' -ForegroundColor Yellow
-Write-Host "  $ForwardZone のクエリを DNS Resolver ($dnsInboundIp) へ転送します" -ForegroundColor Yellow
-
-# DC01 に条件付きフォワーダーを追加
-Write-Host "  Adding conditional forwarder on $VmName for $ForwardZone..." -ForegroundColor Yellow
-
-$script = "`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue; if (`$zone) { Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' } else { Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest }"
-
-az vm run-command invoke `
-    --resource-group $OnpremResourceGroup `
-    --name $VmName `
-    --command-id RunPowerShellScript `
-    --scripts $script `
-    --query "value[].message" -o tsv
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to add conditional forwarder on $VmName."
-    exit 1
-}
-
-Write-Host '  Conditional forwarder configured.' -ForegroundColor Green
-
-# ============================================================
 # [3/3] オンプレ→クラウド VM 名前解決: Private DNS Zone + DC01 条件付きフォワーダー (オプション)
 # ============================================================
 if ($EnableCloudVmResolution) {
@@ -246,14 +246,6 @@ if ($EnableCloudVmResolution) {
 Write-Host '' -ForegroundColor White
 Write-Host '=== Verification ===' -ForegroundColor Cyan
 
-Write-Host 'DNS Forwarding Ruleset:' -ForegroundColor White
-az dns-resolver forwarding-rule list `
-    --resource-group $HubResourceGroup `
-    --ruleset-name 'dnsrs-hub' `
-    --query "[].{Name:name, Domain:domainName, State:forwardingRuleState, Target:targetDnsServers[0].ipAddress}" `
-    -o table
-
-Write-Host '' -ForegroundColor White
 Write-Host 'DC01 Conditional Forwarder:' -ForegroundColor White
 az vm run-command invoke `
     --resource-group $OnpremResourceGroup `
@@ -261,6 +253,14 @@ az vm run-command invoke `
     --command-id RunPowerShellScript `
     --scripts "Get-DnsServerZone -Name '$ForwardZone' | Format-List ZoneName,ZoneType,MasterServers" `
     --query "value[].message" -o tsv
+
+Write-Host '' -ForegroundColor White
+Write-Host 'DNS Forwarding Ruleset:' -ForegroundColor White
+az dns-resolver forwarding-rule list `
+    --resource-group $HubResourceGroup `
+    --ruleset-name 'dnsrs-hub' `
+    --query "[].{Name:name, Domain:domainName, State:forwardingRuleState, Target:targetDnsServers[0].ipAddress}" `
+    -o table
 
 if ($EnableCloudVmResolution) {
     Write-Host '' -ForegroundColor White
