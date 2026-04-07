@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "35458359130902322"
+      "templateHash": "17491770041969205234"
     }
   },
   "parameters": {
@@ -35,20 +35,13 @@
       "metadata": {
         "description": "Active Directory ドメイン名"
       }
-    },
-    "resourceGroupName": {
-      "type": "string",
-      "defaultValue": "rg-onprem",
-      "metadata": {
-        "description": "リソースグループ名"
-      }
     }
   },
   "resources": [
     {
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2024-03-01",
-      "name": "[parameters('resourceGroupName')]",
+      "name": "rg-onprem",
       "location": "[parameters('location')]",
       "tags": {
         "Environment": "PoC",
@@ -59,7 +52,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "deploy-onprem-environment",
-      "resourceGroup": "[parameters('resourceGroupName')]",
+      "resourceGroup": "rg-onprem",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -86,7 +79,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "5921082404246470699"
+              "templateHash": "11191301424087966662"
             }
           },
           "parameters": {
@@ -283,7 +276,7 @@
               "tags": "[variables('dcTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2s_v2"
+                  "vmSize": "Standard_D2s_v3"
                 },
                 "osProfile": {
                   "computerName": "DC01",
@@ -370,7 +363,7 @@
               "tags": "[variables('dbTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2s_v2"
+                  "vmSize": "Standard_D2s_v3"
                 },
                 "osProfile": {
                   "computerName": "DB01",
@@ -503,7 +496,7 @@
               "tags": "[variables('webTags')]",
               "properties": {
                 "hardwareProfile": {
-                  "vmSize": "Standard_B2s_v2"
+                  "vmSize": "Standard_D2s_v3"
                 },
                 "osProfile": {
                   "computerName": "APP01",
@@ -610,7 +603,7 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', 'rg-onprem')]"
       ]
     }
   ]
