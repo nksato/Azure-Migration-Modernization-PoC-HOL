@@ -7,12 +7,16 @@
     ブラウザやポータル画面での目視確認は含まない。
 .EXAMPLE
     .\Verify-HybridDns.ps1
+.EXAMPLE
+    .\Verify-HybridDns.ps1 -EnableCloudVmResolution -LinkSpokeVnets
 #>
 
 [CmdletBinding()]
 param(
     [string]$OnpremResourceGroup = 'rg-onprem',
-    [string]$HubResourceGroup = 'rg-hub'
+    [string]$HubResourceGroup = 'rg-hub',
+    [switch]$EnableCloudVmResolution,
+    [switch]$LinkSpokeVnets
 )
 
 $ErrorActionPreference = 'Continue'
@@ -206,6 +210,10 @@ Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 # ============================================================
 Write-Host "`n=== 7. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
 
+if (-not $EnableCloudVmResolution) {
+    Write-Host "  スキップ (-EnableCloudVmResolution 未指定)" -ForegroundColor DarkGray
+} else {
+
 $azInternalState = az network private-dns zone show -g $HubResourceGroup -n 'azure.internal' `
     --query "provisioningState" -o tsv 2>$null
 
@@ -246,10 +254,16 @@ if ($z) { Write-Output ('AZ_ZONE_TYPE=' + $z.ZoneType); Write-Output ('AZ_MASTER
     Write-Host "  スキップ: azure.internal ゾーン未検出 (-EnableCloudVmResolution 未実行)" -ForegroundColor DarkGray
 }
 
+} # -EnableCloudVmResolution guard
+
 # ============================================================
 # 8. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
 # ============================================================
 Write-Host "`n=== 8. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
+
+if (-not $LinkSpokeVnets) {
+    Write-Host "  スキップ (-LinkSpokeVnets 未指定)" -ForegroundColor DarkGray
+} else {
 
 $rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
     --resource-group $HubResourceGroup -o json 2>$null
@@ -268,6 +282,8 @@ if ($rulesetLinkCount -ge 2) {
 } else {
     Write-Host "  スキップ: Spoke VNet リンク未検出 (-LinkSpokeVnets 未実行)" -ForegroundColor DarkGray
 }
+
+} # -LinkSpokeVnets guard
 
 # ============================================================
 # サマリ
