@@ -48,6 +48,7 @@ CAF 推奨: `snet`
 | `snet-aca` | Container Apps Environment 用 |
 | `snet-appservice` | App Service VNet Integration 用 |
 | `snet-management` | 管理 VM 等（予備） |
+| `AzureMigrateSubnet` | Azure Migrate アプライアンス用（NAT Gateway 付き） |
 | `GatewaySubnet` | Azure 予約名（変更不可） |
 | `AzureFirewallSubnet` | Azure 予約名（変更不可） |
 | `AzureBastionSubnet` | Azure 予約名（変更不可） |
@@ -59,6 +60,7 @@ CAF 推奨: `snet`
 | `DC01` | AD DS / DNS | Windows Server 2022 |
 | `APP01` | IIS + .NET Framework 4.8 アプリ | Windows Server 2019 |
 | `DB01` | SQL Server 2019 Developer | Windows Server 2019 |
+| `vm-onprem-migrate` | Azure Migrate アプライアンス | Windows Server 2022 |
 
 ### Hub リソース（rg-hub 内）
 
