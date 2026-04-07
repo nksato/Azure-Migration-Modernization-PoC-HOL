@@ -186,7 +186,7 @@ Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'})
 '@
 
     Test-Val      'vm-spoke1-web → lab.local 解決'       (Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE') 'OK'
-    Test-NotEmpty 'vm-spoke1-web → DC01.lab.local 解決'   (Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE')
+    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  (Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE') '10.0.1.4'
 } else {
     # Spoke VM がないため、DC01 から DNS Resolver Inbound IP を -Server 指定して
     # Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを間接検証
