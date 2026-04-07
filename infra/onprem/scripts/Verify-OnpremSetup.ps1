@@ -202,7 +202,8 @@ try { $b = (Invoke-WebRequest -Uri http://localhost -UseBasicParsing -TimeoutSec
     Test-Val 'Parts Unlimited'   (Get-Val $puOut 'PARTS')    'OK'
 } else {
     Write-Host "`n=== 7. Parts Unlimited [SKIP] ===" -ForegroundColor DarkGray
-    Write-Host '  Setup-SqlServer / Setup-PartsUnlimited 未実行 (-SkipPartsUnlimited)' -ForegroundColor DarkGray
+    Write-Host '  [SKIP] APP01 → DB01:1433 — Setup-SqlServer 未実行' -ForegroundColor DarkGray
+    Write-Host '  [SKIP] HTTP / Parts Unlimited — Setup-PartsUnlimited 未実行' -ForegroundColor DarkGray
 }
 
 # ============================================================
