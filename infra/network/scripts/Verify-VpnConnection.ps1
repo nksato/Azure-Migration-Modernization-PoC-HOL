@@ -225,7 +225,7 @@ foreach ($test in $connectivityTests) {
         --scripts $pingScript `
         --query "value[0].message" -o tsv 2>$null
 
-    $reachable = $result -match 'True'
+    $reachable = ($result | Out-String) -match 'True'
     Test-Bool $test.label $reachable
 }
 
@@ -288,7 +288,7 @@ if ($TestSpokeReachability) {
                 --command-id RunPowerShellScript `
                 --scripts $fwdScript `
                 --query "value[0].message" -o tsv 2>$null
-            Test-Bool $fwdLabel ($fwdResult -match 'True')
+            Test-Bool $fwdLabel (($fwdResult | Out-String) -match 'True')
 
             # Spoke VM → OnPrem (DC01)
             $revLabel = "$($vm.label) ($($vm.name)) → OnPrem (DC01 $onpremDcIp)"
@@ -300,7 +300,7 @@ if ($TestSpokeReachability) {
                 --command-id RunPowerShellScript `
                 --scripts $revScript `
                 --query "value[0].message" -o tsv 2>$null
-            Test-Bool $revLabel ($revResult -match 'True')
+            Test-Bool $revLabel (($revResult | Out-String) -match 'True')
         }
     }
 } else {
