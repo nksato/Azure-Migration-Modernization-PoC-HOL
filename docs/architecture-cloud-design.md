@@ -166,10 +166,10 @@ Hub ↔ Spoke1〜4 の間で VNet ピアリングを設定します。VPN Gatewa
 |---|---|
 | ルールセット名 | `dnsrs-hub` |
 | 転送ルール | `lab.local.` → `10.0.1.4` (DC01) : port 53 |
-| リンク先 VNet | `vnet-hub` |
+| リンク先 VNet | `vnet-hub`（必須） |
 | Outbound Endpoint | `dnspr-hub/outbound` (`snet-dns-outbound`) |
 
-Hub VNet の DNS サーバー設定は Azure 既定のため、Hub にリンクされた Forwarding Ruleset が自動的に適用されます。Spoke は VNet ピアリング経由で Hub の DNS Resolver を利用します。
+Hub VNet の DNS サーバー設定は Azure 既定のため、Hub にリンクされた Forwarding Ruleset が自動的に適用されます。Spoke は VNet ピアリング経由で Hub の DNS Resolver を利用します。必要に応じて Spoke VNet への直接リンクも可能です（`-LinkSpokeVnets` スイッチ）。
 
 ### オンプレ → クラウド (条件付きフォワーダー)
 

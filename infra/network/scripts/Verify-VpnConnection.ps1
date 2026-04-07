@@ -96,7 +96,7 @@ Test-NotEmpty 'vpngw-hub Public IP' $hubPip
 Write-Host "`n=== 4. Local Network Gateway ===" -ForegroundColor Cyan
 
 $lgwJson = az network local-gateway show -g rg-onprem -n lgw-hub `
-    --query "{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes[0]}" `
+    --query "{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}" `
     -o json 2>$null
 if ($lgwJson) {
     $lgw = $lgwJson | ConvertFrom-Json
@@ -107,7 +107,12 @@ if ($lgwJson) {
     } else {
         Test-NotEmpty 'lgw-hub Gateway IP' $lgw.gwIp
     }
-    Test-Val 'lgw-hub アドレス空間' $lgw.prefixes '10.10.0.0/16'
+    # アドレス空間: Hub + Spoke1-4 の 5 プレフィックスを検証
+    $expectedPrefixes = @('10.10.0.0/16', '10.20.0.0/16', '10.21.0.0/16', '10.22.0.0/16', '10.23.0.0/16')
+    $actualPrefixes = @($lgw.prefixes | Sort-Object)
+    $expectedSorted = @($expectedPrefixes | Sort-Object)
+    $prefixMatch = ($actualPrefixes -join ',') -eq ($expectedSorted -join ',')
+    Test-Bool "lgw-hub アドレス空間 (Hub + Spoke1-4: $($actualPrefixes -join ', '))" $prefixMatch
 } else {
     Test-Val 'lgw-hub' '(未検出)' 'Succeeded'
 }
@@ -137,7 +142,7 @@ Write-Host "`n=== 6. 接続情報サマリ ===" -ForegroundColor Cyan
 Write-Host "  オンプレ VPN GW PIP  : $onpremPip" -ForegroundColor Gray
 Write-Host "  Hub VPN GW PIP       : $hubPip" -ForegroundColor Gray
 Write-Host "  LGW → Hub IP         : $(if ($lgwJson) { ($lgwJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
-Write-Host "  LGW アドレス空間     : $(if ($lgwJson) { ($lgwJson | ConvertFrom-Json).prefixes } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  LGW アドレス空間     : $(if ($lgwJson) { ($lgwJson | ConvertFrom-Json).prefixes -join ', ' } else { '(未検出)' })" -ForegroundColor Gray
 Write-Host "  接続状態             : $(if ($cnJson) { ($cnJson | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
 
 # ============================================================
@@ -169,6 +174,50 @@ foreach ($item in @(
     $sp = az network vnet peering list -g $item.rg --vnet-name $item.vnet `
         --query "[?contains(remoteVirtualNetwork.id,'vnet-hub')].useRemoteGateways | [0]" -o tsv 2>$null
     Test-Val "$($item.vnet) → Hub useRemoteGateways" $sp 'true'
+}
+
+# ============================================================
+# 8. IP 到達性テスト (az vm run-command invoke)
+# ============================================================
+Write-Host "`n=== 8. IP 到達性テスト ===" -ForegroundColor Cyan
+Write-Host "  (az vm run-command invoke を使用 — 各テストに 30〜60 秒かかります)" -ForegroundColor DarkGray
+
+# OnPrem DC01 の IP
+$onpremDcIp = '10.0.1.4'
+
+# テスト対象の定義: 送信元 VM → 宛先 IP
+$connectivityTests = @(
+    # OnPrem → Hub (DNS Resolver Inbound as representative)
+    @{ srcRg = 'rg-onprem'; srcVm = 'vm-onprem-ad'; dstIp = '10.10.5.4'; label = 'OnPrem (DC01) → Hub (DNS Resolver 10.10.5.4)' }
+    # OnPrem → Spoke1 Web VM
+    @{ srcRg = 'rg-onprem'; srcVm = 'vm-onprem-ad'; dstIp = '10.20.1.4'; label = 'OnPrem (DC01) → Spoke1 (10.20.1.4)' }
+)
+
+# Spoke1 Web VM が存在すれば逆方向もテスト
+$spoke1WebVm = az vm show -g rg-spoke1 -n vm-spoke1-web --query "name" -o tsv 2>$null
+if ($spoke1WebVm) {
+    $connectivityTests += @{ srcRg = 'rg-spoke1'; srcVm = 'vm-spoke1-web'; dstIp = $onpremDcIp; label = 'Spoke1 (vm-spoke1-web) → OnPrem (DC01 10.0.1.4)' }
+}
+
+foreach ($test in $connectivityTests) {
+    # 送信元 VM の存在確認
+    $vmExists = az vm show -g $test.srcRg -n $test.srcVm --query "name" -o tsv 2>$null
+    if (-not $vmExists) {
+        Write-Host "  [SKIP] $($test.label) — 送信元 VM が未デプロイ" -ForegroundColor DarkGray
+        continue
+    }
+
+    Write-Host "  リモートコマンド実行中: $($test.label)..." -ForegroundColor Gray
+    $pingScript = "Test-NetConnection -ComputerName '$($test.dstIp)' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+    $result = az vm run-command invoke `
+        --resource-group $test.srcRg `
+        --name $test.srcVm `
+        --command-id RunPowerShellScript `
+        --scripts $pingScript `
+        --query "value[0].message" -o tsv 2>$null
+
+    $reachable = $result -match 'True'
+    Test-Bool $test.label $reachable
 }
 
 # ============================================================

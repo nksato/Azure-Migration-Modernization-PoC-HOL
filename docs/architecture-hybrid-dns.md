@@ -56,6 +56,8 @@
 | 5 | `rule-lab-local` | Forwarding Rule | `lab.local.` → DC01（`10.0.1.4:53`）への転送ルール |
 | 6 | `link-vnet-hub` | VNet Link（Ruleset） | Forwarding Ruleset を Hub VNet にリンク |
 
+> **オプション**: Spoke VM からオンプレの名前解決が必要な場合、`link-vnet-spoke1` ～ `link-vnet-spoke4` で Spoke VNet にもリンクできます。スクリプトでは `-LinkSpokeVnets` スイッチで有効化します。
+
 ### オンプレ側（DC01）
 
 | # | 設定 | 内容 |

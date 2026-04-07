@@ -125,7 +125,7 @@ Azure API のみで完結します。
 | 1 | GatewaySubnet | `vnet-onprem` / `vnet-hub` に `GatewaySubnet` が存在 |
 | 2 | VPN GW (オンプレ) | `vgw-onprem` — プロビジョニング `Succeeded`、SKU `VpnGw1AZ`、タイプ `RouteBased`、Public IP 取得 |
 | 3 | VPN GW (Hub) | `vpngw-hub` — プロビジョニング `Succeeded`、SKU `VpnGw1AZ`、タイプ `RouteBased`、Public IP 取得 |
-| 4 | Local Network GW | `lgw-hub` — プロビジョニング、PIP 一致、アドレス空間 `10.10.0.0/16` |
+| 4 | Local Network GW | `lgw-hub` — プロビジョニング、PIP 一致、アドレス空間 `10.10.0.0/16` + Spoke (`10.20-23.0.0/16`) |
 | 5 | S2S VPN 接続 | `cn-onprem-to-hub` — プロビジョニング `Succeeded`、接続状態 `Connected`、プロトコル `IKEv2` |
 | 6 | 接続情報サマリ | 両側の Public IP・LGW 設定・接続状態の一覧表示 |
 | 7 | Gateway Transit | Hub→Spoke ピアリングの `allowGatewayTransit = true`、Spoke→Hub の `useRemoteGateways = true` |

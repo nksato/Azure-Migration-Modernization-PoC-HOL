@@ -89,7 +89,7 @@
 |---|---|---|---|
 | VPN Gateway | `vgw-onprem` | rg-onprem | VpnGw1AZ / RouteBased |
 | Public IP | `vgw-onprem-pip1` | rg-onprem | Standard / Static / ゾーン冗長 |
-| Local Network GW | `lgw-hub` | rg-onprem | Hub 側を表す (10.10.0.0/16) |
+| Local Network GW | `lgw-hub` | rg-onprem | Hub + Spoke を表す (10.10.0.0/16, 10.20-23.0.0/16) |
 | S2S 接続 | `cn-onprem-to-hub` | rg-onprem | IKEv2 |
 | Local Network GW | `lgw-onprem` | rg-hub | オンプレ側を表す (10.0.0.0/16) |
 | S2S 接続 | `cn-hub-to-onprem` | rg-hub | IKEv2 |
