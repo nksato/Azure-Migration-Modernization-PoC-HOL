@@ -73,6 +73,7 @@
 
 - 各 VM に**パブリック IP は付与しない**
 - 管理アクセスは **Azure Bastion** に統一
+- VM の送信インターネットアクセスは **NAT Gateway** (`ng-onprem`) 経由（`defaultOutboundAccess` は無効化）
 - ドメイン/DNS は `DC01` が提供（VNet の `dhcpOptions.dnsServers` に `10.0.1.4` を設定）
 - `nsg-server` で VNet 内通信のみ許可、インターネットからの Inbound は拒否
 - `GatewaySubnet` はクラウド側 Hub VNet との S2S 接続用（VPN Gateway は別テンプレートで作成）
@@ -114,7 +115,7 @@
 | テンプレート | 特徴 | 用途 |
 |---|---|---|
 | `infra/onprem/main.bicep` | サブスクリプションスコープ ラッパー | RG 作成 + resources.bicep 呼び出し |
-| `infra/onprem/resources.bicep` | Azure 既定の送信アクセスを利用 | VM / VNet / Bastion / NSG |
+| `infra/onprem/resources.bicep` | NAT Gateway で送信アクセスを提供 | VM / VNet / Bastion / NSG / NAT Gateway |
 | `infra/network/main.bicep` | VPN Gateway + S2S 接続 | オンプレ・ Hub 両方の VPN GW + 接続 |
 | `infra/main.bicep` | 一括デプロイ用エントリポイント | 上記をまとめて実行 |
 
@@ -152,7 +153,7 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 ### 参照ファイル一覧
 
 - `infra/onprem/main.bicep` — サブスクリプションスコープ ラッパー
-- `infra/onprem/resources.bicep` — リソースグループスコープ (VM / VNet / Bastion / NSG)
+- `infra/onprem/resources.bicep` — リソースグループスコープ (VM / VNet / Bastion / NSG / NAT Gateway)
 - `infra/network/main.bicep` — VPN Gateway + S2S 接続
 - `infra/network/modules/onprem-vpn-gateway.bicep`
 - `infra/network/modules/vpn-connection.bicep`
