@@ -144,8 +144,60 @@ if (-not $SkipFirewall) {
     $rt = az network route-table show -g rg-hub -n rt-spokes-to-fw `
         --query "provisioningState" -o tsv 2>$null
     Test-Val 'rt-spokes-to-fw ルートテーブル' $rt 'Succeeded'
+
+    $rtGw = az network route-table show -g rg-hub -n rt-gateway-to-fw `
+        --query "provisioningState" -o tsv 2>$null
+    Test-Val 'rt-gateway-to-fw ルートテーブル' $rtGw 'Succeeded'
 } else {
     Write-Host "`n=== 6. Azure Firewall (スキップ) ===" -ForegroundColor DarkGray
+}
+
+# ============================================================
+# 6.5 接続ルール (Firewall ネットワークルール)
+# ============================================================
+Write-Host "`n=== 6.5 接続ルール (Firewall ネットワークルール) ===" -ForegroundColor Cyan
+
+if (-not $SkipFirewall) {
+    # Firewall Policy からネットワークルールを取得
+    $ruleCollections = az network firewall policy rule-collection-group show `
+        -g rg-hub --policy-name afwp-hub --name DefaultNetworkRuleCollectionGroup `
+        --query "ruleCollections[0].rules[].name" -o json 2>$null | ConvertFrom-Json
+
+    $ruleNames = if ($ruleCollections) { $ruleCollections } else { @() }
+
+    # 各接続パスの判定
+    $onpremToSpoke = 'OnPrem-to-Spokes' -in $ruleNames
+    $spokeToOnprem = 'Spokes-to-OnPrem' -in $ruleNames
+    $spokeToSpoke  = 'Spoke-to-Spoke'   -in $ruleNames
+
+    # Peering 状態の確認 (Hub↔Spoke)
+    $hubPeerings = az network vnet peering list -g rg-hub --vnet-name vnet-hub `
+        --query "[].{name:name, state:peeringState}" -o json 2>$null | ConvertFrom-Json
+    $allPeeringsConnected = ($hubPeerings | Where-Object { $_.state -eq 'Connected' }).Count -ge 4
+
+    Write-Host "  Peering (Hub ↔ Spoke 全4本): $(if ($allPeeringsConnected) {'Connected'} else {'一部未接続'})" `
+        -ForegroundColor $(if ($allPeeringsConnected) {'Green'} else {'Yellow'})
+
+    $directions = @(
+        @{ Label = 'OnPrem → Spoke'; Allowed = $onpremToSpoke -and $allPeeringsConnected; Rule = 'OnPrem-to-Spokes' }
+        @{ Label = 'Spoke  → OnPrem'; Allowed = $spokeToOnprem -and $allPeeringsConnected; Rule = 'Spokes-to-OnPrem' }
+        @{ Label = 'Spoke ↔ Spoke'; Allowed = $spokeToSpoke  -and $allPeeringsConnected; Rule = 'Spoke-to-Spoke' }
+    )
+
+    foreach ($d in $directions) {
+        $status = if ($d.Allowed) { 'Allow' } else { 'Deny' }
+        $reason = if (-not $allPeeringsConnected) {
+            '(Peering 未接続)'
+        } elseif ($d.Allowed) {
+            "(rule: $($d.Rule))"
+        } else {
+            '(ルール未検出)'
+        }
+        $color = if ($d.Allowed) { 'Green' } else { 'Yellow' }
+        Write-Host ("  {0}: {1} {2}" -f $d.Label, $status, $reason) -ForegroundColor $color
+    }
+} else {
+    Write-Host "  (Firewall スキップのため判定不可)" -ForegroundColor DarkGray
 }
 
 # ============================================================
