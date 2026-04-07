@@ -1,9 +1,9 @@
 // ============================================================
-// 疑似オンプレミス環境 — パターン 1: 既定の送信 IP あり (アラート表示)
+// 疑似オンプレミス環境
 // ============================================================
-// defaultOutboundAccess を設定しないため、Azure Portal に
-// 「既定のアウトバウンド アクセス IP」の警告が表示されます。
-// VM はインターネットへの送信アクセスが可能です。
+// NAT Gateway で送信インターネットアクセスを提供し、
+// defaultOutboundAccess を無効化しています。
+// https://learn.microsoft.com/azure/virtual-network/ip-services/default-outbound-access
 // ============================================================
 
 @description('管理者ユーザー名')
@@ -62,6 +62,36 @@ resource serverNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
   }
 }
 
+// NAT Gateway — VM の送信インターネットアクセス用
+resource natGwPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+  name: 'pip-ng-onprem'
+  location: location
+  tags: sharedTags
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
+}
+
+resource natGw 'Microsoft.Network/natGateways@2024-05-01' = {
+  name: 'ng-onprem'
+  location: location
+  tags: sharedTags
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    idleTimeoutInMinutes: 4
+    publicIpAddresses: [
+      {
+        id: natGwPip.id
+      }
+    ]
+  }
+}
+
 // 疑似オンプレミス VNet
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: 'vnet-onprem'
@@ -83,6 +113,10 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         name: 'ServerSubnet'
         properties: {
           addressPrefix: '10.0.1.0/24'
+          defaultOutboundAccess: false
+          natGateway: {
+            id: natGw.id
+          }
           networkSecurityGroup: {
             id: serverNsg.id
           }

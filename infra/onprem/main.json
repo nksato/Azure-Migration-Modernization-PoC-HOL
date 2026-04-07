@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "17491770041969205234"
+      "templateHash": "10469883202483502809"
     }
   },
   "parameters": {
@@ -79,7 +79,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "11191301424087966662"
+              "templateHash": "762499673324102388"
             }
           },
           "parameters": {
@@ -164,6 +164,40 @@
               }
             },
             {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-05-01",
+              "name": "pip-ng-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/natGateways",
+              "apiVersion": "2024-05-01",
+              "name": "ng-onprem",
+              "location": "[parameters('location')]",
+              "tags": "[variables('sharedTags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "idleTimeoutInMinutes": 4,
+                "publicIpAddresses": [
+                  {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-ng-onprem')]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-ng-onprem')]"
+              ]
+            },
+            {
               "type": "Microsoft.Network/virtualNetworks",
               "apiVersion": "2024-05-01",
               "name": "vnet-onprem",
@@ -185,6 +219,10 @@
                     "name": "ServerSubnet",
                     "properties": {
                       "addressPrefix": "10.0.1.0/24",
+                      "defaultOutboundAccess": false,
+                      "natGateway": {
+                        "id": "[resourceId('Microsoft.Network/natGateways', 'ng-onprem')]"
+                      },
                       "networkSecurityGroup": {
                         "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
                       }
@@ -199,6 +237,7 @@
                 ]
               },
               "dependsOn": [
+                "[resourceId('Microsoft.Network/natGateways', 'ng-onprem')]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
               ]
             },
