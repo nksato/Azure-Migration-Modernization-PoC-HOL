@@ -221,11 +221,14 @@ Import-Module WebAdministration
 $appPoolName = $SiteName
 $sitePath = "C:\inetpub\$SiteName"
 
-# Default Web Site を停止 (ポート競合回避)
+# Default Web Site を停止し、自動起動を無効化 (ポート競合回避・VM 再起動後も維持)
 $defaultSite = Get-Website -Name 'Default Web Site' -ErrorAction SilentlyContinue
-if ($defaultSite -and $defaultSite.State -eq 'Started') {
-    Stop-Website -Name 'Default Web Site'
-    Write-Host '  Default Web Site を停止しました。' -ForegroundColor Yellow
+if ($defaultSite) {
+    if ($defaultSite.State -eq 'Started') {
+        Stop-Website -Name 'Default Web Site'
+    }
+    Set-ItemProperty 'IIS:\Sites\Default Web Site' -Name 'serverAutoStart' -Value $false
+    Write-Host '  Default Web Site を停止し、自動起動を無効化しました。' -ForegroundColor Yellow
 }
 
 # サイトディレクトリへコピー

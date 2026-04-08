@@ -221,11 +221,14 @@ Import-Module WebAdministration
 $appPoolName = $SiteName
 $sitePath = "C:\inetpub\$SiteName"
 
-# Stop Default Web Site (avoid port conflict)
+# Stop Default Web Site and disable auto-start (avoid port conflict after VM restart)
 $defaultSite = Get-Website -Name 'Default Web Site' -ErrorAction SilentlyContinue
-if ($defaultSite -and $defaultSite.State -eq 'Started') {
-    Stop-Website -Name 'Default Web Site'
-    Write-Host '  Stopped Default Web Site.' -ForegroundColor Yellow
+if ($defaultSite) {
+    if ($defaultSite.State -eq 'Started') {
+        Stop-Website -Name 'Default Web Site'
+    }
+    Set-ItemProperty 'IIS:\Sites\Default Web Site' -Name 'serverAutoStart' -Value $false
+    Write-Host '  Stopped Default Web Site and disabled auto-start.' -ForegroundColor Yellow
 }
 
 # Copy files to site directory
