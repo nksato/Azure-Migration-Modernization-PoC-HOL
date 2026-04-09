@@ -58,7 +58,10 @@ if ($SpokesOnly) {
 
     $deleted = 0
     foreach ($name in $holPolicies) {
+        $prevEAP = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
         $exists = az policy assignment show --name $name 2>$null
+        $ErrorActionPreference = $prevEAP
         if ($LASTEXITCODE -eq 0) {
             az policy assignment delete --name $name
             Write-Output "  DELETE: $name"
