@@ -144,10 +144,10 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 - オンプレ図解: [`./architecture-onprem-diagrams.md`](./architecture-onprem-diagrams.md)
 - クラウド図解: [`./architecture-cloud-diagrams.md`](./architecture-cloud-diagrams.md)
 - 検証スクリプト: [`./architecture-verify-scripts.md`](./architecture-verify-scripts.md)
-- オンプレデプロイ: [`./handson/1.2-onprem-deploy.md`](./handson/1.2-onprem-deploy.md)
-- Parts Unlimited セットアップ: [`./handson/1.3-onprem-parts-unlimited.md`](./handson/1.3-onprem-parts-unlimited.md)
-- 動作確認: [`./handson/1.4-onprem-verification.md`](./handson/1.4-onprem-verification.md)
-- VPN 接続: [`./handson/1.6-cloud-vpn-connect.md`](./handson/1.6-cloud-vpn-connect.md)
+- オンプレデプロイ: [`../handson/1.2-onprem-deploy.md`](../handson/1.2-onprem-deploy.md)
+- Parts Unlimited セットアップ: [`../handson/1.3-onprem-parts-unlimited.md`](../handson/1.3-onprem-parts-unlimited.md)
+- 動作確認: [`../handson/1.4-onprem-verification.md`](../handson/1.4-onprem-verification.md)
+- VPN 接続: [`../handson/1.6-cloud-vpn-connect.md`](../handson/1.6-cloud-vpn-connect.md)
 - ハイブリッド DNS: [`./handson/1.7-cloud-hybrid-dns.md`](./handson/1.7-cloud-hybrid-dns.md)
 
 ### 参照ファイル一覧

@@ -1,14 +1,15 @@
 # Azure Migration - Nested Hyper-V 疑似オンプレ環境 (作成中)
 
-Azure 上に閉域の疑似オンプレミス環境を構築し、Azure Migrate 等による移行検証に使用します。
+Azure 上に疑似オンプレミス環境を構築し、Azure Migrate 等による移行検証に使用します。
 
 ## アーキテクチャ
 
 ```
-VNet (10.1.0.0/16) - 閉域ネットワーク
+VNet (10.1.0.0/16)
 ├── AzureBastionSubnet (10.1.0.0/26)
 │   └── Azure Bastion (Standard) ... 管理アクセス用
-└── snet-onprem-nested (10.1.1.0/24) ... UDR でインターネット遮断
+└── snet-onprem-nested (10.1.1.0/24) ... NAT Gateway で送信インターネット
+    ├── NAT Gateway (ng-onprem-nested) ... 送信インターネットアクセス
     └── Hyper-V Host VM (Windows Server 2022, Standard_E4s_v5)
         ├── F: ドライブ (256 GB データディスク)
         ├── InternalNAT Switch (192.168.100.0/24)
@@ -17,13 +18,14 @@ VNet (10.1.0.0/16) - 閉域ネットワーク
         └── vm-sql01 (WS2019) ... SQL       192.168.100.12
 ```
 
-### 閉域ネットワーク構成
+### ネットワーク構成
 
 | 制御 | 内容 |
 |------|------|
-| UDR | `0.0.0.0/0 → None` でインターネット向け通信を破棄 |
-| NSG | `Internet` サービスタグへの送信を Deny |
-| Public IP | VM には付与しない |
+| NAT Gateway | `ng-onprem-nested` で送信インターネットアクセスを提供 |
+| NSG | `AllowVNetInbound` + `DenyInternetInbound` で受信を制限 |
+| UDR | VPN 接続時にクラウド側 CIDR のルートを注入（`rt-block-internet`） |
+| Public IP | VM には付与しない（`defaultOutboundAccess: false`） |
 
 ## 前提条件
 
@@ -152,7 +154,7 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 ├── main.bicep              # メインテンプレート
 ├── main.bicepparam         # パラメータファイル
 ├── modules/
-│   ├── network.bicep       # VNet, サブネット, NSG, UDR
+│   ├── network.bicep       # VNet, サブネット, NSG, NAT Gateway, UDR
 │   ├── bastion.bicep       # Azure Bastion
 │   └── hyperv-host.bicep   # Hyper-V ホスト VM
 ├── scripts/

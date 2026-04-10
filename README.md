@@ -91,10 +91,10 @@
 
 詳細は以下を参照してください。
 
-- [`docs/architecture-onprem-design.md`](./docs/architecture-onprem-design.md)
-- [`docs/architecture-onprem-diagrams.md`](./docs/architecture-onprem-diagrams.md)
-- [`docs/architecture-cloud-design.md`](./docs/architecture-cloud-design.md)
-- [`docs/architecture-cloud-diagrams.md`](./docs/architecture-cloud-diagrams.md)
+- [`docs/architecture/architecture-onprem-design.md`](./docs/architecture/architecture-onprem-design.md)
+- [`docs/architecture/architecture-onprem-diagrams.md`](./docs/architecture/architecture-onprem-diagrams.md)
+- [`docs/architecture/architecture-cloud-design.md`](./docs/architecture/architecture-cloud-design.md)
+- [`docs/architecture/architecture-cloud-diagrams.md`](./docs/architecture/architecture-cloud-diagrams.md)
 
 ---
 

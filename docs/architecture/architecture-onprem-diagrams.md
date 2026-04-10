@@ -32,11 +32,11 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    A[00. インフラ デプロイ] --> B[DC01: AD / DNS 構成]
+    A[1.2. インフラ デプロイ] --> B[DC01: AD / DNS 構成]
     B --> C[DB01 / APP01 をドメイン参加]
     C --> D[DB01: SQL Server セットアップ]
     D --> E[APP01: Parts Unlimited デプロイ]
-    E --> F[02. 動作確認 / 疎通確認]
+    E --> F[1.4. 動作確認 / 疎通確認]
     F --> G[移行 HOL の移行元環境として利用]
 ```
 

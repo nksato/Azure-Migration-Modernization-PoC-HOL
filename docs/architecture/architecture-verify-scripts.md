@@ -235,8 +235,8 @@ Azure API で Arc リソースの存在を確認し、`az vm run-command invoke`
 
 - オンプレ環境の確認手順: [`handson/1.4-onprem-verification.md`](./handson/1.4-onprem-verification.md)
 - クラウド基盤デプロイ: [`handson/1.5-cloud-deploy.md`](./handson/1.5-cloud-deploy.md)
-- VPN 接続構成: [`handson/1.6-cloud-vpn-connect.md`](./handson/1.6-cloud-vpn-connect.md)
-- ハイブリッド DNS 構成: [`handson/1.7-cloud-hybrid-dns.md`](./handson/1.7-cloud-hybrid-dns.md)
-- Azure Arc オンボーディング: [`handson/2.2-cloud-arc-onboard.md`](./handson/2.2-cloud-arc-onboard.md)
+- VPN 接続構成: [`../handson/1.6-cloud-vpn-connect.md`](../handson/1.6-cloud-vpn-connect.md)
+- ハイブリッド DNS 構成: [`../handson/1.7-cloud-hybrid-dns.md`](../handson/1.7-cloud-hybrid-dns.md)
+- Azure Arc オンボーディング: [`../handson/2.2-cloud-arc-onboard.md`](../handson/2.2-cloud-arc-onboard.md)
 - オンプレ設計: [`architecture-onprem-design.md`](./architecture-onprem-design.md)
 - クラウド設計: [`architecture-cloud-design.md`](./architecture-cloud-design.md)
