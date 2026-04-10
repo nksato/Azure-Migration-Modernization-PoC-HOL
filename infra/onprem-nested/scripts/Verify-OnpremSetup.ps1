@@ -13,7 +13,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$ResourceGroupName = 'rg-onprem-migration',
+    [string]$ResourceGroupName = 'rg-onprem-nested',
     [string]$HostVmName = 'vm-onprem-hv01',
     [string]$VnetName = 'vnet-onprem',
     [switch]$SkipNestedVMs
@@ -93,7 +93,7 @@ Write-Host "`n=== 2. VNet & Subnet ===" -ForegroundColor Cyan
 
 $vnetAddr = az network vnet show -g $ResourceGroupName -n $VnetName `
     --query 'addressSpace.addressPrefixes[0]' -o tsv 2>$null
-Test-Val $VnetName $vnetAddr '10.0.0.0/16'
+Test-Val $VnetName $vnetAddr '10.1.0.0/16'
 
 foreach ($snet in @('snet-onprem', 'AzureBastionSubnet')) {
     $prefix = az network vnet subnet show -g $ResourceGroupName --vnet-name $VnetName -n $snet `
@@ -101,16 +101,15 @@ foreach ($snet in @('snet-onprem', 'AzureBastionSubnet')) {
     Test-NotEmpty "$VnetName/$snet" $prefix
 }
 
-$nsgName = az network nsg show -g $ResourceGroupName -n 'nsg-onprem' --query 'name' -o tsv 2>$null
-Test-NotEmpty 'nsg-onprem' $nsgName
+$nsgName = az network nsg show -g $ResourceGroupName -n 'nsg-onprem-nested' --query 'name' -o tsv 2>$null
+Test-NotEmpty 'nsg-onprem-nested' $nsgName
 
 $rtName = az network route-table show -g $ResourceGroupName -n 'rt-block-internet' --query 'name' -o tsv 2>$null
 Test-NotEmpty 'rt-block-internet' $rtName
 
-# Internet block route
-$blockRoute = az network route-table route list -g $ResourceGroupName --route-table-name 'rt-block-internet' `
-    --query "[?addressPrefix=='0.0.0.0/0'].nextHopType | [0]" -o tsv 2>$null
-Test-Val 'Internet block (0.0.0.0/0 -> None)' $blockRoute 'None'
+# NAT Gateway
+$ngName = az network nat gateway show -g $ResourceGroupName -n 'ng-onprem-nested' --query 'name' -o tsv 2>$null
+Test-NotEmpty 'ng-onprem-nested' $ngName
 
 # =============================================================================
 # 3. Host VM

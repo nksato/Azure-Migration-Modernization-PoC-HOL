@@ -6,7 +6,7 @@
 // ============================================================================
 
 param vnetName string
-param gatewaySubnetPrefix string = '10.0.255.0/27'
+param gatewaySubnetPrefix string = '10.1.255.0/27'
 param routeTableName string
 param cloudAddressPrefixes array
 

@@ -1,21 +1,30 @@
 // ============================================================================
-// VPN Deploy - On-premises (rg-onprem-migration) <-> Hub (rg-hub)
+// VPN Deploy - On-premises (rg-onprem-nested) <-> Hub (rg-hub)
 //
 // Architecture:
-//   rg-onprem-migration          rg-hub
+//   rg-onprem-nested             rg-hub
 //   ┌──────────────────┐         ┌──────────────────┐
 //   │ vnet-onprem       │         │ vnet-hub          │
-//   │ 10.0.0.0/16       │         │ 10.10.0.0/16      │
+//   │ 10.1.0.0/16       │         │ 10.10.0.0/16      │
 //   │                   │         │                   │
 //   │ ┌───────────────┐ │   VPN   │ ┌───────────────┐ │
 //   │ │ GatewaySubnet │◄├─────────┤►│ GatewaySubnet │ │
-//   │ │ 10.0.255.0/27 │ │  IPsec  │ │10.10.255.0/27 │ │
+//   │ │ 10.1.255.0/27 │ │  IPsec  │ │10.10.255.0/27 │ │
 //   │ └───────────────┘ │         │ └───────────────┘ │
 //   └──────────────────┘         └──────────────────┘
 //
 // Prerequisites:
 //   1. On-premises environment deployed (main.bicep)
 //   2. Cloud environment deployed (Azure-Migration-Modernization-PoC-HOL)
+//
+// Usage patterns:
+//   A) Standalone (onprem-nested only → Hub):
+//      createHubVpnGateway = true  → Hub VPN GW を新規作成
+//      デプロイ後、別途 Hub-Spoke ピアリングの Gateway Transit 有効化が必要
+//
+//   B) Dual (onprem + onprem-nested → Hub):
+//      createHubVpnGateway = false → infra/network/ で作成済みの Hub GW を参照
+//      接続名が -nested サフィックスで分離されるため既存 onprem に影響なし
 //
 // Deployment:
 //   $env:VPN_SHARED_KEY = '<your-shared-key>'
@@ -34,7 +43,7 @@ param location string = deployment().location
 param sharedKey string
 
 @description('On-premises resource group name')
-param onpremResourceGroupName string = 'rg-onprem-migration'
+param onpremResourceGroupName string = 'rg-onprem-nested'
 
 @description('Hub resource group name')
 param hubResourceGroupName string = 'rg-hub'
@@ -53,6 +62,9 @@ param cloudAddressPrefixes array = [
   '10.22.0.0/16' // Spoke3 (Container)
   '10.23.0.0/16' // Spoke4 (Full PaaS)
 ]
+
+@description('Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/)')
+param createHubVpnGateway bool = false
 
 // ============================================================================
 // Existing Resource Groups
@@ -84,20 +96,26 @@ module onpremVpnRoutes 'modules/vpn-routes.bicep' = {
 
 // ============================================================================
 // VPN Gateways
-// - On-prem: newly created (takes ~30-45 min)
-// - Hub: newly created (GatewaySubnet already exists in vnet-hub)
+// - On-prem: always newly created (takes ~30-45 min)
+// - Hub: conditional — create new (standalone) or use existing (dual)
 // ============================================================================
 
 @description('Hub VNet name')
 param hubVnetName string = 'vnet-hub'
 
+@description('Hub VPN Gateway name')
+param hubVpnGatewayName string = 'vpngw-hub'
+
+// Hub VPN Gateway resource ID (deterministic — valid for both new and existing)
+var hubGatewayId = '${rgHub.id}/providers/Microsoft.Network/virtualNetworkGateways/${hubVpnGatewayName}'
+
 module onpremVpnGateway 'modules/vpn-gateway.bicep' = {
   scope: rgOnprem
-  name: 'deploy-vpngw-onprem'
+  name: 'deploy-vgw-onprem'
   params: {
     location: location
-    gatewayName: 'vpngw-onprem'
-    publicIpName: 'pip-vpngw-onprem'
+    gatewayName: 'vgw-onprem'
+    publicIpName: 'pip-vgw-onprem'
     vnetName: onpremVnetName
     sku: vpnGatewaySku
   }
@@ -106,12 +124,13 @@ module onpremVpnGateway 'modules/vpn-gateway.bicep' = {
   ]
 }
 
-module hubVpnGateway 'modules/vpn-gateway.bicep' = {
+// Hub VPN Gateway — create only in standalone mode
+module hubVpnGatewayNew 'modules/vpn-gateway.bicep' = if (createHubVpnGateway) {
   scope: rgHub
   name: 'deploy-vpngw-hub'
   params: {
     location: location
-    gatewayName: 'vpngw-hub'
+    gatewayName: hubVpnGatewayName
     publicIpName: 'pip-vpngw-hub'
     vnetName: hubVnetName
     sku: vpnGatewaySku
@@ -124,26 +143,28 @@ module hubVpnGateway 'modules/vpn-gateway.bicep' = {
 
 module connectionOnpremToHub 'modules/vpn-connection.bicep' = {
   scope: rgOnprem
-  name: 'deploy-cn-onprem-to-hub'
+  name: 'deploy-cn-onprem-nested-to-hub'
   params: {
     location: location
-    connectionName: 'cn-onprem-to-hub'
+    connectionName: 'cn-onprem-nested-to-hub'
     localGatewayId: onpremVpnGateway.outputs.gatewayId
-    remoteGatewayId: hubVpnGateway.outputs.gatewayId
+    remoteGatewayId: hubGatewayId
     sharedKey: sharedKey
   }
+  dependsOn: [hubVpnGatewayNew] // no-op when createHubVpnGateway=false
 }
 
 module connectionHubToOnprem 'modules/vpn-connection.bicep' = {
   scope: rgHub
-  name: 'deploy-cn-hub-to-onprem'
+  name: 'deploy-cn-hub-to-onprem-nested'
   params: {
     location: location
-    connectionName: 'cn-hub-to-onprem'
-    localGatewayId: hubVpnGateway.outputs.gatewayId
+    connectionName: 'cn-hub-to-onprem-nested'
+    localGatewayId: hubGatewayId
     remoteGatewayId: onpremVpnGateway.outputs.gatewayId
     sharedKey: sharedKey
   }
+  dependsOn: [hubVpnGatewayNew] // no-op when createHubVpnGateway=false
 }
 
 // ============================================================================
@@ -151,6 +172,6 @@ module connectionHubToOnprem 'modules/vpn-connection.bicep' = {
 // ============================================================================
 
 output onpremVpnGatewayId string = onpremVpnGateway.outputs.gatewayId
-output hubVpnGatewayId string = hubVpnGateway.outputs.gatewayId
+output hubVpnGatewayId string = hubGatewayId
 output connectionOnpremToHubId string = connectionOnpremToHub.outputs.connectionId
 output connectionHubToOnpremId string = connectionHubToOnprem.outputs.connectionId

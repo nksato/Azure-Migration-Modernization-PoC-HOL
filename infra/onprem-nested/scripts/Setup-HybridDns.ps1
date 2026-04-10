@@ -7,7 +7,7 @@
 # Architecture:
 #   Cloud -> contoso.local:
 #     Spoke VM -> Hub DNS Resolver (Outbound) -> Forwarding Ruleset
-#       -> VPN -> Hyper-V Host (10.0.1.x:53) -> vm-ad01 (192.168.100.10)
+#       -> VPN -> Hyper-V Host (10.1.1.x:53) -> vm-ad01 (192.168.100.10)
 #
 #   On-prem -> privatelink.*:
 #     vm-app01 -> vm-ad01 (DNS) -> Conditional Forwarder -> VPN
@@ -35,14 +35,14 @@
 # Usage:
 #   .\Setup-HybridDns.ps1
 #   .\Setup-HybridDns.ps1 -EnableCloudVmResolution
-#   .\Setup-HybridDns.ps1 -HubResourceGroup rg-hub -OnpremResourceGroup rg-onprem-migration
+#   .\Setup-HybridDns.ps1 -HubResourceGroup rg-hub -OnpremResourceGroup rg-onprem-nested
 # =============================================================================
 
 #Requires -RunAsAdministrator
 
 param(
     [string]$HubResourceGroup = 'rg-hub',
-    [string]$OnpremResourceGroup = 'rg-onprem-migration',
+    [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubDnsResolverName = 'dnspr-hub',
     [string]$HubVnetName = 'vnet-hub',
     [string]$HypervHostVmName = 'vm-onprem-hv01',

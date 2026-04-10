@@ -13,13 +13,13 @@
 
 [CmdletBinding()]
 param(
-    [string]$OnpremResourceGroup = 'rg-onprem-migration',
+    [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubResourceGroup = 'rg-hub',
     [string]$OnpremVnetName = 'vnet-onprem',
     [string]$HubVnetName = 'vnet-hub',
-    [string]$OnpremGatewayName = 'vpngw-onprem',
+    [string]$OnpremGatewayName = 'vgw-onprem',
     [string]$HubGatewayName = 'vpngw-hub',
-    [string]$OnpremPipName = 'pip-vpngw-onprem',
+    [string]$OnpremPipName = 'pip-vgw-onprem',
     [string]$RouteTableName = 'rt-block-internet',
     [string]$HostVmName = 'vm-onprem-hv01',
     [switch]$TestSpokeReachability
@@ -107,27 +107,27 @@ if ($hubGwJson) {
 Write-Host "`n=== 4. VPN Connections (Vnet2Vnet) ===" -ForegroundColor Cyan
 
 # On-prem -> Hub
-$cn1Json = az network vpn-connection show -g $OnpremResourceGroup -n cn-onprem-to-hub `
+$cn1Json = az network vpn-connection show -g $OnpremResourceGroup -n cn-onprem-nested-to-hub `
     --query '{state:provisioningState, status:connectionStatus, type:connectionType}' -o json 2>$null
 if ($cn1Json) {
     $cn1 = $cn1Json | ConvertFrom-Json
-    Test-Val 'cn-onprem-to-hub provisioning' $cn1.state  'Succeeded'
-    Test-Val 'cn-onprem-to-hub status'       $cn1.status 'Connected'
-    Test-Val 'cn-onprem-to-hub type'         $cn1.type   'Vnet2Vnet'
+    Test-Val 'cn-onprem-nested-to-hub provisioning' $cn1.state  'Succeeded'
+    Test-Val 'cn-onprem-nested-to-hub status'       $cn1.status 'Connected'
+    Test-Val 'cn-onprem-nested-to-hub type'         $cn1.type   'Vnet2Vnet'
 } else {
-    Test-Val 'cn-onprem-to-hub' '(not found)' 'Succeeded'
+    Test-Val 'cn-onprem-nested-to-hub' '(not found)' 'Succeeded'
 }
 
 # Hub -> On-prem
-$cn2Json = az network vpn-connection show -g $HubResourceGroup -n cn-hub-to-onprem `
+$cn2Json = az network vpn-connection show -g $HubResourceGroup -n cn-hub-to-onprem-nested `
     --query '{state:provisioningState, status:connectionStatus, type:connectionType}' -o json 2>$null
 if ($cn2Json) {
     $cn2 = $cn2Json | ConvertFrom-Json
-    Test-Val 'cn-hub-to-onprem provisioning' $cn2.state  'Succeeded'
-    Test-Val 'cn-hub-to-onprem status'       $cn2.status 'Connected'
-    Test-Val 'cn-hub-to-onprem type'         $cn2.type   'Vnet2Vnet'
+    Test-Val 'cn-hub-to-onprem-nested provisioning' $cn2.state  'Succeeded'
+    Test-Val 'cn-hub-to-onprem-nested status'       $cn2.status 'Connected'
+    Test-Val 'cn-hub-to-onprem-nested type'         $cn2.type   'Vnet2Vnet'
 } else {
-    Test-Val 'cn-hub-to-onprem' '(not found)' 'Succeeded'
+    Test-Val 'cn-hub-to-onprem-nested' '(not found)' 'Succeeded'
 }
 
 # =============================================================================

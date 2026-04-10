@@ -1,56 +1,92 @@
 // ============================================================================
-// Network Module - Closed on-premises simulation network
+// Network Module - On-premises simulation network
 // - VNet with Bastion subnet and on-prem subnet
-// - Route table to block internet (0.0.0.0/0 -> None)
-// - NSG with deny internet outbound on VM subnet
+// - Route table for VPN routes (disableBgpRoutePropagation: true)
+// - NAT Gateway for outbound internet access
+// - NSG with deny internet inbound on VM subnet
 // - Required Bastion NSG rules
 // ============================================================================
 
 param location string
 param vnetName string
-param vnetAddressPrefix string = '10.0.0.0/16'
-param bastionSubnetPrefix string = '10.0.0.0/26'
-param onpremSubnetPrefix string = '10.0.1.0/24'
+param vnetAddressPrefix string = '10.1.0.0/16'
+param bastionSubnetPrefix string = '10.1.0.0/26'
+param onpremSubnetPrefix string = '10.1.1.0/24'
 
 // ----------------------------------------------------------------------------
-// Route Table - Block internet from on-prem subnet
+// Route Table - VPN routes (cloud CIDRs added by vpn-routes.bicep)
 // ----------------------------------------------------------------------------
 resource routeTable 'Microsoft.Network/routeTables@2024-05-01' = {
   name: 'rt-block-internet'
   location: location
   properties: {
     disableBgpRoutePropagation: true
-    routes: [
+    routes: []
+  }
+}
+
+// ----------------------------------------------------------------------------
+// NAT Gateway - Outbound internet access for VMs
+// ----------------------------------------------------------------------------
+resource natGwPip 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+  name: 'pip-ng-onprem-nested'
+  location: location
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
+}
+
+resource natGw 'Microsoft.Network/natGateways@2024-05-01' = {
+  name: 'ng-onprem-nested'
+  location: location
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    idleTimeoutInMinutes: 4
+    publicIpAddresses: [
       {
-        name: 'block-internet'
-        properties: {
-          addressPrefix: '0.0.0.0/0'
-          nextHopType: 'None'
-        }
+        id: natGwPip.id
       }
     ]
   }
 }
 
 // ----------------------------------------------------------------------------
-// NSG - On-prem subnet
+// NSG - On-prem subnet (VNet inbound only, deny internet inbound)
 // ----------------------------------------------------------------------------
 resource nsgOnprem 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
-  name: 'nsg-onprem'
+  name: 'nsg-onprem-nested'
   location: location
   properties: {
     securityRules: [
       {
-        name: 'DenyInternetOutbound'
+        name: 'AllowVNetInbound'
         properties: {
-          priority: 4096
-          direction: 'Outbound'
+          priority: 100
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: '*'
+          sourceAddressPrefix: 'VirtualNetwork'
+          sourcePortRange: '*'
+          destinationAddressPrefix: 'VirtualNetwork'
+          destinationPortRange: '*'
+        }
+      }
+      {
+        name: 'DenyInternetInbound'
+        properties: {
+          priority: 4000
+          direction: 'Inbound'
           access: 'Deny'
           protocol: '*'
+          sourceAddressPrefix: 'Internet'
           sourcePortRange: '*'
+          destinationAddressPrefix: '*'
           destinationPortRange: '*'
-          sourceAddressPrefix: '*'
-          destinationAddressPrefix: 'Internet'
         }
       }
     ]
@@ -210,6 +246,10 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         name: 'snet-onprem'
         properties: {
           addressPrefix: onpremSubnetPrefix
+          defaultOutboundAccess: false
+          natGateway: {
+            id: natGw.id
+          }
           networkSecurityGroup: {
             id: nsgOnprem.id
           }

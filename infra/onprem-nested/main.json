@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "2021118552693925372"
+      "templateHash": "1234414187404774207"
     }
   },
   "parameters": {
@@ -37,7 +37,7 @@
     },
     "vmSize": {
       "type": "string",
-      "defaultValue": "Standard_E4s_v5",
+      "defaultValue": "Standard_E8s_v5",
       "metadata": {
         "description": "VM size (must support nested virtualization)"
       }
@@ -75,7 +75,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9656041804393064054"
+              "templateHash": "2532907122086375997"
             }
           },
           "parameters": {
@@ -87,15 +87,15 @@
             },
             "vnetAddressPrefix": {
               "type": "string",
-              "defaultValue": "10.0.0.0/16"
+              "defaultValue": "10.1.0.0/16"
             },
             "bastionSubnetPrefix": {
               "type": "string",
-              "defaultValue": "10.0.0.0/26"
+              "defaultValue": "10.1.0.0/26"
             },
             "onpremSubnetPrefix": {
               "type": "string",
-              "defaultValue": "10.0.1.0/24"
+              "defaultValue": "10.1.1.0/24"
             }
           },
           "resources": [
@@ -106,35 +106,72 @@
               "location": "[parameters('location')]",
               "properties": {
                 "disableBgpRoutePropagation": true,
-                "routes": [
+                "routes": []
+              }
+            },
+            {
+              "type": "Microsoft.Network/publicIPAddresses",
+              "apiVersion": "2024-05-01",
+              "name": "pip-ng-onprem-nested",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "publicIPAllocationMethod": "Static"
+              }
+            },
+            {
+              "type": "Microsoft.Network/natGateways",
+              "apiVersion": "2024-05-01",
+              "name": "ng-onprem-nested",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {
+                "idleTimeoutInMinutes": 4,
+                "publicIpAddresses": [
                   {
-                    "name": "block-internet",
-                    "properties": {
-                      "addressPrefix": "0.0.0.0/0",
-                      "nextHopType": "None"
-                    }
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-ng-onprem-nested')]"
                   }
                 ]
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'pip-ng-onprem-nested')]"
+              ]
             },
             {
               "type": "Microsoft.Network/networkSecurityGroups",
               "apiVersion": "2024-05-01",
-              "name": "nsg-onprem",
+              "name": "nsg-onprem-nested",
               "location": "[parameters('location')]",
               "properties": {
                 "securityRules": [
                   {
-                    "name": "DenyInternetOutbound",
+                    "name": "AllowVNetInbound",
                     "properties": {
-                      "priority": 4096,
-                      "direction": "Outbound",
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "DenyInternetInbound",
+                    "properties": {
+                      "priority": 4000,
+                      "direction": "Inbound",
                       "access": "Deny",
                       "protocol": "*",
+                      "sourceAddressPrefix": "Internet",
                       "sourcePortRange": "*",
-                      "destinationPortRange": "*",
-                      "sourceAddressPrefix": "*",
-                      "destinationAddressPrefix": "Internet"
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
                     }
                   }
                 ]
@@ -288,8 +325,12 @@
                     "name": "snet-onprem",
                     "properties": {
                       "addressPrefix": "[parameters('onpremSubnetPrefix')]",
+                      "defaultOutboundAccess": false,
+                      "natGateway": {
+                        "id": "[resourceId('Microsoft.Network/natGateways', 'ng-onprem-nested')]"
+                      },
                       "networkSecurityGroup": {
-                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem')]"
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem-nested')]"
                       },
                       "routeTable": {
                         "id": "[resourceId('Microsoft.Network/routeTables', 'rt-block-internet')]"
@@ -299,8 +340,9 @@
                 ]
               },
               "dependsOn": [
+                "[resourceId('Microsoft.Network/natGateways', 'ng-onprem-nested')]",
                 "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-bastion')]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem')]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem-nested')]",
                 "[resourceId('Microsoft.Network/routeTables', 'rt-block-internet')]"
               ]
             }

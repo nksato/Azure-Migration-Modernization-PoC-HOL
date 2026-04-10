@@ -3,7 +3,7 @@
 //
 // Architecture:
 //   Cloud → contoso.local:
-//     Spoke VM → Hub DNS Resolver (Outbound) → VPN → Hyper-V Host (10.0.1.x:53)
+//     Spoke VM → Hub DNS Resolver (Outbound) → VPN → Hyper-V Host (10.1.1.x:53)
 //       → vm-ad01 (192.168.100.10) → contoso.local A records
 //
 //   On-prem → privatelink.*:

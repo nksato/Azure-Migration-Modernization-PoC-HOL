@@ -1,7 +1,7 @@
 using './dns-deploy.bicep'
 
 // Hyper-V host private IP - check Azure portal or run:
-//   az vm list-ip-addresses -g rg-onprem-migration -n vm-onprem-hv01 --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv
+//   az vm list-ip-addresses -g rg-onprem-nested -n vm-onprem-hv01 --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv
 param onpremDnsForwarderIp = '<HYPER-V-HOST-IP>'
 
 // Uncomment below to enable Cloud VM name resolution (azure.internal)

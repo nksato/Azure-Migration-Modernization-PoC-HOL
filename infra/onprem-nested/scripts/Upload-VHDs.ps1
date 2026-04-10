@@ -19,7 +19,7 @@ param(
     [Parameter(Mandatory)]
     [string]$VhdPathWs2019,
 
-    [string]$ResourceGroupName = 'rg-onprem-migration',
+    [string]$ResourceGroupName = 'rg-onprem-nested',
     [string]$VmName = 'vm-onprem-hv01',
     [string]$Location = 'japaneast'
 )

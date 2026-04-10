@@ -3,22 +3,24 @@
 # VPN connection cleanup - removes all resources created by vpn-deploy.bicep
 #
 # Deletion order (reverse of deployment):
-#   [1/5] VPN Connections (both sides)
-#   [2/5] On-prem VPN Gateway (~10-15 min)
-#   [3/5] On-prem VPN Gateway Public IP
-#   [4/5] Cloud routes from on-prem route table
-#   [5/5] GatewaySubnet from on-prem VNet
+#   [1/6] VPN Connections (both sides)
+#   [2/6] On-prem VPN Gateway (~10-15 min)
+#   [3/6] On-prem VPN Gateway Public IP
+#   [4/6] Hub VPN Gateway + PIP (only with -IncludeHubGateway, ~10-15 min)
+#   [5/6] Cloud routes from on-prem route table
+#   [6/6] GatewaySubnet from on-prem VNet
 #
-# Note: Hub VPN Gateway (vpngw-hub) is NOT deleted - it belongs to the cloud
-#       environment (Azure-Migration-Modernization-PoC-HOL).
+# Note: Hub VPN Gateway (vpngw-hub) is NOT deleted by default.
+#       Use -IncludeHubGateway for standalone cleanup (onprem-nested only).
 #
 # Usage:
-#   .\Remove-Vpn.ps1
+#   .\Remove-Vpn.ps1                          # Dual mode (keep Hub GW)
+#   .\Remove-Vpn.ps1 -IncludeHubGateway       # Standalone mode (delete Hub GW)
 #   .\Remove-Vpn.ps1 -SkipConfirmation
 # =============================================================================
 
 param(
-    [string]$OnpremResourceGroup = 'rg-onprem-migration',
+    [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubResourceGroup = 'rg-hub',
     [string]$OnpremVnetName = 'vnet-onprem',
     [string]$RouteTableName = 'rt-block-internet',
@@ -29,6 +31,7 @@ param(
         '10.22.0.0/16'
         '10.23.0.0/16'
     ),
+    [switch]$IncludeHubGateway,
     [switch]$SkipConfirmation
 )
 
@@ -58,19 +61,29 @@ function Remove-AzResourceSafe {
 # =============================================================================
 # Pre-flight: show what will be deleted
 # =============================================================================
+$totalSteps = if ($IncludeHubGateway) { 6 } else { 5 }
+
 Write-Host '=== VPN Cleanup ===' -ForegroundColor Cyan
 Write-Host ''
 Write-Host 'Resources to delete:' -ForegroundColor Yellow
-Write-Host "  [1/5] cn-onprem-to-hub    ($OnpremResourceGroup)"
-Write-Host "  [1/5] cn-hub-to-onprem    ($HubResourceGroup)"
-Write-Host "  [2/5] vpngw-onprem        ($OnpremResourceGroup)  ~10-15 min"
-Write-Host "  [3/5] pip-vpngw-onprem    ($OnpremResourceGroup)"
-Write-Host "  [4/5] VPN routes x$($CloudAddressPrefixes.Count)       ($RouteTableName)"
-Write-Host "  [5/5] GatewaySubnet       ($OnpremVnetName)"
+Write-Host "  [1/$totalSteps] cn-onprem-nested-to-hub    ($OnpremResourceGroup)"
+Write-Host "  [1/$totalSteps] cn-hub-to-onprem-nested    ($HubResourceGroup)"
+Write-Host "  [2/$totalSteps] vgw-onprem          ($OnpremResourceGroup)  ~10-15 min"
+Write-Host "  [3/$totalSteps] pip-vgw-onprem      ($OnpremResourceGroup)"
+if ($IncludeHubGateway) {
+    Write-Host "  [4/$totalSteps] vpngw-hub           ($HubResourceGroup)  ~10-15 min" -ForegroundColor Yellow
+    Write-Host "  [4/$totalSteps] pip-vpngw-hub       ($HubResourceGroup)" -ForegroundColor Yellow
+}
+$routeStep = if ($IncludeHubGateway) { 5 } else { 4 }
+$snetStep  = if ($IncludeHubGateway) { 6 } else { 5 }
+Write-Host "  [$routeStep/$totalSteps] VPN routes x$($CloudAddressPrefixes.Count)       ($RouteTableName)"
+Write-Host "  [$snetStep/$totalSteps] GatewaySubnet       ($OnpremVnetName)"
 Write-Host ''
-Write-Host 'NOT deleted:' -ForegroundColor DarkGray
-Write-Host "  vpngw-hub                 ($HubResourceGroup) - cloud environment resource"
-Write-Host ''
+if (-not $IncludeHubGateway) {
+    Write-Host 'NOT deleted:' -ForegroundColor DarkGray
+    Write-Host "  vpngw-hub                 ($HubResourceGroup) - use -IncludeHubGateway to delete"
+    Write-Host ''
+}
 
 if (-not $SkipConfirmation) {
     $confirm = Read-Host 'Continue? (y/N)'
@@ -89,49 +102,73 @@ Write-Host ''
 Write-Host '[1/5] Deleting VPN connections...' -ForegroundColor Yellow
 
 Remove-AzResourceSafe `
-    -Command "az network vpn-connection delete -g $OnpremResourceGroup -n cn-onprem-to-hub --no-wait -o none" `
-    -ResourceDescription "cn-onprem-to-hub ($OnpremResourceGroup)"
+    -Command "az network vpn-connection delete -g $OnpremResourceGroup -n cn-onprem-nested-to-hub --no-wait -o none" `
+    -ResourceDescription "cn-onprem-nested-to-hub ($OnpremResourceGroup)"
 
 Remove-AzResourceSafe `
-    -Command "az network vpn-connection delete -g $HubResourceGroup -n cn-hub-to-onprem --no-wait -o none" `
-    -ResourceDescription "cn-hub-to-onprem ($HubResourceGroup)"
+    -Command "az network vpn-connection delete -g $HubResourceGroup -n cn-hub-to-onprem-nested --no-wait -o none" `
+    -ResourceDescription "cn-hub-to-onprem-nested ($HubResourceGroup)"
 
 # Wait for connection deletions to complete
 Write-Host '  Waiting for connection deletions...' -ForegroundColor Gray
-az network vpn-connection wait -g $OnpremResourceGroup -n cn-onprem-to-hub --deleted 2>$null
-az network vpn-connection wait -g $HubResourceGroup -n cn-hub-to-onprem --deleted 2>$null
+az network vpn-connection wait -g $OnpremResourceGroup -n cn-onprem-nested-to-hub --deleted 2>$null
+az network vpn-connection wait -g $HubResourceGroup -n cn-hub-to-onprem-nested --deleted 2>$null
 Write-Host '  VPN connections deleted.' -ForegroundColor Green
 
 # =============================================================================
 # [2/5] Delete On-prem VPN Gateway (takes ~10-15 min)
 # =============================================================================
 Write-Host ''
-Write-Host '[2/5] Deleting on-prem VPN Gateway (vpngw-onprem)...' -ForegroundColor Yellow
+Write-Host '[2/5] Deleting on-prem VPN Gateway (vgw-onprem)...' -ForegroundColor Yellow
 Write-Host '  This takes ~10-15 minutes. Please wait...' -ForegroundColor Gray
 
-$gwExists = az network vnet-gateway show -g $OnpremResourceGroup -n vpngw-onprem --query 'name' -o tsv 2>$null
+$gwExists = az network vnet-gateway show -g $OnpremResourceGroup -n vgw-onprem --query 'name' -o tsv 2>$null
 if ($gwExists) {
-    az network vnet-gateway delete -g $OnpremResourceGroup -n vpngw-onprem -o none
-    Write-Host "  VPN Gateway 'vpngw-onprem' deleted." -ForegroundColor Green
+    az network vnet-gateway delete -g $OnpremResourceGroup -n vgw-onprem -o none
+    Write-Host "  VPN Gateway 'vgw-onprem' deleted." -ForegroundColor Green
 } else {
-    Write-Host "  VPN Gateway 'vpngw-onprem' not found. Skipping." -ForegroundColor DarkGray
+    Write-Host "  VPN Gateway 'vgw-onprem' not found. Skipping." -ForegroundColor DarkGray
 }
 
 # =============================================================================
 # [3/5] Delete Public IP
 # =============================================================================
 Write-Host ''
-Write-Host '[3/5] Deleting Public IP (pip-vpngw-onprem)...' -ForegroundColor Yellow
+Write-Host '[3/5] Deleting Public IP (pip-vgw-onprem)...' -ForegroundColor Yellow
 
 Remove-AzResourceSafe `
-    -Command "az network public-ip delete -g $OnpremResourceGroup -n pip-vpngw-onprem -o none" `
-    -ResourceDescription "pip-vpngw-onprem ($OnpremResourceGroup)"
+    -Command "az network public-ip delete -g $OnpremResourceGroup -n pip-vgw-onprem -o none" `
+    -ResourceDescription "pip-vgw-onprem ($OnpremResourceGroup)"
 
 # =============================================================================
-# [4/5] Delete cloud routes from on-prem route table
+# [4/N] Delete Hub VPN Gateway + PIP (standalone mode only)
+# =============================================================================
+if ($IncludeHubGateway) {
+    Write-Host ''
+    Write-Host "[4/$totalSteps] Deleting Hub VPN Gateway (vpngw-hub)..." -ForegroundColor Yellow
+    Write-Host '  This takes ~10-15 minutes. Please wait...' -ForegroundColor Gray
+
+    $hubGwExists = az network vnet-gateway show -g $HubResourceGroup -n vpngw-hub --query 'name' -o tsv 2>$null
+    if ($hubGwExists) {
+        az network vnet-gateway delete -g $HubResourceGroup -n vpngw-hub -o none
+        Write-Host "  VPN Gateway 'vpngw-hub' deleted." -ForegroundColor Green
+    } else {
+        Write-Host "  VPN Gateway 'vpngw-hub' not found. Skipping." -ForegroundColor DarkGray
+    }
+
+    Write-Host ''
+    Write-Host "  Deleting Hub PIP (pip-vpngw-hub)..." -ForegroundColor Yellow
+
+    Remove-AzResourceSafe `
+        -Command "az network public-ip delete -g $HubResourceGroup -n pip-vpngw-hub -o none" `
+        -ResourceDescription "pip-vpngw-hub ($HubResourceGroup)"
+}
+
+# =============================================================================
+# [N-1/N] Delete cloud routes from on-prem route table
 # =============================================================================
 Write-Host ''
-Write-Host "[4/5] Deleting VPN routes from '$RouteTableName'..." -ForegroundColor Yellow
+Write-Host "[$routeStep/$totalSteps] Deleting VPN routes from '$RouteTableName'..." -ForegroundColor Yellow
 
 foreach ($prefix in $CloudAddressPrefixes) {
     # Route name matches Bicep: vpn-${replace(replace(prefix, '.', '-'), '/', '-')}
@@ -143,10 +180,10 @@ foreach ($prefix in $CloudAddressPrefixes) {
 }
 
 # =============================================================================
-# [5/5] Delete GatewaySubnet
+# [N/N] Delete GatewaySubnet
 # =============================================================================
 Write-Host ''
-Write-Host "[5/5] Deleting GatewaySubnet from '$OnpremVnetName'..." -ForegroundColor Yellow
+Write-Host "[$snetStep/$totalSteps] Deleting GatewaySubnet from '$OnpremVnetName'..." -ForegroundColor Yellow
 
 Remove-AzResourceSafe `
     -Command "az network vnet subnet delete -g $OnpremResourceGroup --vnet-name $OnpremVnetName -n GatewaySubnet -o none" `
