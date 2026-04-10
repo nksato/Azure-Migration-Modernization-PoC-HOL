@@ -2,4 +2,11 @@
 docs/copilot-chat-history.md
 docs/count-tokens.ps1
 docs/extract-copilot-history.ps1
+docs/session-analysis.md
 .playwright-mcp/
+
+# 一時ファイル・認証情報を含むファイル
+app.zip
+analyze_time.js
+infra/tmp/sql-test*.json
+.vscode/settings.json
