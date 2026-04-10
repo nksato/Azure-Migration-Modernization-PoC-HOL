@@ -8,7 +8,7 @@ Azure 上に閉域の疑似オンプレミス環境を構築し、Azure Migrate 
 VNet (10.1.0.0/16) - 閉域ネットワーク
 ├── AzureBastionSubnet (10.1.0.0/26)
 │   └── Azure Bastion (Standard) ... 管理アクセス用
-└── snet-onprem (10.1.1.0/24)      ... UDR でインターネット遮断
+└── snet-onprem-nested (10.1.1.0/24) ... UDR でインターネット遮断
     └── Hyper-V Host VM (Windows Server 2022, Standard_E4s_v5)
         ├── F: ドライブ (256 GB データディスク)
         ├── InternalNAT Switch (192.168.100.0/24)
@@ -32,6 +32,23 @@ VNet (10.1.0.0/16) - 閉域ネットワーク
 - Azure サブスクリプションへのログイン済み (`az login`)
 - Contributor 以上のロール
 - Windows Server 2022 / 2019 の固定サイズ VHD ファイル
+
+## Windows Server VHD の入手
+
+Nested Hyper-V のゲスト VM は Azure VM ではないため、Azure Marketplace から OS イメージを直接デプロイすることはできません。
+ゲスト VM 用の Windows Server VHD/ISO を別途入手し、ライセンス条件に従って使用する必要があります。
+
+### 入手方法
+
+| 方法 | 費用 | 有効期間 | 入手形式 | 備考 |
+|------|------|---------|---------|------|
+| **Evaluation Center (体験版)** | 無料 | 180 日 | ISO / VHD | 評価目的のみ。VHD 形式なら変換不要 |
+| **Visual Studio サブスクリプション** | サブスク費用 | サブスク有効中 | ISO | 開発/テスト目的。ISO → VHD 変換が必要 |
+
+- **Evaluation Center**: https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server
+- **Visual Studio サブスクリプション**: https://my.visualstudio.com/Downloads
+
+> **注意**: Azure VM のライセンスはゲスト VM をカバーしません。Nested Hyper-V 上で Windows Server を実行する場合、上記いずれかの方法で適切なライセンスを確保してください。
 
 ## デプロイ手順
 

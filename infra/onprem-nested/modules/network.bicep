@@ -243,7 +243,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         }
       }
       {
-        name: 'snet-onprem'
+        name: 'snet-onprem-nested'
         properties: {
           addressPrefix: onpremSubnetPrefix
           defaultOutboundAccess: false

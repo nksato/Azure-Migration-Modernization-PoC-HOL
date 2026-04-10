@@ -27,7 +27,7 @@ var sharedTags = { Role: 'Shared' }
 
 // NSG: 閉域ネットワーク — VNet 内通信のみ許可 (Inbound のみ制限)
 resource serverNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
-  name: 'nsg-server'
+  name: 'nsg-onprem'
   location: location
   tags: sharedTags
   properties: {
@@ -110,7 +110,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
     }
     subnets: [
       {
-        name: 'ServerSubnet'
+        name: 'snet-onprem'
         properties: {
           addressPrefix: '10.0.1.0/24'
           defaultOutboundAccess: false
@@ -134,7 +134,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
 
 resource serverSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
   parent: vnet
-  name: 'ServerSubnet'
+  name: 'snet-onprem'
 }
 
 resource bastionSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {

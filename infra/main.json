@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "17410826449327025022"
+      "templateHash": "17805004193065284465"
     }
   },
   "parameters": {
@@ -27375,7 +27375,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "762499673324102388"
+              "templateHash": "7413288349491626444"
             }
           },
           "parameters": {
@@ -27425,7 +27425,7 @@
             {
               "type": "Microsoft.Network/networkSecurityGroups",
               "apiVersion": "2024-05-01",
-              "name": "nsg-server",
+              "name": "nsg-onprem",
               "location": "[parameters('location')]",
               "tags": "[variables('sharedTags')]",
               "properties": {
@@ -27512,7 +27512,7 @@
                 },
                 "subnets": [
                   {
-                    "name": "ServerSubnet",
+                    "name": "snet-onprem",
                     "properties": {
                       "addressPrefix": "10.0.1.0/24",
                       "defaultOutboundAccess": false,
@@ -27520,7 +27520,7 @@
                         "id": "[resourceId('Microsoft.Network/natGateways', 'ng-onprem')]"
                       },
                       "networkSecurityGroup": {
-                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem')]"
                       }
                     }
                   },
@@ -27534,7 +27534,7 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/natGateways', 'ng-onprem')]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-server')]"
+                "[resourceId('Microsoft.Network/networkSecurityGroups', 'nsg-onprem')]"
               ]
             },
             {
@@ -27591,7 +27591,7 @@
                     "name": "ipconfig1",
                     "properties": {
                       "subnet": {
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'snet-onprem')]"
                       },
                       "privateIPAllocationMethod": "Static",
                       "privateIPAddress": "10.0.1.4"
@@ -27678,7 +27678,7 @@
                     "name": "ipconfig1",
                     "properties": {
                       "subnet": {
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'snet-onprem')]"
                       },
                       "privateIPAllocationMethod": "Static",
                       "privateIPAddress": "10.0.1.5"
@@ -27811,7 +27811,7 @@
                     "name": "ipconfig1",
                     "properties": {
                       "subnet": {
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'ServerSubnet')]"
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'vnet-onprem', 'snet-onprem')]"
                       },
                       "privateIPAllocationMethod": "Static",
                       "privateIPAddress": "10.0.1.6"

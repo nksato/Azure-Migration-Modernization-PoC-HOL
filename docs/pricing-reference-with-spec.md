@@ -96,9 +96,9 @@
 | **pip-bas-onprem** | Public IP Standard Static | ~$4 |
 | **pip-ng-onprem** | Public IP Standard Static | ~$4 |
 | **vnet-onprem** | 10.0.0.0/16 | $0 |
-| **ServerSubnet** | 10.0.1.0/24 (NSG + NAT GW 付き) | $0 |
+| **snet-onprem** | 10.0.1.0/24 (NSG + NAT GW 付き) | $0 |
 | **AzureBastionSubnet** | 10.0.254.0/26 | $0 |
-| **nsg-server** | VNet 内通信のみ許可 / インターネット受信拒否 | $0 |
+| **nsg-onprem** | VNet 内通信のみ許可 / インターネット受信拒否 | $0 |
 
 ---
 

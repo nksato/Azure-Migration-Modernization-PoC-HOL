@@ -24,8 +24,8 @@
           <mxGeometry x="20" y="40" width="400" height="550" as="geometry" />
         </mxCell>
 
-        <!-- ServerSubnet -->
-        <mxCell id="snet-server" value="ServerSubnet&#xa;10.0.1.0/24" style="swimlane;fillColor=#FFF9C4;strokeColor=#F9A825;rounded=1;arcSize=6;fontSize=11;fontColor=#F9A825;startSize=35;shadow=0;" vertex="1" parent="vnet-onprem">
+        <!-- snet-onprem -->
+        <mxCell id="snet-server" value="snet-onprem&#xa;10.0.1.0/24" style="swimlane;fillColor=#FFF9C4;strokeColor=#F9A825;rounded=1;arcSize=6;fontSize=11;fontColor=#F9A825;startSize=35;shadow=0;" vertex="1" parent="vnet-onprem">
           <mxGeometry x="15" y="50" width="370" height="310" as="geometry" />
         </mxCell>
 
@@ -44,8 +44,8 @@
           <mxGeometry x="270" y="50" width="80" height="74" as="geometry" />
         </mxCell>
 
-        <!-- nsg-server -->
-        <mxCell id="nsg-server" value="nsg-server&#xa;(VNet-only inbound)" style="image;aspect=fixed;html=1;image=img/lib/azure2/networking/Network_Security_Groups.svg;fillColor=#ffffff;rounded=1;arcSize=10;shadow=1;strokeColor=#e0e0e0;fontSize=9;fontColor=#333333;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="snet-server">
+        <!-- nsg-onprem -->
+        <mxCell id="nsg-server" value="nsg-onprem&#xa;(VNet-only inbound)" style="image;aspect=fixed;html=1;image=img/lib/azure2/networking/Network_Security_Groups.svg;fillColor=#ffffff;rounded=1;arcSize=10;shadow=1;strokeColor=#e0e0e0;fontSize=9;fontColor=#333333;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="snet-server">
           <mxGeometry x="155" y="210" width="60" height="60" as="geometry" />
         </mxCell>
 

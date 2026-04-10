@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
     subgraph OnPremVNet[OnPrem VNet 10.0.0.0/16]
-        subgraph ServerSubnet[ServerSubnet 10.0.1.0/24]
+        subgraph SnetOnprem[snet-onprem 10.0.1.0/24]
             DC[DC01<br/>Active Directory / DNS]
             DB[DB01<br/>SQL Server]
             APP[APP01<br/>IIS + ASP.NET]
@@ -25,7 +25,7 @@ flowchart TB
     Bastion --> DC
     Bastion --> DB
     Bastion --> APP
-    VPNGW -. 将来接続 .- ServerSubnet
+    VPNGW -. 将来接続 .- SnetOnprem
 ```
 
 ## 2. デプロイ & セットアップ フロー

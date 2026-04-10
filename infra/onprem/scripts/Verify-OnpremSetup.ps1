@@ -89,7 +89,7 @@ $vnetAddr = az network vnet show -g $ResourceGroupName -n vnet-onprem `
     --query "addressSpace.addressPrefixes[0]" -o tsv 2>$null
 Test-Val 'vnet-onprem' $vnetAddr '10.0.0.0/16'
 
-foreach ($snet in @('ServerSubnet', 'AzureBastionSubnet')) {
+foreach ($snet in @('snet-onprem', 'AzureBastionSubnet')) {
     $prefix = az network vnet subnet show -g $ResourceGroupName --vnet-name vnet-onprem -n $snet `
         --query "addressPrefix" -o tsv 2>$null
     Test-NotEmpty "vnet-onprem/$snet" $prefix

@@ -4,7 +4,7 @@
 // Architecture:
 //   VNet (closed network)
 //   ├── AzureBastionSubnet  → Azure Bastion (Standard)
-//   └── snet-onprem         → Hyper-V Host VM (no internet, UDR block)
+//   └── snet-onprem-nested  → Hyper-V Host VM (no internet, UDR block)
 // ============================================================================
 
 targetScope = 'resourceGroup'

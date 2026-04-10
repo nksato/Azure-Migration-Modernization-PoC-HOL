@@ -20,7 +20,7 @@
 | レイヤー | 構成要素 | 役割 |
 |---|---|---|
 | ネットワーク | `vnet-onprem (10.0.0.0/16)` | 移行元ネットワーク全体 |
-| セキュリティ | `nsg-server` | VNet 内通信のみ許可 (インターネット Inbound 拒否) |
+| セキュリティ | `nsg-onprem` | VNet 内通信のみ許可 (インターネット Inbound 拒否) |
 | 認証基盤 | `DC01` | Active Directory / DNS |
 | データベース | `DB01` | SQL Server 2019 Developer |
 | アプリケーション | `APP01` | IIS + ASP.NET アプリ |
@@ -31,7 +31,7 @@
 
 | サブネット | CIDR | 用途 |
 |---|---|---|
-| `ServerSubnet` | `10.0.1.0/24` | DC01 / DB01 / APP01 |
+| `snet-onprem` | `10.0.1.0/24` | DC01 / DB01 / APP01 |
 | `AzureBastionSubnet` | `10.0.254.0/26` | Azure Bastion |
 | `GatewaySubnet` | `10.0.255.0/27` | VPN Gateway |
 
@@ -75,7 +75,7 @@
 - 管理アクセスは **Azure Bastion** に統一
 - VM の送信インターネットアクセスは **NAT Gateway** (`ng-onprem`) 経由（`defaultOutboundAccess` は無効化）
 - ドメイン/DNS は `DC01` が提供（VNet の `dhcpOptions.dnsServers` に `10.0.1.4` を設定）
-- `nsg-server` で VNet 内通信のみ許可、インターネットからの Inbound は拒否
+- `nsg-onprem` で VNet 内通信のみ許可、インターネットからの Inbound は拒否
 - `GatewaySubnet` はクラウド側 Hub VNet との S2S 接続用（VPN Gateway は別テンプレートで作成）
 
 ---
