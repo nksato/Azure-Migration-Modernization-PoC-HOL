@@ -1,4 +1,4 @@
-using './vpn-deploy.bicep'
+using './main.bicep'
 
 param sharedKey = readEnvironmentVariable('VPN_SHARED_KEY', '')
 

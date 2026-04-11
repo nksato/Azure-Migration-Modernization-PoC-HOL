@@ -174,35 +174,5 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 
 ## VPN 接続
 
-### 接続パターン
-
-| パターン | `createHubVpnGateway` | 説明 |
-|----------|----------------------|------|
-| **Dual** (推奨) | `false` (デフォルト) | 既存の onprem + Hub VPN GW を共有。接続追加のみ |
-| **Standalone** | `true` | Hub VPN GW を新規作成。onprem-nested 単体で完結 |
-
-### Dual パターン（onprem + onprem-nested → Hub）
-
-```bash
-# 前提: infra/network/ で Hub VPN GW (vpngw-hub) が作成済み
-$env:VPN_SHARED_KEY = '<your-shared-key>'
-az deployment sub create -l japaneast -f vpn-deploy.bicep -p vpn-deploy.bicepparam
-```
-
-### Standalone パターン（onprem-nested のみ → Hub）
-
-```bash
-$env:VPN_SHARED_KEY = '<your-shared-key>'
-az deployment sub create -l japaneast -f vpn-deploy.bicep -p vpn-deploy.bicepparam \
-  -p createHubVpnGateway=true
-```
-
-### VPN 削除
-
-```powershell
-# Dual: Hub VPN GW は残す
-.\scripts\Remove-Vpn.ps1
-
-# Standalone: Hub VPN GW も削除
-.\scripts\Remove-Vpn.ps1 -IncludeHubGateway
-```
+VPN 関連のテンプレート・スクリプトは `infra/network-nested/` に分離されています。
+詳細は [infra/network-nested/](../network-nested/) を参照してください。
