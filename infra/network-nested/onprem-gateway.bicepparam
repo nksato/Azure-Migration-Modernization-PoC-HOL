@@ -1,1 +1,0 @@
-using './onprem-gateway.bicep'

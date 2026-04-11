@@ -21,7 +21,7 @@ param(
     [string]$HubVnetName = 'vnet-hub',
     [string]$OnpremGatewayName = 'vgw-onprem',
     [string]$HubGatewayName = 'vpngw-hub',
-    [string]$OnpremPipName = 'pip-vgw-onprem',
+    [string]$OnpremPipName = 'vgw-onprem-pip1',
     [string]$HostVmName = 'vm-onprem-nested-hv01',
     [string]$NestedAdminUser = '',
     [string]$NestedAdminPassword = '',
@@ -299,11 +299,11 @@ try {
     Test-Bool $testLabel2 $reachable2
 }
 
-# --- Test C: Host -> Hub VNet (10.10.0.1 ICMP) ---
-$testLabel3 = "Host ($HostVmName) -> Hub VNet (10.10.0.1 ping)"
+# --- Test C: Host -> Hub GatewaySubnet (10.10.255.1 ICMP) ---
+$testLabel3 = "Host ($HostVmName) -> Hub GatewaySubnet (10.10.255.1 ping)"
 Write-Host "  リモートコマンド実行中: $testLabel3..." -ForegroundColor Gray
 
-$script3 = "Test-Connection -ComputerName '10.10.0.1' -Count 2 -Quiet"
+$script3 = "Test-Connection -ComputerName '10.10.255.1' -Count 2 -Quiet"
 $result3 = az vm run-command invoke `
     --resource-group $OnpremResourceGroup `
     --name $HostVmName `

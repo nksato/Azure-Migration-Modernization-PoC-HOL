@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "16467612405866834824"
+      "templateHash": "5229948030342794020"
     }
   },
   "parameters": {
@@ -2511,6 +2511,11 @@
             "value": {
               "clusterMode": "activePassiveNoBgp"
             }
+          },
+          "domainNameLabel": {
+            "value": [
+              "[format('vpngw-hub-{0}', uniqueString(subscription().subscriptionId))]"
+            ]
           },
           "tags": {
             "value": "[variables('commonTags')]"
@@ -5657,7 +5662,7 @@
           },
           "virtualNetworkGateway1": {
             "value": {
-              "id": "[variables('hubGatewayId')]"
+              "id": "[if(parameters('createHubVpnGateway'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('hubResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpngw-hub'), '2025-04-01').outputs.resourceId.value, variables('hubGatewayId'))]"
             }
           },
           "localNetworkGateway2ResourceId": {
@@ -6202,6 +6207,7 @@
         }
       },
       "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('hubResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-vpngw-hub')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('hubResourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-lgw-onprem-nested')]"
       ]
     },

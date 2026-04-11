@@ -14,6 +14,10 @@
         "/^cd \"c:\\\\Users\\\\naokis\\\\source\\\\repos\\\\Azure-Migration-Modernization-PoC-HOL\\\\infra\" ; New-Item -ItemType Directory -Path \"network-nested\\\\modules\", \"network-nested\\\\scripts\" -Force \\| Select-Object FullName$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^az bicep build --file infra/network-nested/main\\.bicep 2>&1; if \\(\\$LASTEXITCODE -eq 0\\) \\{ \"BUILD OK\" \\} else \\{ \"BUILD FAILED\" \\}$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

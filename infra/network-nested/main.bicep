@@ -149,6 +149,7 @@ module hubVpnGatewayNew 'br/public:avm/res/network/virtual-network-gateway:0.10.
     skuName: vpnGatewaySku
     virtualNetworkResourceId: hubVnetId
     clusterSettings: { clusterMode: 'activePassiveNoBgp' }
+    domainNameLabel: ['vpngw-hub-${uniqueString(subscription().subscriptionId)}']
     tags: commonTags
   }
 }
@@ -225,7 +226,9 @@ module connectionHubToOnprem 'br/public:avm/res/network/connection:0.1.7' = {
   name: 'deploy-cn-hub-to-onprem-nested'
   params: {
     name: 'cn-hub-to-onprem-nested'
-    virtualNetworkGateway1: { id: hubGatewayId }
+    virtualNetworkGateway1: {
+      id: createHubVpnGateway ? hubVpnGatewayNew.outputs.resourceId : hubGatewayId
+    }
     localNetworkGateway2ResourceId: lgwOnprem.outputs.resourceId
     connectionType: 'IPsec'
     vpnSharedKey: sharedKey
