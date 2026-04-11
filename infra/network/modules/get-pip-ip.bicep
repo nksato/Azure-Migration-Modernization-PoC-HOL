@@ -1,11 +1,11 @@
-// ============================================================
-// get-pip-ip.bicep
-// 指定された Public IP Address の IP アドレスを取得する
-// ============================================================
+// ============================================================================
+// Get Public IP Address
+// Retrieves the IP address from an existing Public IP resource
+// ============================================================================
 
 param pipName string
 
-resource pip 'Microsoft.Network/publicIPAddresses@2024-01-01' existing = {
+resource pip 'Microsoft.Network/publicIPAddresses@2024-05-01' existing = {
   name: pipName
 }
 
