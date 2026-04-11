@@ -217,9 +217,10 @@ foreach ($item in @(
             Write-Output "IP=$ip"
             Write-Output "GW=$gw"
             Write-Output "DNS=$dns"
+            Write-Output "HOSTNAME=$env:COMPUTERNAME"
         } -ErrorAction Stop
         foreach ($line in ($r -split "`n")) {
-            if ($line -match '^(IP|GW|DNS)=') { Write-Output ($item.Name + '_' + $line.Trim()) }
+            if ($line -match '^(IP|GW|DNS|HOSTNAME)=') { Write-Output ($item.Name + '_' + $line.Trim()) }
         }
     } catch {
         try {
@@ -243,6 +244,10 @@ foreach ($item in @(
     foreach ($vm in @('vm-ad01', 'vm-app01', 'vm-sql01')) {
         $ip = Get-Val $ipOut "${vm}_IP"
         Test-Val "$vm IP" $ip $expectedIPs[$vm]
+        $hostname = Get-Val $ipOut "${vm}_HOSTNAME"
+        if ($hostname) {
+            Test-Val "$vm Hostname" $hostname.ToUpper() $vm.ToUpper()
+        }
     }
 
     # Host ping to nested VMs
@@ -292,7 +297,7 @@ try {
     $adDomain = Get-Val $adOut 'DOMAIN'
     Test-Val      'AD Domain'            $adDomain          'contoso.local'
     Test-Val      'NetBIOS'              (Get-Val $adOut 'NETBIOS')    'CONTOSO'
-    Test-NotEmpty 'PDC Emulator'         (Get-Val $adOut 'PDC')
+    Test-Val      'PDC Emulator'         (Get-Val $adOut 'PDC')        'vm-ad01.contoso.local'
     Test-Val      'DNS Zone'             (Get-Val $adOut 'DNSZONE')    'contoso.local'
     Test-Val      'AD DS role'           (Get-Val $adOut 'ADDS')       'Installed'
     Test-Val      'DNS Server role'      (Get-Val $adOut 'DNS_ROLE')   'Installed'

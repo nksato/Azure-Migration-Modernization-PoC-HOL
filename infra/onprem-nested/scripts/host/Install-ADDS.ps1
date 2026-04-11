@@ -20,6 +20,14 @@ Write-Host "  Domain: $domainName"
 Write-Host "  NetBIOS: $netbiosName"
 Write-Host ""
 
+# Pre-check: Verify hostname matches Hyper-V VM name
+$actualHostname = Invoke-Command -VMName 'vm-ad01' -Credential $cred -ScriptBlock { $env:COMPUTERNAME }
+if ($actualHostname -ne 'vm-ad01') {
+    throw "vm-ad01 hostname is '$actualHostname', expected 'vm-ad01'. Run Configure-StaticIPs.ps1 and ensure VM was restarted."
+}
+Write-Host "  Hostname: $actualHostname (OK)"
+Write-Host ""
+
 # Step 1: Install AD DS role
 Write-Host "[1/2] Installing AD DS role..."
 Invoke-Command -VMName 'vm-ad01' -Credential $cred -ScriptBlock {

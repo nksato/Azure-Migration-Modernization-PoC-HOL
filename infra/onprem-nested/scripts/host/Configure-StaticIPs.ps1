@@ -20,7 +20,7 @@ foreach ($vm in $vmConfigs) {
     Write-Host "=== Configuring $($vm.Name): $($vm.IP) ==="
 
     Invoke-Command -VMName $vm.Name -Credential $cred -ScriptBlock {
-        param($IP, $DNS)
+        param($IP, $DNS, $DesiredName)
 
         # Find the active Ethernet adapter
         $adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
@@ -47,8 +47,14 @@ foreach ($vm in $vmConfigs) {
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
         Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue
 
+        # Rename computer if hostname doesn't match Hyper-V VM name
+        if ($env:COMPUTERNAME -ne $DesiredName) {
+            Rename-Computer -NewName $DesiredName -Force
+            Write-Host "  Renamed: $env:COMPUTERNAME -> $DesiredName (reboot required)"
+        }
+
         Write-Host "  IP: $IP, DNS: $DNS, ICMP: enabled, RDP: enabled on $ifAlias"
-    } -ArgumentList $vm.IP, $vm.DNS
+    } -ArgumentList $vm.IP, $vm.DNS, $vm.Name
 
     Write-Host "  $($vm.Name) done."
 }
@@ -64,4 +70,40 @@ Enable-NetFirewallRule -Name 'FPS-ICMP4-ERQ-In' -ErrorAction SilentlyContinue
 foreach ($vm in $vmConfigs) {
     $result = Test-Connection -ComputerName $vm.IP -Count 1 -Quiet
     Write-Host "  Ping $($vm.Name) ($($vm.IP)): $(if ($result) { 'OK' } else { 'FAIL' })"
+}
+
+# Restart VMs to apply hostname changes (Rename-Computer requires reboot)
+Write-Host ""
+Write-Host "=== Applying hostname changes ==="
+$needsRestart = $false
+foreach ($vm in $vmConfigs) {
+    $actualName = Invoke-Command -VMName $vm.Name -Credential $cred -ScriptBlock { $env:COMPUTERNAME }
+    if ($actualName -ne $vm.Name) {
+        Write-Host "  $($vm.Name): pending rename ($actualName -> $($vm.Name)). Restarting..."
+        Restart-VM -Name $vm.Name -Force
+        $needsRestart = $true
+    } else {
+        Write-Host "  $($vm.Name): hostname OK ($actualName)"
+    }
+}
+
+if ($needsRestart) {
+    Write-Host "  Waiting for VMs to restart..."
+    Start-Sleep -Seconds 15
+    foreach ($vm in $vmConfigs) {
+        $timeout = 120; $elapsed = 0
+        while ($elapsed -lt $timeout) {
+            try {
+                $name = Invoke-Command -VMName $vm.Name -Credential $cred `
+                    -ScriptBlock { $env:COMPUTERNAME } -ErrorAction Stop
+                Write-Host "  $($vm.Name): online (hostname: $name)"
+                break
+            } catch {
+                Start-Sleep -Seconds 5; $elapsed += 5
+            }
+        }
+        if ($elapsed -ge $timeout) {
+            Write-Host "  $($vm.Name): not responding after ${timeout}s" -ForegroundColor Yellow
+        }
+    }
 }
