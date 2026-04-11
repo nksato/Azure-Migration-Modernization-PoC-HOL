@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Configure-StaticIPs.ps1
 # Run on Hyper-V host: Set static IPs on nested VMs via PowerShell Direct
 # =============================================================================
@@ -40,7 +40,14 @@ foreach ($vm in $vmConfigs) {
         # Disable DHCP
         Set-NetIPInterface -InterfaceAlias $ifAlias -Dhcp Disabled -ErrorAction SilentlyContinue
 
-        Write-Host "  IP: $IP, DNS: $DNS configured on $ifAlias"
+        # Enable ICMP (ping)
+        Enable-NetFirewallRule -Name 'FPS-ICMP4-ERQ-In' -ErrorAction SilentlyContinue
+
+        # Enable Remote Desktop
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+        Enable-NetFirewallRule -DisplayGroup 'Remote Desktop' -ErrorAction SilentlyContinue
+
+        Write-Host "  IP: $IP, DNS: $DNS, ICMP: enabled, RDP: enabled on $ifAlias"
     } -ArgumentList $vm.IP, $vm.DNS
 
     Write-Host "  $($vm.Name) done."
@@ -48,6 +55,10 @@ foreach ($vm in $vmConfigs) {
 
 Write-Host ""
 Write-Host "=== Static IP configuration complete ==="
+
+# Enable ICMP on host (for gateway ping from nested VMs)
+Write-Host "  Enabling ICMP on host..."
+Enable-NetFirewallRule -Name 'FPS-ICMP4-ERQ-In' -ErrorAction SilentlyContinue
 
 # Verify connectivity from host
 foreach ($vm in $vmConfigs) {
