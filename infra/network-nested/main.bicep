@@ -1,7 +1,7 @@
 // ============================================================================
 // VPN Deploy - On-premises Nested (rg-onprem-nested) <-> Hub (rg-hub)
 //
-// One-shot deployment: both VPN Gateways + bidirectional Vnet2Vnet connections.
+// One-shot deployment: both VPN Gateways + bidirectional S2S connections.
 //
 // Architecture:
 //   rg-onprem-nested             rg-hub
@@ -9,10 +9,13 @@
 //   │ vnet-onprem       │         │ vnet-hub          │
 //   │ 10.1.0.0/16       │         │ 10.10.0.0/16      │
 //   │                   │         │                   │
-//   │ ┌───────────────┐ │   VPN   │ ┌───────────────┐ │
+//   │ ┌───────────────┐ │   S2S   │ ┌───────────────┐ │
 //   │ │ GatewaySubnet │◄├─────────┤►│ GatewaySubnet │ │
 //   │ │ 10.1.255.0/27 │ │  IPsec  │ │10.10.255.0/27 │ │
 //   │ └───────────────┘ │         │ └───────────────┘ │
+//   │                   │         │                   │
+//   │ lgw-hub           │         │ lgw-onprem-nested │
+//   │ (Hub の PIP 参照)  │         │ (OnPrem の PIP 参照)│
 //   └──────────────────┘         └──────────────────┘
 //
 // Prerequisites:
@@ -62,6 +65,9 @@ param cloudAddressPrefixes array = [
   '10.22.0.0/16' // Spoke3 (Container)
   '10.23.0.0/16' // Spoke4 (Full PaaS)
 ]
+
+@description('On-premises address prefix (for LGW on Hub side)')
+param onpremAddressPrefix string = '10.1.0.0/16'
 
 @description('Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/)')
 param createHubVpnGateway bool = false
@@ -139,7 +145,55 @@ module hubVpnGatewayNew 'br/public:avm/res/network/virtual-network-gateway:0.10.
 }
 
 // ============================================================================
-// Phase 3: VPN Connections (Vnet2Vnet, bidirectional)
+// Phase 3a: Public IP retrieval
+// ============================================================================
+
+module getOnpremPip 'modules/get-pip-ip.bicep' = {
+  scope: rgOnprem
+  name: 'get-onprem-vpn-pip'
+  params: {
+    pipName: 'vgw-onprem-pip1'
+  }
+  dependsOn: [onpremVpnGateway]
+}
+
+module getHubPip 'modules/get-pip-ip.bicep' = {
+  scope: rgHub
+  name: 'get-hub-vpn-pip'
+  params: {
+    pipName: '${hubVpnGatewayName}-pip1'
+  }
+  dependsOn: [hubVpnGatewayNew]
+}
+
+// ============================================================================
+// Phase 3b: Local Network Gateways (S2S requires LGW to represent remote side)
+// ============================================================================
+
+module lgwHub 'modules/local-network-gateway.bicep' = {
+  scope: rgOnprem
+  name: 'deploy-lgw-hub'
+  params: {
+    name: 'lgw-hub'
+    location: location
+    gatewayIpAddress: getHubPip.outputs.ipAddress
+    addressPrefixes: cloudAddressPrefixes
+  }
+}
+
+module lgwOnprem 'modules/local-network-gateway.bicep' = {
+  scope: rgHub
+  name: 'deploy-lgw-onprem-nested'
+  params: {
+    name: 'lgw-onprem-nested'
+    location: location
+    gatewayIpAddress: getOnpremPip.outputs.ipAddress
+    addressPrefixes: [onpremAddressPrefix]
+  }
+}
+
+// ============================================================================
+// Phase 3c: S2S VPN Connections (IPsec, bidirectional)
 // ============================================================================
 
 module connectionOnpremToHub 'br/public:avm/res/network/connection:0.1.7' = {
@@ -148,11 +202,10 @@ module connectionOnpremToHub 'br/public:avm/res/network/connection:0.1.7' = {
   params: {
     name: 'cn-onprem-nested-to-hub'
     virtualNetworkGateway1: { id: onpremVpnGateway.outputs.resourceId }
-    virtualNetworkGateway2ResourceId: hubGatewayId
-    connectionType: 'Vnet2Vnet'
+    localNetworkGateway2ResourceId: lgwHub.outputs.resourceId
+    connectionType: 'IPsec'
     vpnSharedKey: sharedKey
   }
-  dependsOn: [hubVpnGatewayNew]
 }
 
 module connectionHubToOnprem 'br/public:avm/res/network/connection:0.1.7' = {
@@ -161,11 +214,10 @@ module connectionHubToOnprem 'br/public:avm/res/network/connection:0.1.7' = {
   params: {
     name: 'cn-hub-to-onprem-nested'
     virtualNetworkGateway1: { id: hubGatewayId }
-    virtualNetworkGateway2ResourceId: onpremVpnGateway.outputs.resourceId
-    connectionType: 'Vnet2Vnet'
+    localNetworkGateway2ResourceId: lgwOnprem.outputs.resourceId
+    connectionType: 'IPsec'
     vpnSharedKey: sharedKey
   }
-  dependsOn: [hubVpnGatewayNew]
 }
 
 // ============================================================================
@@ -173,6 +225,8 @@ module connectionHubToOnprem 'br/public:avm/res/network/connection:0.1.7' = {
 // ============================================================================
 
 output onpremVpnGatewayId string = onpremVpnGateway.outputs.resourceId
+output onpremVpnGatewayPip string = getOnpremPip.outputs.ipAddress
 output hubVpnGatewayId string = hubGatewayId
+output hubVpnGatewayPip string = getHubPip.outputs.ipAddress
 output connectionOnpremToHubId string = connectionOnpremToHub.outputs.resourceId
 output connectionHubToOnpremId string = connectionHubToOnprem.outputs.resourceId

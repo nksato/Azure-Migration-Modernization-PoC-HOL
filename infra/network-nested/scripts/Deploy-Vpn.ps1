@@ -6,7 +6,8 @@
 
     Phase 1: On-prem 側 VPN Gateway をデプロイ (onprem-gateway.bicep)
     Phase 2: Hub 側 VPN Gateway の存在確認 (既存 or main.bicep で新規作成)
-    Phase 3: 双方向 Vnet2Vnet 接続を確立 (main.bicep)
+    Phase 3: 双方向 S2S (IPsec) 接続を確立 (main.bicep)
+             LGW + Connection を各サイドに作成
 
     将来的に Phase 1 を実オンプレやAWS/GCP 側のプロビジョニングに差し替え可能。
 .PARAMETER Mode
@@ -74,7 +75,9 @@ if (-not $SkipPhase1) {
     if ($LASTEXITCODE -ne 0) { throw "Phase 1 failed: on-prem VPN Gateway deployment." }
 
     $onpremGatewayId = $phase1.onpremVpnGatewayId.value
-    Write-Host "  On-prem Gateway ID: $onpremGatewayId" -ForegroundColor Green
+    $onpremGatewayPip = $phase1.onpremVpnGatewayPip.value
+    Write-Host "  On-prem Gateway ID : $onpremGatewayId" -ForegroundColor Green
+    Write-Host "  On-prem Gateway PIP: $onpremGatewayPip" -ForegroundColor Green
 } else {
     Write-Host "`n Phase 1: Skipped (on-prem GW already deployed)" -ForegroundColor DarkGray
 }
@@ -106,13 +109,13 @@ if ($hubGwExists -eq 'Succeeded') {
 # Phase 3: Establish VPN connections (full deployment)
 # =============================================================================
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host " Phase 3: VPN Connection Establishment" -ForegroundColor Cyan
+Write-Host " Phase 3: S2S Connection Establishment" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 $createHub = if ($Mode -eq 'Standalone' -and $hubGwExists -ne 'Succeeded') { 'true' } else { 'false' }
 
 Write-Host "  createHubVpnGateway = $createHub" -ForegroundColor Gray
-Write-Host "  Deploying VPN connections..." -ForegroundColor Yellow
+Write-Host "  Deploying S2S connections (LGW + IPsec)..." -ForegroundColor Yellow
 
 $env:VPN_SHARED_KEY = $SharedKey
 
@@ -134,7 +137,9 @@ Write-Host " VPN Deployment Complete" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  Mode             : $Mode"
 Write-Host "  On-prem Gateway  : $($phase3.onpremVpnGatewayId.value)"
+Write-Host "  On-prem PIP      : $($phase3.onpremVpnGatewayPip.value)"
 Write-Host "  Hub Gateway      : $($phase3.hubVpnGatewayId.value)"
+Write-Host "  Hub PIP          : $($phase3.hubVpnGatewayPip.value)"
 Write-Host "  Connection (O->H): $($phase3.connectionOnpremToHubId.value)"
 Write-Host "  Connection (H->O): $($phase3.connectionHubToOnpremId.value)"
 Write-Host ""

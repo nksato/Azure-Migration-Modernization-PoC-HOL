@@ -91,5 +91,15 @@ module onpremVpnGateway 'br/public:avm/res/network/virtual-network-gateway:0.10.
 // Outputs — use these to configure the remote side
 // ============================================================================
 
+module getOnpremPip 'modules/get-pip-ip.bicep' = {
+  scope: rgOnprem
+  name: 'get-onprem-vpn-pip'
+  params: {
+    pipName: 'vgw-onprem-pip1'
+  }
+  dependsOn: [onpremVpnGateway]
+}
+
 output onpremVpnGatewayId string = onpremVpnGateway.outputs.resourceId
 output onpremVpnGatewayName string = onpremVpnGateway.outputs.name
+output onpremVpnGatewayPip string = getOnpremPip.outputs.ipAddress
