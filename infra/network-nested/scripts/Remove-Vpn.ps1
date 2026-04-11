@@ -23,7 +23,7 @@
 param(
     [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubResourceGroup = 'rg-hub',
-    [string]$OnpremVnetName = 'vnet-onprem',
+    [string]$OnpremVnetName = 'vnet-onprem-nested',
     [string]$RouteTableName = 'rt-block-internet',
     [string[]]$CloudAddressPrefixes = @(
         '10.10.0.0/16'

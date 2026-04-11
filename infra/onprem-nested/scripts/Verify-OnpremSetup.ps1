@@ -14,8 +14,8 @@
 [CmdletBinding()]
 param(
     [string]$ResourceGroupName = 'rg-onprem-nested',
-    [string]$HostVmName = 'vm-onprem-hv01',
-    [string]$VnetName = 'vnet-onprem',
+    [string]$HostVmName = 'vm-onprem-nested-hv01',
+    [string]$VnetName = 'vnet-onprem-nested',
     [switch]$SkipNestedVMs
 )
 
@@ -82,9 +82,9 @@ if ($rgExists -ne 'true') {
     exit 1
 }
 
-$bastionState = az network bastion show -g $ResourceGroupName -n 'bas-onprem' `
+$bastionState = az network bastion show -g $ResourceGroupName -n 'bas-onprem-nested' `
     --query 'provisioningState' -o tsv 2>$null
-Test-Val 'bas-onprem (Bastion)' $bastionState 'Succeeded'
+Test-Val 'bas-onprem-nested (Bastion)' $bastionState 'Succeeded'
 
 # =============================================================================
 # 2. VNet & Subnet & NSG
@@ -103,9 +103,6 @@ foreach ($snet in @('snet-onprem-nested', 'AzureBastionSubnet')) {
 
 $nsgName = az network nsg show -g $ResourceGroupName -n 'nsg-onprem-nested' --query 'name' -o tsv 2>$null
 Test-NotEmpty 'nsg-onprem-nested' $nsgName
-
-$rtName = az network route-table show -g $ResourceGroupName -n 'rt-block-internet' --query 'name' -o tsv 2>$null
-Test-NotEmpty 'rt-block-internet' $rtName
 
 # NAT Gateway
 $ngName = az network nat gateway show -g $ResourceGroupName -n 'ng-onprem-nested' --query 'name' -o tsv 2>$null

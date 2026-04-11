@@ -6,7 +6,7 @@
 // Architecture:
 //   rg-onprem-nested             rg-hub
 //   ┌──────────────────┐         ┌──────────────────┐
-//   │ vnet-onprem       │         │ vnet-hub          │
+//   │ vnet-onprem-nested│         │ vnet-hub          │
 //   │ 10.1.0.0/16       │         │ 10.10.0.0/16      │
 //   │                   │         │                   │
 //   │ ┌───────────────┐ │   S2S   │ ┌───────────────┐ │
@@ -52,7 +52,7 @@ param onpremResourceGroupName string = 'rg-onprem-nested'
 param hubResourceGroupName string = 'rg-hub'
 
 @description('On-premises VNet name')
-param onpremVnetName string = 'vnet-onprem'
+param onpremVnetName string = 'vnet-onprem-nested'
 
 @description('VPN Gateway SKU')
 param vpnGatewaySku string = 'VpnGw1AZ'
@@ -106,8 +106,6 @@ module onpremVpnRoutes 'modules/vpn-routes.bicep' = {
   name: 'deploy-onprem-vpn-routes'
   params: {
     vnetName: onpremVnetName
-    routeTableName: 'rt-block-internet'
-    cloudAddressPrefixes: cloudAddressPrefixes
   }
 }
 

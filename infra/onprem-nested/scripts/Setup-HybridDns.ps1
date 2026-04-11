@@ -45,7 +45,7 @@ param(
     [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubDnsResolverName = 'dnspr-hub',
     [string]$HubVnetName = 'vnet-hub',
-    [string]$HypervHostVmName = 'vm-onprem-hv01',
+    [string]$HypervHostVmName = 'vm-onprem-nested-hv01',
     [string]$DomainName = 'contoso.local',
     [string]$DcVmName = 'vm-ad01',
     [string]$DcIp = '192.168.100.10',

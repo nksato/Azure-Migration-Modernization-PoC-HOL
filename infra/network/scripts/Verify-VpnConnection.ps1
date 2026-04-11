@@ -184,6 +184,12 @@ foreach ($item in @(
 # 8. IP 到達性テスト (az vm run-command invoke)
 # ============================================================
 Write-Host "`n=== 8. IP 到達性テスト ===" -ForegroundColor Cyan
+
+# VPN 接続が未デプロイならスキップ
+if (-not $cnJson) {
+    Write-Host "  [SKIP] VPN 接続 (cn-onprem-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+} else {
+
 Write-Host "  (az vm run-command invoke を使用 — 各テストに 30〜60 秒かかります)" -ForegroundColor DarkGray
 
 # OnPrem DC01 の IP
@@ -229,10 +235,19 @@ foreach ($test in $connectivityTests) {
     Test-Bool $test.label $reachable
 }
 
+} # end VPN 接続スキップガード
+
 # ============================================================
 # 9. Spoke VM 動的検出 + 双方向到達性テスト (-TestSpokeReachability)
 # ============================================================
-if ($TestSpokeReachability) {
+
+# VPN 接続が未デプロイならスキップ
+if (-not $cnJson) {
+    if ($TestSpokeReachability) {
+        Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
+        Write-Host "  [SKIP] VPN 接続 (cn-onprem-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+    }
+} elseif ($TestSpokeReachability) {
     Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
     Write-Host "  Spoke RG 内の VM を検索し、オンプレ↔Spoke 間の IP 到達性をテストします" -ForegroundColor DarkGray
     Write-Host "  (各テストに 30～60 秒かかります。FW ポリシーにより FAIL になる場合があります)" -ForegroundColor DarkGray

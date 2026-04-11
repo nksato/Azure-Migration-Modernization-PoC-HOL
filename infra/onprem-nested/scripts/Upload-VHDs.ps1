@@ -20,7 +20,7 @@ param(
     [string]$VhdPathWs2019,
 
     [string]$ResourceGroupName = 'rg-onprem-nested',
-    [string]$VmName = 'vm-onprem-hv01',
+    [string]$VmName = 'vm-onprem-nested-hv01',
     [string]$Location = 'japaneast'
 )
 

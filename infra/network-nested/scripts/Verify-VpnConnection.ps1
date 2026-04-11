@@ -15,13 +15,13 @@
 param(
     [string]$OnpremResourceGroup = 'rg-onprem-nested',
     [string]$HubResourceGroup = 'rg-hub',
-    [string]$OnpremVnetName = 'vnet-onprem',
+    [string]$OnpremVnetName = 'vnet-onprem-nested',
     [string]$HubVnetName = 'vnet-hub',
     [string]$OnpremGatewayName = 'vgw-onprem',
     [string]$HubGatewayName = 'vpngw-hub',
     [string]$OnpremPipName = 'pip-vgw-onprem',
     [string]$RouteTableName = 'rt-block-internet',
-    [string]$HostVmName = 'vm-onprem-hv01',
+    [string]$HostVmName = 'vm-onprem-nested-hv01',
     [switch]$TestSpokeReachability
 )
 
@@ -59,7 +59,7 @@ Write-Host "`n=== 1. GatewaySubnet ===" -ForegroundColor Cyan
 
 $onpremGwSnet = az network vnet subnet show -g $OnpremResourceGroup --vnet-name $OnpremVnetName -n GatewaySubnet `
     --query 'addressPrefix' -o tsv 2>$null
-Test-NotEmpty "vnet-onprem/GatewaySubnet" $onpremGwSnet
+Test-NotEmpty "vnet-onprem-nested/GatewaySubnet" $onpremGwSnet
 
 $hubGwSnet = az network vnet subnet show -g $HubResourceGroup --vnet-name $HubVnetName -n GatewaySubnet `
     --query 'addressPrefix' -o tsv 2>$null

@@ -1,7 +1,6 @@
 // ============================================================================
 // Network Module - On-premises simulation network
 // - VNet with Bastion subnet and on-prem subnet
-// - Route table for VPN routes (disableBgpRoutePropagation: true)
 // - NAT Gateway for outbound internet access
 // - NSG with deny internet inbound on VM subnet
 // - Required Bastion NSG rules
@@ -12,18 +11,6 @@ param vnetName string
 param vnetAddressPrefix string = '10.1.0.0/16'
 param bastionSubnetPrefix string = '10.1.0.0/26'
 param onpremSubnetPrefix string = '10.1.1.0/24'
-
-// ----------------------------------------------------------------------------
-// Route Table - VPN routes (cloud CIDRs added by vpn-routes.bicep)
-// ----------------------------------------------------------------------------
-resource routeTable 'Microsoft.Network/routeTables@2024-05-01' = {
-  name: 'rt-block-internet'
-  location: location
-  properties: {
-    disableBgpRoutePropagation: true
-    routes: []
-  }
-}
 
 // ----------------------------------------------------------------------------
 // NAT Gateway - Outbound internet access for VMs
@@ -97,7 +84,7 @@ resource nsgOnprem 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
 // NSG - Azure Bastion subnet (required rules per Azure docs)
 // ----------------------------------------------------------------------------
 resource nsgBastion 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
-  name: 'nsg-bastion'
+  name: 'nsg-bas-onprem-nested'
   location: location
   properties: {
     securityRules: [
@@ -252,9 +239,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
           }
           networkSecurityGroup: {
             id: nsgOnprem.id
-          }
-          routeTable: {
-            id: routeTable.id
           }
         }
       }

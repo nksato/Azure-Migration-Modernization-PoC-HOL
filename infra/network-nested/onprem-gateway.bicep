@@ -6,7 +6,7 @@
 // where the remote side is provisioned separately.
 //
 // What this deploys:
-//   - GatewaySubnet added to vnet-onprem
+//   - GatewaySubnet added to vnet-onprem-nested
 //   - Cloud routes added to rt-block-internet
 //   - VPN Gateway (vgw-onprem) with Public IP
 //
@@ -28,7 +28,7 @@ param location string = deployment().location
 param onpremResourceGroupName string = 'rg-onprem-nested'
 
 @description('On-premises VNet name')
-param onpremVnetName string = 'vnet-onprem'
+param onpremVnetName string = 'vnet-onprem-nested'
 
 @description('VPN Gateway SKU')
 param vpnGatewaySku string = 'VpnGw1AZ'
