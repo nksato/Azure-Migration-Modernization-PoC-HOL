@@ -21,14 +21,9 @@
   - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`, `README.md`
 
 - `infra/network/`
-  - VPN Gateway 配置・S2S 接続（`rg-onprem` ↔ `rg-hub` 双方向）
-  - Hub-Spoke ピアリング Gateway Transit 設定
-  - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`
-
-- `infra/network-nested/`
-  - VPN Gateway 配置・S2S 接続（`rg-onprem-nested` ↔ `rg-hub` 双方向）
-  - スタンドアロン / 既存 Hub GW 共用の両モードに対応
-  - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`
+  - VPN 接続・ハイブリッド DNS 設定
+  - `onprem/` — `rg-onprem` ↔ `rg-hub` 双方向 S2S VPN + DNS
+  - `onprem-nested/` — `rg-onprem-nested` ↔ `rg-hub` 双方向 S2S VPN + DNS
 
 - `infra/tmp/`
   - 旧構成由来の疑似オンプレ / アプリ関連ファイルを一時退避した領域

@@ -3,7 +3,7 @@
 // ============================================================
 // リソースグループの作成を含めて一括デプロイするためのエントリポイント。
 // 内部で resources.bicep をローカルモジュールとして呼び出します。
-// VPN Gateway は Step 4 (infra/network/main.bicep) で別途デプロイします。
+// VPN Gateway は Step 4 (infra/network/onprem/main.bicep) で別途デプロイします。
 //
 // AVM (Azure Verified Modules) ではなくローカルモジュールを使用する理由:
 //   - VM 拡張の protectedSettings を AVM 用オブジェクト形式に変換する煩雑さ

@@ -57,10 +57,10 @@ OnPrem 側 (vgw-onprem):                    Hub 側 (vpngw-hub):
 
 | モジュール | 場所 | 作成リソース |
 |-----------|------|------------|
-| `vpn-connection.bicep` | `infra/network/modules/` | `lgw-hub` + `cn-onprem-to-hub`（OnPrem → Hub） |
-| `vpn-connection-hub.bicep` | `infra/network/modules/` | `lgw-onprem` + `cn-hub-to-onprem`（Hub → OnPrem） |
+| `vpn-connection.bicep` | `infra/network/onprem/modules/` | `lgw-hub` + `cn-onprem-to-hub`（OnPrem → Hub） |
+| `vpn-connection-hub.bicep` | `infra/network/onprem/modules/` | `lgw-onprem` + `cn-hub-to-onprem`（Hub → OnPrem） |
 
-両モジュールは `infra/network/main.bicep` から呼び出されます。
+両モジュールは `infra/network/onprem/main.bicep` から呼び出されます。
 
 ---
 

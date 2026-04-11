@@ -74,7 +74,7 @@
       "type": "bool",
       "defaultValue": true,
       "metadata": {
-        "description": "Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/)"
+        "description": "Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/onprem/)"
       }
     },
     "hubVnetName": {
