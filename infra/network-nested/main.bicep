@@ -21,13 +21,15 @@
 // Prerequisites:
 //   1. On-premises nested environment deployed (onprem-nested/main.bicep)
 //   2. Cloud environment deployed (cloud/main.bicep)
+//      - rg-hub with vnet-hub (GatewaySubnet 含む)
+//      - rg-spoke1 ~ rg-spoke4 with vnet-spoke1 ~ vnet-spoke4
 //
 // Usage patterns:
-//   A) Standalone (onprem-nested only → Hub):
-//      createHubVpnGateway = true  → Hub VPN GW を新規作成
+//   A) Standalone (default — onprem-nested only -> Hub):
+//      createHubVpnGateway = true  -> Hub VPN GW を新規作成 + Peering Gateway Transit 設定
 //
-//   B) Dual (onprem + onprem-nested → Hub):
-//      createHubVpnGateway = false → infra/network/ で作成済みの Hub GW を参照
+//   B) Dual (onprem + onprem-nested -> Hub):
+//      createHubVpnGateway = false -> infra/network/ で作成済みの Hub GW を参照
 //
 // Deployment:
 //   $env:VPN_SHARED_KEY = '<your-shared-key>'
@@ -70,7 +72,7 @@ param cloudAddressPrefixes array = [
 param onpremAddressPrefix string = '10.1.0.0/16'
 
 @description('Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/)')
-param createHubVpnGateway bool = false
+param createHubVpnGateway bool = true
 
 @description('Hub VNet name')
 param hubVnetName string = 'vnet-hub'
@@ -97,6 +99,13 @@ var hubGatewayId = '${rgHub.id}/providers/Microsoft.Network/virtualNetworkGatewa
 var onpremVnetId = '${rgOnprem.id}/providers/Microsoft.Network/virtualNetworks/${onpremVnetName}'
 var hubVnetId = '${rgHub.id}/providers/Microsoft.Network/virtualNetworks/${hubVnetName}'
 
+// Tags
+var commonTags = {
+  Environment: 'PoC'
+  Project: 'Migration-Handson'
+  SecurityControl: 'Ignore'
+}
+
 // ============================================================================
 // Phase 1: On-prem Network Preparation + VPN Gateway
 // ============================================================================
@@ -119,6 +128,7 @@ module onpremVpnGateway 'br/public:avm/res/network/virtual-network-gateway:0.10.
     skuName: vpnGatewaySku
     virtualNetworkResourceId: onpremVnetId
     clusterSettings: { clusterMode: 'activePassiveNoBgp' }
+    tags: commonTags
   }
   dependsOn: [
     onpremVpnRoutes // GatewaySubnet must exist first
@@ -139,6 +149,7 @@ module hubVpnGatewayNew 'br/public:avm/res/network/virtual-network-gateway:0.10.
     skuName: vpnGatewaySku
     virtualNetworkResourceId: hubVnetId
     clusterSettings: { clusterMode: 'activePassiveNoBgp' }
+    tags: commonTags
   }
 }
 
@@ -176,6 +187,7 @@ module lgwHub 'modules/local-network-gateway.bicep' = {
     location: location
     gatewayIpAddress: getHubPip.outputs.ipAddress
     addressPrefixes: cloudAddressPrefixes
+    tags: commonTags
   }
 }
 
@@ -187,6 +199,7 @@ module lgwOnprem 'modules/local-network-gateway.bicep' = {
     location: location
     gatewayIpAddress: getOnpremPip.outputs.ipAddress
     addressPrefixes: [onpremAddressPrefix]
+    tags: commonTags
   }
 }
 
@@ -203,6 +216,7 @@ module connectionOnpremToHub 'br/public:avm/res/network/connection:0.1.7' = {
     localNetworkGateway2ResourceId: lgwHub.outputs.resourceId
     connectionType: 'IPsec'
     vpnSharedKey: sharedKey
+    tags: commonTags
   }
 }
 
@@ -215,7 +229,26 @@ module connectionHubToOnprem 'br/public:avm/res/network/connection:0.1.7' = {
     localNetworkGateway2ResourceId: lgwOnprem.outputs.resourceId
     connectionType: 'IPsec'
     vpnSharedKey: sharedKey
+    tags: commonTags
   }
+}
+
+// ============================================================================
+// Phase 4: Hub-Spoke Peering Gateway Transit (standalone mode only)
+// ============================================================================
+
+module hubPeeringUpdate 'modules/update-hub-peering.bicep' = if (createHubVpnGateway) {
+  scope: rgHub
+  name: 'update-hub-peering-gateway-transit'
+  params: {
+    location: location
+    hubVnetResourceId: hubVnetId
+    spoke1VnetId: '${subscription().id}/resourceGroups/rg-spoke1/providers/Microsoft.Network/virtualNetworks/vnet-spoke1'
+    spoke2VnetId: '${subscription().id}/resourceGroups/rg-spoke2/providers/Microsoft.Network/virtualNetworks/vnet-spoke2'
+    spoke3VnetId: '${subscription().id}/resourceGroups/rg-spoke3/providers/Microsoft.Network/virtualNetworks/vnet-spoke3'
+    spoke4VnetId: '${subscription().id}/resourceGroups/rg-spoke4/providers/Microsoft.Network/virtualNetworks/vnet-spoke4'
+  }
+  dependsOn: [hubVpnGatewayNew]
 }
 
 // ============================================================================

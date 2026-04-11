@@ -7,10 +7,12 @@ param location string
 param name string
 param gatewayIpAddress string
 param addressPrefixes string[]
+param tags object = {}
 
 resource lgw 'Microsoft.Network/localNetworkGateways@2024-05-01' = {
   name: name
   location: location
+  tags: tags
   properties: {
     gatewayIpAddress: gatewayIpAddress
     localNetworkAddressSpace: {
