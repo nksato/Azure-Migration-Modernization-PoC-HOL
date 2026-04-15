@@ -125,8 +125,6 @@ if (-not $SkipConfirmation) {
     }
 }
 
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
 # =============================================================================
 # [1/2] VPN Connection の削除
 # =============================================================================
@@ -174,12 +172,8 @@ if ($lgwOnprem) {
 # =============================================================================
 # 結果サマリー
 # =============================================================================
-$stopwatch.Stop()
-$elapsed = $stopwatch.Elapsed
-
 Write-Host ''
 Write-Host '=== VPN 接続リセット完了 ===' -ForegroundColor Green
-Write-Host "  所要時間: $($elapsed.ToString('mm\:ss'))" -ForegroundColor White
 Write-Host ''
 Write-Host '残存 VPN Gateway (再接続可能):' -ForegroundColor White
 if ($onpremGw) { Write-Host "  - $OnpremGatewayName   ($OnpremResourceGroup)" }

@@ -103,7 +103,7 @@ Azure API のみで完結し、VM 内部への接続は行いません。
 
 ## 3. Verify-VpnConnection.ps1
 
-**パス:** `infra/network/onprem/scripts/Verify-VpnConnection.ps1`
+**パス:** `infra/network/scripts/Verify-VpnConnection.ps1`
 
 VPN Gateway の配置と S2S 接続の状態を検証します。  
 Azure API のみで完結します。
@@ -134,7 +134,7 @@ Azure API のみで完結します。
 
 ## 4. Verify-HybridDns.ps1
 
-**パス:** `infra/network/onprem/scripts/Verify-HybridDns.ps1`
+**パス:** `infra/network/scripts/Verify-HybridDns.ps1`
 
 ハイブリッド DNS 構成の状態と双方向の名前解決を検証します。  
 Azure API と `az vm run-command invoke` を使用して、DNS 設定と実際の名前解決結果を確認します。

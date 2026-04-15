@@ -46,7 +46,7 @@ On-prem → azure.internal (オプション):
 
 ## 前提条件
 
-1. Nested Hyper-V 環境がデプロイ済み（`infra/onprem-nested/main.bicep`）
+1. Nested Hyper-V 環境がデプロイ済み（`infra/nested/onprem/main.bicep`）
 2. クラウド環境がデプロイ済み（`infra/cloud/main.bicep`）
    - `rg-hub` に `vnet-hub`（GatewaySubnet 含む）
    - `rg-spoke1` 〜 `rg-spoke4` に各 VNet
@@ -64,7 +64,7 @@ createHubVpnGateway = true  (デフォルト)
 
 ### B) Dual モード
 
-`infra/network/onprem/` で既に Hub VPN Gateway を作成済みの場合。  
+`infra/network/` で既に Hub VPN Gateway を作成済みの場合。  
 既存の Hub GW を共有し、onprem と onprem-nested の両方を Hub に接続する。
 
 ```powershell
@@ -79,7 +79,7 @@ createHubVpnGateway = true  (デフォルト)
 ### 1. VPN デプロイ
 
 ```powershell
-cd infra/network/onprem-nested
+cd infra/nested/network
 
 # 共有キーを設定（任意の文字列）
 $env:VPN_SHARED_KEY = '<your-shared-key>'
@@ -194,7 +194,7 @@ az deployment sub create -l japaneast -f main.bicep -p main.bicepparam
 ## ファイル構成
 
 ```
-infra/network/onprem-nested/
+infra/nested/network/
 ├── main.bicep              # VPN デプロイテンプレート (subscription scope)
 ├── main.bicepparam         # パラメータファイル
 ├── main.json               # ARM テンプレート (コンパイル済み)
@@ -216,4 +216,4 @@ infra/network/onprem-nested/
 
 - [Azure VPN Gateway ドキュメント](https://learn.microsoft.com/azure/vpn-gateway/)
 - [Azure DNS Private Resolver](https://learn.microsoft.com/azure/dns/dns-private-resolver-overview)
-- 関連テンプレート: [`infra/network/onprem/`](../onprem/) — 通常のオンプレ環境用 VPN
+- 関連テンプレート: [`infra/network/`](../../network/) — 通常のオンプレ環境用 VPN

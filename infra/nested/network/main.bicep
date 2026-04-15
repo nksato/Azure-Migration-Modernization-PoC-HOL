@@ -29,7 +29,7 @@
 //      createHubVpnGateway = true  -> Hub VPN GW を新規作成 + Peering Gateway Transit 設定
 //
 //   B) Dual (onprem + onprem-nested -> Hub):
-//      createHubVpnGateway = false -> infra/network/onprem/ で作成済みの Hub GW を参照
+//      createHubVpnGateway = false -> infra/network/ で作成済みの Hub GW を参照
 //
 // Deployment:
 //   $env:VPN_SHARED_KEY = '<your-shared-key>'
@@ -71,7 +71,7 @@ param cloudAddressPrefixes array = [
 @description('On-premises address prefix (for LGW on Hub side)')
 param onpremAddressPrefix string = '10.1.0.0/16'
 
-@description('Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/onprem/)')
+@description('Create Hub VPN Gateway (true=standalone, false=use existing from infra/network/)')
 param createHubVpnGateway bool = true
 
 @description('Hub VNet name')
