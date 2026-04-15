@@ -262,7 +262,7 @@ Hyper-V マネージャーで各 VM に接続し OOBE（初期セットアップ
 
 > ⚠️ **本番環境では使用しないでください。** PoC / ハンズオン用の構成です。本番では Azure Key Vault 等からの取得を推奨します。
 
-## 一括セットアップ（リモート PC から実行）
+## 備考: 一括セットアップ（Hyper-V ホストから実行）
 
 `Setup-NestedEnvironment.ps1` は、ネットワーク構成・VM 作成・OOBE 自動化・固定 IP・AD DS・ドメイン参加・検証まで（Phase 1〜8）を一括実行するスクリプトです。
 
@@ -411,3 +411,7 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 
 VPN 関連のテンプレート・スクリプトは `infra/nested/network/` に分離されています。
 詳細は [infra/nested/network/](../network/) を参照してください。
+
+## 参考
+
+- [応答ファイル (unattend.xml) の作成 - Microsoft Learn](https://learn.microsoft.com/ja-jp/windows-hardware/manufacture/desktop/update-windows-settings-and-scripts-create-your-own-answer-file-sxs?view=windows-11)
