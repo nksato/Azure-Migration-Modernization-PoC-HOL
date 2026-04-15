@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     VPN 接続の検証スクリプト (Nested Hyper-V 環境対応)
 .DESCRIPTION
@@ -22,6 +22,10 @@ param(
     [string]$OnpremGatewayName = 'vgw-onprem',
     [string]$HubGatewayName = 'vpngw-hub',
     [string]$OnpremPipName = 'vgw-onprem-pip1',
+    [string]$OnpremLgwName = 'lgw-hub',
+    [string]$HubLgwName = 'lgw-onprem-nested',
+    [string]$OnpremConnectionName = 'cn-onprem-nested-to-hub',
+    [string]$HubConnectionName = 'cn-hub-to-onprem-nested',
     [string]$HostVmName = 'vm-onprem-nested-hv01',
     [string]$NestedAdminUser = '',
     [string]$NestedAdminPassword = '',
@@ -113,44 +117,44 @@ Test-NotEmpty 'vpngw-hub Public IP' $hubPip
 # =============================================================================
 Write-Host "`n=== 4. Local Network Gateway ===" -ForegroundColor Cyan
 
-# lgw-hub (in onprem RG — represents Hub side)
-$lgwHubJson = az network local-gateway show -g $OnpremResourceGroup -n lgw-hub `
+# $OnpremLgwName (in onprem RG — represents Hub side)
+$lgwHubJson = az network local-gateway show -g $OnpremResourceGroup -n $OnpremLgwName `
     --query '{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}' `
     -o json 2>$null
 if ($lgwHubJson) {
     $lgwHub = $lgwHubJson | ConvertFrom-Json
-    Test-Val 'lgw-hub プロビジョニング' $lgwHub.state 'Succeeded'
+    Test-Val "$OnpremLgwName プロビジョニング" $lgwHub.state 'Succeeded'
     # LGW の gatewayIpAddress が Hub VPN Gateway の PIP と一致するか
     if ($hubPip) {
-        Test-Val 'lgw-hub -> Hub PIP 一致' $lgwHub.gwIp $hubPip
+        Test-Val "$OnpremLgwName -> Hub PIP 一致" $lgwHub.gwIp $hubPip
     } else {
-        Test-NotEmpty 'lgw-hub Gateway IP' $lgwHub.gwIp
+        Test-NotEmpty "$OnpremLgwName Gateway IP" $lgwHub.gwIp
     }
     # アドレス空間: Hub + Spoke1-4
     $expectedPrefixes = @('10.10.0.0/16', '10.20.0.0/16', '10.21.0.0/16', '10.22.0.0/16', '10.23.0.0/16')
     $actualPrefixes = @($lgwHub.prefixes | Sort-Object)
     $expectedSorted = @($expectedPrefixes | Sort-Object)
     $prefixMatch = ($actualPrefixes -join ',') -eq ($expectedSorted -join ',')
-    Test-Bool "lgw-hub アドレス空間 (Hub + Spoke1-4: $($actualPrefixes -join ', '))" $prefixMatch
+    Test-Bool "$OnpremLgwName アドレス空間 (Hub + Spoke1-4: $($actualPrefixes -join ', '))" $prefixMatch
 } else {
-    Test-Val 'lgw-hub' '(未検出)' 'Succeeded'
+    Test-Val $OnpremLgwName '(未検出)' 'Succeeded'
 }
 
-# lgw-onprem-nested (in Hub RG — represents OnPrem side)
-$lgwOnpremJson = az network local-gateway show -g $HubResourceGroup -n lgw-onprem-nested `
+# $HubLgwName (in Hub RG — represents OnPrem side)
+$lgwOnpremJson = az network local-gateway show -g $HubResourceGroup -n $HubLgwName `
     --query '{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}' `
     -o json 2>$null
 if ($lgwOnpremJson) {
     $lgwOnprem = $lgwOnpremJson | ConvertFrom-Json
-    Test-Val 'lgw-onprem-nested プロビジョニング' $lgwOnprem.state 'Succeeded'
+    Test-Val "$HubLgwName プロビジョニング" $lgwOnprem.state 'Succeeded'
     if ($onpremPip) {
-        Test-Val 'lgw-onprem-nested -> OnPrem PIP 一致' $lgwOnprem.gwIp $onpremPip
+        Test-Val "$HubLgwName -> OnPrem PIP 一致" $lgwOnprem.gwIp $onpremPip
     } else {
-        Test-NotEmpty 'lgw-onprem-nested Gateway IP' $lgwOnprem.gwIp
+        Test-NotEmpty "$HubLgwName Gateway IP" $lgwOnprem.gwIp
     }
-    Test-Bool "lgw-onprem-nested アドレス空間: $($lgwOnprem.prefixes -join ', ')" ($lgwOnprem.prefixes -contains '10.1.0.0/16')
+    Test-Bool "$HubLgwName アドレス空間: $($lgwOnprem.prefixes -join ', ')" ($lgwOnprem.prefixes -contains '10.1.0.0/16')
 } else {
-    Test-Val 'lgw-onprem-nested' '(未検出)' 'Succeeded'
+    Test-Val $HubLgwName '(未検出)' 'Succeeded'
 }
 
 # =============================================================================
@@ -159,29 +163,29 @@ if ($lgwOnpremJson) {
 Write-Host "`n=== 5. S2S VPN 接続 ===" -ForegroundColor Cyan
 
 # OnPrem -> Hub
-$cn1Json = az network vpn-connection show -g $OnpremResourceGroup -n cn-onprem-nested-to-hub `
+$cn1Json = az network vpn-connection show -g $OnpremResourceGroup -n $OnpremConnectionName `
     --query '{state:provisioningState, status:connectionStatus, protocol:connectionProtocol, type:connectionType}' -o json 2>$null
 if ($cn1Json) {
     $cn1 = $cn1Json | ConvertFrom-Json
-    Test-Val 'cn-onprem-nested-to-hub プロビジョニング' $cn1.state    'Succeeded'
-    Test-Val 'cn-onprem-nested-to-hub 接続状態'         $cn1.status   'Connected'
-    Test-Val 'cn-onprem-nested-to-hub タイプ'           $cn1.type     'IPsec'
-    Test-Val 'cn-onprem-nested-to-hub プロトコル'        $cn1.protocol 'IKEv2'
+    Test-Val "$OnpremConnectionName プロビジョニング" $cn1.state    'Succeeded'
+    Test-Val "$OnpremConnectionName 接続状態"         $cn1.status   'Connected'
+    Test-Val "$OnpremConnectionName タイプ"           $cn1.type     'IPsec'
+    Test-Val "$OnpremConnectionName プロトコル"        $cn1.protocol 'IKEv2'
 } else {
-    Test-Val 'cn-onprem-nested-to-hub' '(未検出)' 'Succeeded'
+    Test-Val $OnpremConnectionName '(未検出)' 'Succeeded'
 }
 
 # Hub -> OnPrem
-$cn2Json = az network vpn-connection show -g $HubResourceGroup -n cn-hub-to-onprem-nested `
+$cn2Json = az network vpn-connection show -g $HubResourceGroup -n $HubConnectionName `
     --query '{state:provisioningState, status:connectionStatus, protocol:connectionProtocol, type:connectionType}' -o json 2>$null
 if ($cn2Json) {
     $cn2 = $cn2Json | ConvertFrom-Json
-    Test-Val 'cn-hub-to-onprem-nested プロビジョニング' $cn2.state    'Succeeded'
-    Test-Val 'cn-hub-to-onprem-nested 接続状態'         $cn2.status   'Connected'
-    Test-Val 'cn-hub-to-onprem-nested タイプ'           $cn2.type     'IPsec'
-    Test-Val 'cn-hub-to-onprem-nested プロトコル'        $cn2.protocol 'IKEv2'
+    Test-Val "$HubConnectionName プロビジョニング" $cn2.state    'Succeeded'
+    Test-Val "$HubConnectionName 接続状態"         $cn2.status   'Connected'
+    Test-Val "$HubConnectionName タイプ"           $cn2.type     'IPsec'
+    Test-Val "$HubConnectionName プロトコル"        $cn2.protocol 'IKEv2'
 } else {
-    Test-Val 'cn-hub-to-onprem-nested' '(未検出)' 'Succeeded'
+    Test-Val $HubConnectionName '(未検出)' 'Succeeded'
 }
 
 # =============================================================================
@@ -195,8 +199,8 @@ $hostIp = az vm list-ip-addresses -g $OnpremResourceGroup -n $HostVmName `
 Write-Host "  オンプレ VPN GW PIP  : $onpremPip" -ForegroundColor Gray
 Write-Host "  Hub VPN GW PIP       : $hubPip" -ForegroundColor Gray
 Write-Host "  Hyper-V ホスト IP    : $hostIp" -ForegroundColor Gray
-Write-Host "  LGW (lgw-hub)        : $(if ($lgwHubJson) { ($lgwHubJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
-Write-Host "  LGW (lgw-onprem)     : $(if ($lgwOnpremJson) { ($lgwOnpremJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  LGW ($OnpremLgwName)  : $(if ($lgwHubJson) { ($lgwHubJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  LGW ($HubLgwName)    : $(if ($lgwOnpremJson) { ($lgwOnpremJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
 Write-Host "  接続状態 (->Hub)      : $(if ($cn1Json) { ($cn1Json | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
 Write-Host "  接続状態 (<-Hub)      : $(if ($cn2Json) { ($cn2Json | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
 
@@ -238,7 +242,7 @@ Write-Host "`n=== 8. IP 到達性テスト ===" -ForegroundColor Cyan
 
 # VPN 接続が未デプロイならスキップ
 if (-not $cn1Json) {
-    Write-Host "  [SKIP] VPN 接続 (cn-onprem-nested-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+    Write-Host "  [SKIP] VPN 接続 ($OnpremConnectionName) が未デプロイのためスキップ" -ForegroundColor DarkGray
 } else {
 
 Write-Host "  (az vm run-command invoke を使用 — 各テストに 30〜60 秒かかります)" -ForegroundColor DarkGray
@@ -267,7 +271,41 @@ $result1 = az vm run-command invoke `
 $reachable1 = ($result1 | Out-String) -match 'True'
 Test-Bool $testLabel $reachable1
 
-# --- Test B: Nested VM (vm-ad01) -> Hub DNS Resolver via PowerShell Direct ---
+# --- Test B: Spoke1 Web VM が存在すれば双方向テスト (RDP:3389) ---
+$spoke1WebVm = az vm show -g rg-spoke1 -n vm-spoke1-web --query 'name' -o tsv 2>$null
+if ($spoke1WebVm -and $hostIp) {
+    $spoke1Ip = az vm list-ip-addresses -g rg-spoke1 -n vm-spoke1-web `
+        --query '[0].virtualMachine.network.privateIpAddresses[0]' -o tsv 2>$null
+    if ($spoke1Ip) {
+        # Host -> Spoke1
+        $testLabelS1a = "Host ($HostVmName) -> Spoke1 (vm-spoke1-web ${spoke1Ip}:3389)"
+        Write-Host "  リモートコマンド実行中: $testLabelS1a..." -ForegroundColor Gray
+        $scriptS1a = "Test-NetConnection -ComputerName '$spoke1Ip' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+        $resultS1a = az vm run-command invoke `
+            --resource-group $OnpremResourceGroup `
+            --name $HostVmName `
+            --command-id RunPowerShellScript `
+            --scripts $scriptS1a `
+            --query 'value[0].message' -o tsv 2>$null
+        Test-Bool $testLabelS1a (($resultS1a | Out-String) -match 'True')
+
+        # Spoke1 -> Host
+        $testLabelS1b = "Spoke1 (vm-spoke1-web) -> Host ($HostVmName ${hostIp}:3389)"
+        Write-Host "  リモートコマンド実行中: $testLabelS1b..." -ForegroundColor Gray
+        $scriptS1b = "Test-NetConnection -ComputerName '$hostIp' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+        $resultS1b = az vm run-command invoke `
+            --resource-group 'rg-spoke1' `
+            --name 'vm-spoke1-web' `
+            --command-id RunPowerShellScript `
+            --scripts $scriptS1b `
+            --query 'value[0].message' -o tsv 2>$null
+        Test-Bool $testLabelS1b (($resultS1b | Out-String) -match 'True')
+    }
+} else {
+    Write-Host "  [SKIP] OnPrem <-> Spoke1 — vm-spoke1-web が未デプロイ" -ForegroundColor DarkGray
+}
+
+# --- Test C: Nested VM (vm-ad01) -> Hub DNS Resolver via PowerShell Direct ---
 if ([string]::IsNullOrWhiteSpace($NestedAdminUser) -or [string]::IsNullOrWhiteSpace($NestedAdminPassword)) {
     Write-Host "  [SKIP] Nested VM テスト — NestedAdminUser/NestedAdminPassword が未指定" -ForegroundColor DarkGray
 } else {
@@ -299,19 +337,7 @@ try {
     Test-Bool $testLabel2 $reachable2
 }
 
-# --- Test C: Host -> Hub GatewaySubnet (10.10.255.1 ICMP) ---
-$testLabel3 = "Host ($HostVmName) -> Hub GatewaySubnet (10.10.255.1 ping)"
-Write-Host "  リモートコマンド実行中: $testLabel3..." -ForegroundColor Gray
-
-$script3 = "Test-Connection -ComputerName '10.10.255.1' -Count 2 -Quiet"
-$result3 = az vm run-command invoke `
-    --resource-group $OnpremResourceGroup `
-    --name $HostVmName `
-    --command-id RunPowerShellScript `
-    --scripts $script3 `
-    --query 'value[0].message' -o tsv 2>$null
-$reachable3 = ($result3 | Out-String) -match 'True'
-Test-Bool $testLabel3 $reachable3
+# Note: GatewaySubnet ICMP テストは除外 (Azure VPN Gateway は ping に応答しない仕様)
 
 } # end VPN 接続スキップガード
 
@@ -323,7 +349,7 @@ Test-Bool $testLabel3 $reachable3
 if (-not $cn1Json) {
     if ($TestSpokeReachability) {
         Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
-        Write-Host "  [SKIP] VPN 接続 (cn-onprem-nested-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+        Write-Host "  [SKIP] VPN 接続 ($OnpremConnectionName) が未デプロイのためスキップ" -ForegroundColor DarkGray
     }
 } elseif ($TestSpokeReachability) {
     Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan

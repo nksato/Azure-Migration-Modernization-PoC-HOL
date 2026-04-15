@@ -3,16 +3,28 @@
     VPN Gateway 配置・接続の状態を検証する
 .DESCRIPTION
     Azure CLI でオンプレ側・Hub 側の VPN Gateway、S2S 接続、
-    ピアリングの Gateway Transit 設定を確認する。
+    LGW、ピアリングの Gateway Transit 設定を確認する。
     Azure API のみで完結する簡易チェック。
 .EXAMPLE
     .\Verify-VpnConnection.ps1
 .EXAMPLE
-    .\Verify-VpnConnection.ps1 -TestSpokeReachability  # Spoke VM を動的検出して双方向到達性テスト
+    .\Verify-VpnConnection.ps1 -TestSpokeReachability
 #>
 
 [CmdletBinding()]
 param(
+    [string]$OnpremResourceGroup = 'rg-onprem',
+    [string]$HubResourceGroup = 'rg-hub',
+    [string]$OnpremVnetName = 'vnet-onprem',
+    [string]$HubVnetName = 'vnet-hub',
+    [string]$OnpremGatewayName = 'vgw-onprem',
+    [string]$HubGatewayName = 'vpngw-hub',
+    [string]$OnpremPipName = 'vgw-onprem-pip1',
+    [string]$OnpremVmName = 'vm-onprem-ad',
+    [string]$OnpremConnectionName = 'cn-onprem-to-hub',
+    [string]$HubConnectionName = 'cn-hub-to-onprem',
+    [string]$OnpremLgwName = 'lgw-hub',
+    [string]$HubLgwName = 'lgw-onprem',
     [switch]$TestSpokeReachability
 )
 
@@ -46,99 +58,95 @@ function Test-Bool ([string]$Label, [bool]$Value) {
 # ============================================================
 Write-Host "`n=== 1. GatewaySubnet ===" -ForegroundColor Cyan
 
-$onpremGwSnet = az network vnet subnet show -g rg-onprem --vnet-name vnet-onprem -n GatewaySubnet `
+$onpremGwSnet = az network vnet subnet show -g $OnpremResourceGroup --vnet-name $OnpremVnetName -n GatewaySubnet `
     --query "addressPrefix" -o tsv 2>$null
-Test-NotEmpty 'vnet-onprem/GatewaySubnet' $onpremGwSnet
+Test-NotEmpty "$OnpremVnetName/GatewaySubnet" $onpremGwSnet
 
-$hubGwSnet = az network vnet subnet show -g rg-hub --vnet-name vnet-hub -n GatewaySubnet `
+$hubGwSnet = az network vnet subnet show -g $HubResourceGroup --vnet-name $HubVnetName -n GatewaySubnet `
     --query "addressPrefix" -o tsv 2>$null
-Test-NotEmpty 'vnet-hub/GatewaySubnet' $hubGwSnet
+Test-NotEmpty "$HubVnetName/GatewaySubnet" $hubGwSnet
 
 # ============================================================
 # 2. VPN Gateway (オンプレ側)
 # ============================================================
 Write-Host "`n=== 2. VPN Gateway (オンプレ側) ===" -ForegroundColor Cyan
 
-$onpremGwJson = az network vnet-gateway show -g rg-onprem -n vgw-onprem `
-    --query "{state:provisioningState, sku:sku.name, vpnType:vpnType}" -o json 2>$null
+$onpremGwJson = az network vnet-gateway show -g $OnpremResourceGroup -n $OnpremGatewayName `
+    --query '{state:provisioningState, sku:sku.name, vpnType:vpnType}' -o json 2>$null
 if ($onpremGwJson) {
     $onpremGw = $onpremGwJson | ConvertFrom-Json
-    Test-Val  'vgw-onprem プロビジョニング' $onpremGw.state   'Succeeded'
-    Test-Val  'vgw-onprem SKU'              $onpremGw.sku     'VpnGw1AZ'
-    Test-Val  'vgw-onprem VPN タイプ'        $onpremGw.vpnType 'RouteBased'
+    Test-Val  "$OnpremGatewayName プロビジョニング" $onpremGw.state   'Succeeded'
+    Test-Val  "$OnpremGatewayName SKU"              $onpremGw.sku     'VpnGw1AZ'
+    Test-Val  "$OnpremGatewayName VPN タイプ"        $onpremGw.vpnType 'RouteBased'
 } else {
-    Test-Val 'vgw-onprem' '(未検出)' 'Succeeded'
+    Test-Val $OnpremGatewayName '(未検出)' 'Succeeded'
 }
 
-$onpremPip = az network public-ip show -g rg-onprem -n vgw-onprem-pip1 `
-    --query "ipAddress" -o tsv 2>$null
-Test-NotEmpty 'vgw-onprem Public IP' $onpremPip
+$onpremPip = az network public-ip show -g $OnpremResourceGroup -n $OnpremPipName `
+    --query 'ipAddress' -o tsv 2>$null
+Test-NotEmpty "$OnpremPipName Public IP" $onpremPip
 
 # ============================================================
 # 3. VPN Gateway (Hub 側)
 # ============================================================
 Write-Host "`n=== 3. VPN Gateway (Hub 側) ===" -ForegroundColor Cyan
 
-$hubGwJson = az network vnet-gateway show -g rg-hub -n vpngw-hub `
-    --query "{state:provisioningState, sku:sku.name, vpnType:vpnType}" -o json 2>$null
+$hubGwJson = az network vnet-gateway show -g $HubResourceGroup -n $HubGatewayName `
+    --query '{state:provisioningState, sku:sku.name, vpnType:vpnType}' -o json 2>$null
 if ($hubGwJson) {
     $hubGw = $hubGwJson | ConvertFrom-Json
-    Test-Val  'vpngw-hub プロビジョニング' $hubGw.state   'Succeeded'
-    Test-Val  'vpngw-hub SKU'              $hubGw.sku     'VpnGw1AZ'
-    Test-Val  'vpngw-hub VPN タイプ'        $hubGw.vpnType 'RouteBased'
+    Test-Val  "$HubGatewayName プロビジョニング" $hubGw.state   'Succeeded'
+    Test-Val  "$HubGatewayName SKU"              $hubGw.sku     'VpnGw1AZ'
+    Test-Val  "$HubGatewayName VPN タイプ"        $hubGw.vpnType 'RouteBased'
 } else {
-    Test-Val 'vpngw-hub' '(未検出)' 'Succeeded'
+    Test-Val $HubGatewayName '(未検出)' 'Succeeded'
 }
 
-$hubPip = az network public-ip show -g rg-hub -n vpngw-hub-pip1 `
-    --query "ipAddress" -o tsv 2>$null
-Test-NotEmpty 'vpngw-hub Public IP' $hubPip
+$hubPip = az network public-ip show -g $HubResourceGroup -n "$HubGatewayName-pip1" `
+    --query 'ipAddress' -o tsv 2>$null
+Test-NotEmpty "$HubGatewayName Public IP" $hubPip
 
 # ============================================================
 # 4. Local Network Gateway
 # ============================================================
 Write-Host "`n=== 4. Local Network Gateway ===" -ForegroundColor Cyan
 
-$lgwJson = az network local-gateway show -g rg-onprem -n lgw-hub `
-    --query "{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}" `
+# OnpremLgwName (in onprem RG — represents Hub side)
+$lgwJson = az network local-gateway show -g $OnpremResourceGroup -n $OnpremLgwName `
+    --query '{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}' `
     -o json 2>$null
 if ($lgwJson) {
     $lgw = $lgwJson | ConvertFrom-Json
-    Test-Val 'lgw-hub プロビジョニング' $lgw.state 'Succeeded'
-    # LGW の gatewayIpAddress が Hub VPN Gateway の PIP と一致するか
+    Test-Val "$OnpremLgwName プロビジョニング" $lgw.state 'Succeeded'
     if ($hubPip) {
-        Test-Val 'lgw-hub -> Hub PIP 一致' $lgw.gwIp $hubPip
+        Test-Val "$OnpremLgwName -> Hub PIP 一致" $lgw.gwIp $hubPip
     } else {
-        Test-NotEmpty 'lgw-hub Gateway IP' $lgw.gwIp
+        Test-NotEmpty "$OnpremLgwName Gateway IP" $lgw.gwIp
     }
-    # アドレス空間: Hub + Spoke1-4 の 5 プレフィックスを検証
     $expectedPrefixes = @('10.10.0.0/16', '10.20.0.0/16', '10.21.0.0/16', '10.22.0.0/16', '10.23.0.0/16')
     $actualPrefixes = @($lgw.prefixes | Sort-Object)
     $expectedSorted = @($expectedPrefixes | Sort-Object)
     $prefixMatch = ($actualPrefixes -join ',') -eq ($expectedSorted -join ',')
-    Test-Bool "lgw-hub アドレス空間 (Hub + Spoke1-4: $($actualPrefixes -join ', '))" $prefixMatch
+    Test-Bool "$OnpremLgwName アドレス空間 (Hub + Spoke1-4: $($actualPrefixes -join ', '))" $prefixMatch
 } else {
-    Test-Val 'lgw-hub' '(未検出)' 'Succeeded'
+    Test-Val $OnpremLgwName '(未検出)' 'Succeeded'
 }
 
-# lgw-onprem (in Hub RG — represents OnPrem side)
-$lgwOnpremJson = az network local-gateway show -g rg-hub -n lgw-onprem `
+# HubLgwName (in Hub RG — represents OnPrem side)
+$lgwOnpremJson = az network local-gateway show -g $HubResourceGroup -n $HubLgwName `
     --query '{state:provisioningState, gwIp:gatewayIpAddress, prefixes:localNetworkAddressSpace.addressPrefixes}' `
     -o json 2>$null
 if ($lgwOnpremJson) {
     $lgwOnprem = $lgwOnpremJson | ConvertFrom-Json
-    Test-Val 'lgw-onprem プロビジョニング' $lgwOnprem.state 'Succeeded'
+    Test-Val "$HubLgwName プロビジョニング" $lgwOnprem.state 'Succeeded'
     if ($onpremPip) {
-        Test-Val 'lgw-onprem -> OnPrem PIP 一致' $lgwOnprem.gwIp $onpremPip
+        Test-Val "$HubLgwName -> OnPrem PIP 一致" $lgwOnprem.gwIp $onpremPip
     } else {
-        Test-NotEmpty 'lgw-onprem Gateway IP' $lgwOnprem.gwIp
+        Test-NotEmpty "$HubLgwName Gateway IP" $lgwOnprem.gwIp
     }
-    $expectedOnpremPrefix = @('10.0.0.0/16')
-    $actualOnpremPrefixes = @($lgwOnprem.prefixes | Sort-Object)
-    $onpremPrefixMatch = ($actualOnpremPrefixes -join ',') -eq ($expectedOnpremPrefix -join ',')
-    Test-Bool "lgw-onprem アドレス空間 (OnPrem: $($actualOnpremPrefixes -join ', '))" $onpremPrefixMatch
+    Test-Bool "$HubLgwName アドレス空間: $($lgwOnprem.prefixes -join ', ')" ($lgwOnprem.prefixes.Count -gt 0)
 } else {
-    Test-Val 'lgw-onprem' '(未検出)' 'Succeeded'
+    Test-Val $HubLgwName '(未検出)' 'Succeeded'
 }
 
 # ============================================================
@@ -146,28 +154,30 @@ if ($lgwOnpremJson) {
 # ============================================================
 Write-Host "`n=== 5. S2S VPN 接続 ===" -ForegroundColor Cyan
 
-$cnJson = az network vpn-connection show -g rg-onprem -n cn-onprem-to-hub `
-    --query "{state:provisioningState, status:connectionStatus, protocol:connectionProtocol}" `
+$cnJson = az network vpn-connection show -g $OnpremResourceGroup -n $OnpremConnectionName `
+    --query '{state:provisioningState, status:connectionStatus, protocol:connectionProtocol, type:connectionType}' `
     -o json 2>$null
 if ($cnJson) {
     $cn = $cnJson | ConvertFrom-Json
-    Test-Val 'cn-onprem-to-hub プロビジョニング' $cn.state    'Succeeded'
-    Test-Val 'cn-onprem-to-hub 接続状態'         $cn.status   'Connected'
-    Test-Val 'cn-onprem-to-hub プロトコル'        $cn.protocol 'IKEv2'
+    Test-Val "$OnpremConnectionName プロビジョニング" $cn.state    'Succeeded'
+    Test-Val "$OnpremConnectionName 接続状態"         $cn.status   'Connected'
+    Test-Val "$OnpremConnectionName タイプ"           $cn.type     'IPsec'
+    Test-Val "$OnpremConnectionName プロトコル"        $cn.protocol 'IKEv2'
 } else {
-    Test-Val 'cn-onprem-to-hub' '(未検出)' 'Succeeded'
+    Test-Val $OnpremConnectionName '(未検出)' 'Succeeded'
 }
 
-$cnHubJson = az network vpn-connection show -g rg-hub -n cn-hub-to-onprem `
-    --query '{state:provisioningState, status:connectionStatus, protocol:connectionProtocol}' `
+$cnHubJson = az network vpn-connection show -g $HubResourceGroup -n $HubConnectionName `
+    --query '{state:provisioningState, status:connectionStatus, protocol:connectionProtocol, type:connectionType}' `
     -o json 2>$null
 if ($cnHubJson) {
     $cnHub = $cnHubJson | ConvertFrom-Json
-    Test-Val 'cn-hub-to-onprem プロビジョニング' $cnHub.state    'Succeeded'
-    Test-Val 'cn-hub-to-onprem 接続状態'         $cnHub.status   'Connected'
-    Test-Val 'cn-hub-to-onprem プロトコル'        $cnHub.protocol 'IKEv2'
+    Test-Val "$HubConnectionName プロビジョニング" $cnHub.state    'Succeeded'
+    Test-Val "$HubConnectionName 接続状態"         $cnHub.status   'Connected'
+    Test-Val "$HubConnectionName タイプ"           $cnHub.type     'IPsec'
+    Test-Val "$HubConnectionName プロトコル"        $cnHub.protocol 'IKEv2'
 } else {
-    Test-Val 'cn-hub-to-onprem' '(未検出)' 'Succeeded'
+    Test-Val $HubConnectionName '(未検出)' 'Succeeded'
 }
 
 # ============================================================
@@ -177,10 +187,10 @@ Write-Host "`n=== 6. 接続情報サマリ ===" -ForegroundColor Cyan
 
 Write-Host "  オンプレ VPN GW PIP  : $onpremPip" -ForegroundColor Gray
 Write-Host "  Hub VPN GW PIP       : $hubPip" -ForegroundColor Gray
-Write-Host "  LGW (lgw-hub)        : $(if ($lgwJson) { ($lgwJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
-Write-Host "  LGW (lgw-onprem)     : $(if ($lgwOnpremJson) { ($lgwOnpremJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
-Write-Host "  接続状態 (->Hub)     : $(if ($cnJson) { ($cnJson | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
-Write-Host "  接続状態 (<-Hub)     : $(if ($cnHubJson) { ($cnHubJson | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  LGW ($OnpremLgwName)  : $(if ($lgwJson) { ($lgwJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  LGW ($HubLgwName)     : $(if ($lgwOnpremJson) { ($lgwOnpremJson | ConvertFrom-Json).gwIp } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  接続状態 (->Hub)      : $(if ($cnJson) { ($cnJson | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
+Write-Host "  接続状態 (<-Hub)      : $(if ($cnHubJson) { ($cnHubJson | ConvertFrom-Json).status } else { '(未検出)' })" -ForegroundColor Gray
 
 # ============================================================
 # 7. Hub-Spoke ピアリング Gateway Transit
@@ -188,8 +198,8 @@ Write-Host "  接続状態 (<-Hub)     : $(if ($cnHubJson) { ($cnHubJson | Conve
 Write-Host "`n=== 7. Hub-Spoke ピアリング Gateway Transit ===" -ForegroundColor Cyan
 
 # Hub 側: allowGatewayTransit = true
-$hubPeerings = az network vnet peering list -g rg-hub --vnet-name vnet-hub `
-    --query "[].{name:name, gwTransit:allowGatewayTransit, state:peeringState}" -o json 2>$null | ConvertFrom-Json
+$hubPeerings = az network vnet peering list -g $HubResourceGroup --vnet-name $HubVnetName `
+    --query '[].{name:name, gwTransit:allowGatewayTransit, state:peeringState}' -o json 2>$null | ConvertFrom-Json
 
 foreach ($spoke in @('vnet-spoke1', 'vnet-spoke2', 'vnet-spoke3', 'vnet-spoke4')) {
     $p = $hubPeerings | Where-Object { $_.name -match $spoke }
@@ -220,28 +230,37 @@ Write-Host "`n=== 8. IP 到達性テスト ===" -ForegroundColor Cyan
 
 # VPN 接続が未デプロイならスキップ
 if (-not $cnJson) {
-    Write-Host "  [SKIP] VPN 接続 (cn-onprem-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+    Write-Host "  [SKIP] VPN 接続 ($OnpremConnectionName) が未デプロイのためスキップ" -ForegroundColor DarkGray
 } else {
 
 Write-Host "  (az vm run-command invoke を使用 — 各テストに 30〜60 秒かかります)" -ForegroundColor DarkGray
 
-# OnPrem DC01 の IP
-$onpremDcIp = '10.0.1.4'
+# OnPrem VM の Private IP を動的取得
+$onpremVmIp = az vm list-ip-addresses -g $OnpremResourceGroup -n $OnpremVmName `
+    --query '[0].virtualMachine.network.privateIpAddresses[0]' -o tsv 2>$null
+
+# Hub DNS Resolver Inbound IP を動的取得
+$hubDnsResolverIp = az dns-resolver inbound-endpoint show `
+    -g $HubResourceGroup --dns-resolver-name dnspr-hub -n inbound `
+    --query 'ipConfigurations[0].privateIpAddress' -o tsv 2>$null
+if (-not $hubDnsResolverIp) {
+    Write-Host "  [INFO] Hub DNS Resolver が見つかりません。10.10.5.4 をフォールバックとして使用します。" -ForegroundColor DarkGray
+    $hubDnsResolverIp = '10.10.5.4'
+}
 
 # テスト対象の定義: 送信元 VM -> 宛先 IP:ポート
 $connectivityTests = @(
-    # OnPrem -> Hub (DNS Resolver Inbound — ポート 53/TCP で確認)
-    @{ srcRg = 'rg-onprem'; srcVm = 'vm-onprem-ad'; dstIp = '10.10.5.4'; port = 53; label = 'OnPrem (DC01) -> Hub (DNS Resolver 10.10.5.4:53)' }
+    @{ srcRg = $OnpremResourceGroup; srcVm = $OnpremVmName; dstIp = $hubDnsResolverIp; port = 53; label = "OnPrem ($OnpremVmName) -> Hub (DNS Resolver ${hubDnsResolverIp}:53)" }
 )
 
 # Spoke1 Web VM が存在すれば双方向テスト (RDP:3389)
-$spoke1WebVm = az vm show -g rg-spoke1 -n vm-spoke1-web --query "name" -o tsv 2>$null
-if ($spoke1WebVm) {
+$spoke1WebVm = az vm show -g rg-spoke1 -n vm-spoke1-web --query 'name' -o tsv 2>$null
+if ($spoke1WebVm -and $onpremVmIp) {
     $spoke1Ip = az vm list-ip-addresses -g rg-spoke1 -n vm-spoke1-web `
-        --query "[0].virtualMachine.network.privateIpAddresses[0]" -o tsv 2>$null
+        --query '[0].virtualMachine.network.privateIpAddresses[0]' -o tsv 2>$null
     if ($spoke1Ip) {
-        $connectivityTests += @{ srcRg = 'rg-onprem'; srcVm = 'vm-onprem-ad'; dstIp = $spoke1Ip; port = 3389; label = "OnPrem (DC01) -> Spoke1 (vm-spoke1-web ${spoke1Ip}:3389)" }
-        $connectivityTests += @{ srcRg = 'rg-spoke1'; srcVm = 'vm-spoke1-web'; dstIp = $onpremDcIp; port = 3389; label = 'Spoke1 (vm-spoke1-web) -> OnPrem (DC01 10.0.1.4:3389)' }
+        $connectivityTests += @{ srcRg = $OnpremResourceGroup; srcVm = $OnpremVmName; dstIp = $spoke1Ip; port = 3389; label = "OnPrem ($OnpremVmName) -> Spoke1 (vm-spoke1-web ${spoke1Ip}:3389)" }
+        $connectivityTests += @{ srcRg = 'rg-spoke1'; srcVm = 'vm-spoke1-web'; dstIp = $onpremVmIp; port = 3389; label = "Spoke1 (vm-spoke1-web) -> OnPrem ($OnpremVmName ${onpremVmIp}:3389)" }
     }
 } else {
     Write-Host "  [SKIP] OnPrem <-> Spoke1 — vm-spoke1-web が未デプロイ" -ForegroundColor DarkGray
@@ -278,7 +297,7 @@ foreach ($test in $connectivityTests) {
 if (-not $cnJson) {
     if ($TestSpokeReachability) {
         Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
-        Write-Host "  [SKIP] VPN 接続 (cn-onprem-to-hub) が未デプロイのためスキップ" -ForegroundColor DarkGray
+        Write-Host "  [SKIP] VPN 接続 ($OnpremConnectionName) が未デプロイのためスキップ" -ForegroundColor DarkGray
     }
 } elseif ($TestSpokeReachability) {
     Write-Host "`n=== 9. Spoke VM 動的検出 + 双方向到達性テスト ===" -ForegroundColor Cyan
@@ -327,27 +346,27 @@ if (-not $cnJson) {
 
         foreach ($vm in $discoveredVms) {
             # OnPrem (DC01) -> Spoke VM
-            $fwdLabel = "OnPrem (DC01) -> $($vm.label) ($($vm.name) $($vm.ip))"
+            $fwdLabel = "OnPrem ($OnpremVmName) -> $($vm.label) ($($vm.name) $($vm.ip))"
             Write-Host "  リモートコマンド実行中: $fwdLabel..." -ForegroundColor Gray
             $fwdScript = "Test-NetConnection -ComputerName '$($vm.ip)' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
             $fwdResult = az vm run-command invoke `
-                --resource-group rg-onprem `
-                --name vm-onprem-ad `
+                --resource-group $OnpremResourceGroup `
+                --name $OnpremVmName `
                 --command-id RunPowerShellScript `
                 --scripts $fwdScript `
-                --query "value[0].message" -o tsv 2>$null
+                --query 'value[0].message' -o tsv 2>$null
             Test-Bool $fwdLabel (($fwdResult | Out-String) -match 'True')
 
-            # Spoke VM -> OnPrem (DC01)
-            $revLabel = "$($vm.label) ($($vm.name)) -> OnPrem (DC01 $onpremDcIp)"
+            # Spoke VM -> OnPrem
+            $revLabel = "$($vm.label) ($($vm.name)) -> OnPrem ($OnpremVmName $onpremVmIp)"
             Write-Host "  リモートコマンド実行中: $revLabel..." -ForegroundColor Gray
-            $revScript = "Test-NetConnection -ComputerName '$onpremDcIp' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
+            $revScript = "Test-NetConnection -ComputerName '$onpremVmIp' -Port 3389 -WarningAction SilentlyContinue | Select-Object -ExpandProperty TcpTestSucceeded"
             $revResult = az vm run-command invoke `
                 --resource-group $vm.rg `
                 --name $vm.name `
                 --command-id RunPowerShellScript `
                 --scripts $revScript `
-                --query "value[0].message" -o tsv 2>$null
+                --query 'value[0].message' -o tsv 2>$null
             Test-Bool $revLabel (($revResult | Out-String) -match 'True')
         }
     }

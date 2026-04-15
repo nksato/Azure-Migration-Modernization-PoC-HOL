@@ -102,7 +102,7 @@
 | クラウド → オンプレ (`lab.local`) | DNS Forwarding Ruleset (`dnsrs-hub`) | `infra/cloud/main.bicep` で自動作成 |
 | オンプレ → クラウド (`privatelink.database.windows.net`) | DC01 の DNS 条件付きフォワーダー | デプロイ後に**手動設定** |
 
-> `GatewaySubnet` は `infra/onprem/resources.bicep` には含まれず、`infra/network/modules/onprem-vpn-gateway.bicep` がデプロイ時に追加します。
+> `GatewaySubnet` は `infra/onprem/resources.bicep` には含まれず、`infra/network/modules/onprem-gateway-subnet.bicep` がデプロイ時に追加します。
 
 ---
 
@@ -155,9 +155,9 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 - `infra/onprem/main.bicep` — サブスクリプションスコープ ラッパー
 - `infra/onprem/resources.bicep` — リソースグループスコープ (VM / VNet / Bastion / NSG / NAT Gateway)
 - `infra/network/main.bicep` — VPN Gateway + S2S 接続
-- `infra/network/modules/onprem-vpn-gateway.bicep`
-- `infra/network/modules/vpn-connection.bicep`
-- `infra/network/modules/vpn-connection-hub.bicep`
+- `infra/network/modules/onprem-gateway-subnet.bicep`
+- `infra/network/modules/get-pip-ip.bicep`
+- `infra/network/modules/update-hub-peering.bicep`
 - `infra/main.bicep` — 一括デプロイ用エントリポイント
 - `infra/onprem/Convert-VmToArc.ps1` — Azure Arc オンボーディング
 - `infra/onprem/scripts/*` — セットアップスクリプト群

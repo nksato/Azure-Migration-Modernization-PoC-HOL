@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Hybrid DNS Setup: Cloud (Azure CLI) + On-prem (az vm run-command)
 .DESCRIPTION
@@ -34,6 +34,8 @@
     .\Setup-HybridDns.ps1
 .EXAMPLE
     .\Setup-HybridDns.ps1 -EnableCloudVmResolution
+.EXAMPLE
+    .\Setup-HybridDns.ps1 -LinkSpokeVnets
 #>
 
 [CmdletBinding()]
@@ -43,21 +45,22 @@ param(
     [string]$HubDnsResolverName = 'dnspr-hub',
     [string]$HubVnetName = 'vnet-hub',
     [string]$HostVmName = 'vm-onprem-nested-hv01',
+    [string]$RulesetName = 'frs-hub',
     [string]$DomainName = 'contoso.local',
     [string]$DcIp = '192.168.100.10',
-    [switch]$EnableCloudVmResolution
+    [switch]$EnableCloudVmResolution,
+    [switch]$LinkSpokeVnets
 )
 
 $ErrorActionPreference = 'Stop'
 
 $privateLinkZones = @(
     'privatelink.database.windows.net'
-    'privatelink.blob.core.windows.net'
-    'privatelink.vaultcore.azure.net'
-    'privatelink.azurewebsites.net'
+    # 'privatelink.blob.core.windows.net'     # Spoke3/4 展開時に有効化
+    # 'privatelink.vaultcore.azure.net'        # Spoke3/4 展開時に有効化
+    # 'privatelink.azurewebsites.net'          # Spoke4 展開時に有効化
 )
 $cloudVmDnsZone = 'azure.internal'
-$rulesetName = 'frs-onprem'
 
 # =============================================================================
 # Helper: Run script on Hyper-V host via az vm run-command invoke
@@ -133,13 +136,15 @@ Write-Host "  Hub VNet:                    $HubVnetName"
 $spokeVnets = az network vnet peering list `
     -g $HubResourceGroup --vnet-name $HubVnetName `
     --query '[].{name: name, vnetId: remoteVirtualNetwork.id}' -o json | ConvertFrom-Json
+if (-not $spokeVnets) { $spokeVnets = @() }
+
 if ($spokeVnets.Count -gt 0) {
-    Write-Host "  Spoke VNets (peered):        $($spokeVnets.Count) found"
+    Write-Host "  Spoke VNets (ピアリング検出): $($spokeVnets.Count) 件"
     foreach ($spoke in $spokeVnets) {
         Write-Host "    - $(($spoke.vnetId -split '/')[-1])"
     }
 } else {
-    Write-Host '  Spoke VNets (peered):        None found' -ForegroundColor DarkGray
+    Write-Host '  Spoke VNets: ピアリングなし' -ForegroundColor DarkGray
 }
 
 # Location
@@ -147,28 +152,48 @@ $location = az network vnet show -g $HubResourceGroup -n $HubVnetName --query 'l
 Write-Host "  Location:                    $location"
 
 # Display step plan
-$totalSteps = if ($EnableCloudVmResolution) { 11 } else { 9 }
+$baseSteps = 9
+if ($LinkSpokeVnets) { $baseSteps++ }   # [4/N] Spoke VNet リンク
+if ($EnableCloudVmResolution) { $baseSteps += 2 }  # [N-1/N] Private DNS Zone + [N/N] vm-ad01 forwarder
+$totalSteps = $baseSteps
+
+$step = 0
+$stepRuleset     = ++$step  # 1
+$stepRule        = ++$step  # 2
+$stepHubLink     = ++$step  # 3
+if ($LinkSpokeVnets) { $stepSpokeLink = ++$step } else { $stepSpokeLink = 0 }
+$stepDnsInstall  = ++$step  # 4 or 5
+$stepDnsClient   = ++$step  # 5 or 6
+$stepHostFwd     = ++$step  # 6 or 7
+$stepAdFwd       = ++$step  # 7 or 8
+$stepVerify      = ++$step  # 8 or 9
+if ($EnableCloudVmResolution) { $stepCloudZone = ++$step; $stepCloudFwd = ++$step } else { $stepCloudZone = 0; $stepCloudFwd = 0 }
+
 Write-Host ''
 Write-Host "Steps ($totalSteps):" -ForegroundColor Cyan
-Write-Host "  [1/$totalSteps] [Cloud]   DNS Forwarding Ruleset" -ForegroundColor White
-Write-Host "  [2/$totalSteps] [Cloud]   Forwarding rule: $DomainName -> $hostPrivateIp" -ForegroundColor White
-Write-Host "  [3/$totalSteps] [Cloud]   Link ruleset -> Hub VNet" -ForegroundColor White
-Write-Host "  [4/$totalSteps] [Cloud]   Link ruleset -> Spoke VNets ($($spokeVnets.Count))" -ForegroundColor White
-Write-Host "  [5/$totalSteps] [On-prem] Install DNS Server role on host (run-command)" -ForegroundColor White
-Write-Host "  [6/$totalSteps] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS (run-command)" -ForegroundColor White
-Write-Host "  [7/$totalSteps] [On-prem] Host forwarder: $DomainName -> $DcIp (run-command)" -ForegroundColor White
-Write-Host "  [8/$totalSteps] [On-prem] vm-ad01 forwarders: privatelink.* -> $hubDnsResolverInboundIp (run-command)" -ForegroundColor White
-Write-Host "  [9/$totalSteps] Verification" -ForegroundColor White
+Write-Host "  [$stepRuleset/$totalSteps] [Cloud]   DNS Forwarding Ruleset" -ForegroundColor White
+Write-Host "  [$stepRule/$totalSteps] [Cloud]   Forwarding rule: $DomainName -> $hostPrivateIp" -ForegroundColor White
+Write-Host "  [$stepHubLink/$totalSteps] [Cloud]   Link ruleset -> Hub VNet" -ForegroundColor White
+if ($LinkSpokeVnets) {
+    Write-Host "  [$stepSpokeLink/$totalSteps] [Cloud]   Link ruleset -> Spoke VNets ($($spokeVnets.Count))" -ForegroundColor White
+} else {
+    Write-Host "  [--] [Cloud]   Spoke VNet リンク: スキップ (-LinkSpokeVnets で有効化)" -ForegroundColor DarkGray
+}
+Write-Host "  [$stepDnsInstall/$totalSteps] [On-prem] Install DNS Server role on host (run-command)" -ForegroundColor White
+Write-Host "  [$stepDnsClient/$totalSteps] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS (run-command)" -ForegroundColor White
+Write-Host "  [$stepHostFwd/$totalSteps] [On-prem] Host forwarder: $DomainName -> $DcIp (run-command)" -ForegroundColor White
+Write-Host "  [$stepAdFwd/$totalSteps] [On-prem] vm-ad01 forwarders: privatelink.* -> $hubDnsResolverInboundIp (run-command)" -ForegroundColor White
+Write-Host "  [$stepVerify/$totalSteps] Verification" -ForegroundColor White
 if ($EnableCloudVmResolution) {
-    Write-Host "  [10/$totalSteps] [Cloud]   Private DNS Zone: $cloudVmDnsZone" -ForegroundColor White
-    Write-Host "  [11/$totalSteps] [On-prem] vm-ad01 forwarder: $cloudVmDnsZone -> $hubDnsResolverInboundIp" -ForegroundColor White
+    Write-Host "  [$stepCloudZone/$totalSteps] [Cloud]   Private DNS Zone: $cloudVmDnsZone" -ForegroundColor White
+    Write-Host "  [$stepCloudFwd/$totalSteps] [On-prem] vm-ad01 forwarder: $cloudVmDnsZone -> $hubDnsResolverInboundIp" -ForegroundColor White
 }
 Write-Host ''
 
 # =============================================================================
 # [1/N] DNS Forwarding Ruleset
 # =============================================================================
-Write-Host "[1/$totalSteps] [Cloud] Creating DNS Forwarding Ruleset '$rulesetName'..." -ForegroundColor Yellow
+Write-Host "[$stepRuleset/$totalSteps] [Cloud] Creating DNS Forwarding Ruleset '$rulesetName'..." -ForegroundColor Yellow
 
 $outboundEpId = az dns-resolver outbound-endpoint show `
     -g $HubResourceGroup --dns-resolver-name $HubDnsResolverName `
@@ -190,7 +215,7 @@ if ($existingRuleset) {
 # [2/N] Forwarding Rule: contoso.local -> Hyper-V host
 # =============================================================================
 Write-Host ''
-Write-Host "[2/$totalSteps] [Cloud] Forwarding rule: $DomainName -> $hostPrivateIp..." -ForegroundColor Yellow
+Write-Host "[$stepRule/$totalSteps] [Cloud] Forwarding rule: $DomainName -> $hostPrivateIp..." -ForegroundColor Yellow
 
 $ruleName = ($DomainName -replace '\.', '-')
 $existingRule = az dns-resolver forwarding-rule show `
@@ -215,7 +240,7 @@ if ($existingRule) {
 # [3/N] Link ruleset to Hub VNet
 # =============================================================================
 Write-Host ''
-Write-Host "[3/$totalSteps] [Cloud] Linking ruleset to Hub VNet ($HubVnetName)..." -ForegroundColor Yellow
+Write-Host "[$stepHubLink/$totalSteps] [Cloud] Linking ruleset to Hub VNet ($HubVnetName)..." -ForegroundColor Yellow
 
 $existingHubLink = az dns-resolver forwarding-ruleset list-by-virtual-network `
     --resource-group $HubResourceGroup --virtual-network-name $HubVnetName `
@@ -226,41 +251,46 @@ if ($existingHubLink) {
 } else {
     az dns-resolver vnet-link create `
         -g $HubResourceGroup --ruleset-name $rulesetName `
-        -n 'link-hub-vnet' --id $hubVnetId -o none
+        -n "link-$HubVnetName" --id $hubVnetId -o none
     Write-Host "  Hub VNet linked."
 }
 
 # =============================================================================
-# [4/N] Link ruleset to Spoke VNets
+# [N] Link ruleset to Spoke VNets (オプション: -LinkSpokeVnets)
 # =============================================================================
-Write-Host ''
-Write-Host "[4/$totalSteps] [Cloud] Linking ruleset to Spoke VNets..." -ForegroundColor Yellow
+if ($LinkSpokeVnets) {
+    Write-Host ''
+    Write-Host "[$stepSpokeLink/$totalSteps] [Cloud] Linking ruleset to Spoke VNets..." -ForegroundColor Yellow
 
-if ($spokeVnets.Count -eq 0) {
-    Write-Host '  No Spoke VNets peered to Hub. Skipping.' -ForegroundColor DarkGray
-} else {
-    foreach ($spoke in $spokeVnets) {
-        $spokeName = ($spoke.vnetId -split '/')[-1]
-        $linkName = "link-$spokeName"
-        $existingLink = az dns-resolver vnet-link show `
-            -g $HubResourceGroup --ruleset-name $rulesetName `
-            -n $linkName --query 'id' -o tsv 2>$null
-        if ($existingLink) {
-            Write-Host "  $spokeName - already linked. Skipping."
-        } else {
-            az dns-resolver vnet-link create `
+    if ($spokeVnets.Count -eq 0) {
+        Write-Host '  ピアリングされた Spoke VNet なし。スキップ。' -ForegroundColor DarkGray
+    } else {
+        foreach ($spoke in $spokeVnets) {
+            $spokeName = ($spoke.vnetId -split '/')[-1]
+            $linkName = "link-$spokeName"
+            $existingLink = az dns-resolver vnet-link show `
                 -g $HubResourceGroup --ruleset-name $rulesetName `
-                -n $linkName --id $spoke.vnetId -o none
-            Write-Host "  $spokeName - linked."
+                -n $linkName --query 'id' -o tsv 2>$null
+            if ($existingLink) {
+                Write-Host "  $spokeName - already linked. Skipping."
+            } else {
+                az dns-resolver vnet-link create `
+                    -g $HubResourceGroup --ruleset-name $rulesetName `
+                    -n $linkName --id $spoke.vnetId -o none
+                Write-Host "  $spokeName - linked."
+            }
         }
     }
+} else {
+    Write-Host ''
+    Write-Host '[--] Spoke VNet リンクスキップ (-LinkSpokeVnets で有効化)' -ForegroundColor DarkGray
 }
 
 # =============================================================================
 # [5/N] Install DNS Server role on Hyper-V host (run-command)
 # =============================================================================
 Write-Host ''
-Write-Host "[5/$totalSteps] [On-prem] Installing DNS Server role on host..." -ForegroundColor Yellow
+Write-Host "[$stepDnsInstall/$totalSteps] [On-prem] Installing DNS Server role on host..." -ForegroundColor Yellow
 
 Invoke-HostCommand -StepLabel 'Install DNS' -Script @'
 if ((Get-WindowsFeature DNS).Installed) {
@@ -275,15 +305,18 @@ if ((Get-WindowsFeature DNS).Installed) {
 # [6/N] Host DNS client: 127.0.0.1 + Azure DNS
 # =============================================================================
 Write-Host ''
-Write-Host "[6/$totalSteps] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS..." -ForegroundColor Yellow
+Write-Host "[$stepDnsClient/$totalSteps] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS..." -ForegroundColor Yellow
 
 Invoke-HostCommand -StepLabel 'Host DNS client' -Script @'
-$current = (Get-DnsClientServerAddress -InterfaceAlias 'Ethernet' -AddressFamily IPv4).ServerAddresses
+$defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1
+$nicAlias = (Get-NetAdapter -InterfaceIndex $defaultRoute.InterfaceIndex).Name
+Write-Output "Detected NIC: $nicAlias"
+$current = (Get-DnsClientServerAddress -InterfaceAlias $nicAlias -AddressFamily IPv4).ServerAddresses
 if ($current -contains '127.0.0.1') {
     Write-Output "DNS client already includes 127.0.0.1. Current: $($current -join ',')"
 } else {
-    Set-DnsClientServerAddress -InterfaceAlias 'Ethernet' -ServerAddresses @('127.0.0.1','168.63.129.16')
-    $after = (Get-DnsClientServerAddress -InterfaceAlias 'Ethernet' -AddressFamily IPv4).ServerAddresses
+    Set-DnsClientServerAddress -InterfaceAlias $nicAlias -ServerAddresses @('127.0.0.1','168.63.129.16')
+    $after = (Get-DnsClientServerAddress -InterfaceAlias $nicAlias -AddressFamily IPv4).ServerAddresses
     Write-Output "DNS client updated: $($after -join ',')"
 }
 '@
@@ -292,7 +325,7 @@ if ($current -contains '127.0.0.1') {
 # [7/N] Host conditional forwarder: contoso.local -> vm-ad01 (run-command)
 # =============================================================================
 Write-Host ''
-Write-Host "[7/$totalSteps] [On-prem] Host forwarder: $DomainName -> $DcIp (vm-ad01)..." -ForegroundColor Yellow
+Write-Host "[$stepHostFwd/$totalSteps] [On-prem] Host forwarder: $DomainName -> $DcIp (vm-ad01)..." -ForegroundColor Yellow
 
 Invoke-HostCommand -StepLabel 'Host DNS forwarder' -Script @"
 `$existing = Get-DnsServerZone -Name '$DomainName' -ErrorAction SilentlyContinue
@@ -313,7 +346,7 @@ else { Write-Output 'Warning: $DomainName resolution failed. Check VPN and vm-ad
 #       (run-command + PowerShell Direct)
 # =============================================================================
 Write-Host ''
-Write-Host "[8/$totalSteps] [On-prem] vm-ad01 forwarders: privatelink.* -> $hubDnsResolverInboundIp..." -ForegroundColor Yellow
+Write-Host "[$stepAdFwd/$totalSteps] [On-prem] vm-ad01 forwarders: privatelink.* -> $hubDnsResolverInboundIp..." -ForegroundColor Yellow
 
 $zonesArray = ($privateLinkZones | ForEach-Object { "'$_'" }) -join ','
 
@@ -340,7 +373,7 @@ Invoke-Command -VMName 'vm-ad01' -Credential `$cred -ScriptBlock {
 # [9/N] Verification
 # =============================================================================
 Write-Host ''
-Write-Host "[9/$totalSteps] Verification" -ForegroundColor Yellow
+Write-Host "[$stepVerify/$totalSteps] Verification" -ForegroundColor Yellow
 
 # Cloud: Forwarding Ruleset rules
 Write-Host ''
@@ -424,7 +457,7 @@ if ($EnableCloudVmResolution) {
 
     # [10/11] Private DNS Zone: azure.internal
     Write-Host ''
-    Write-Host "[10/$totalSteps] [Cloud] Private DNS Zone '$cloudVmDnsZone'..." -ForegroundColor Yellow
+    Write-Host "[$stepCloudZone/$totalSteps] [Cloud] Private DNS Zone '$cloudVmDnsZone'..." -ForegroundColor Yellow
 
     $existingZone = az network private-dns zone show `
         -g $HubResourceGroup -n $cloudVmDnsZone --query 'name' -o tsv 2>$null
@@ -465,7 +498,7 @@ if ($EnableCloudVmResolution) {
 
     # [11/11] vm-ad01 conditional forwarder: azure.internal -> Hub DNS Resolver
     Write-Host ''
-    Write-Host "[11/$totalSteps] [On-prem] vm-ad01 forwarder: $cloudVmDnsZone -> $hubDnsResolverInboundIp..." -ForegroundColor Yellow
+    Write-Host "[$stepCloudFwd/$totalSteps] [On-prem] vm-ad01 forwarder: $cloudVmDnsZone -> $hubDnsResolverInboundIp..." -ForegroundColor Yellow
 
     Invoke-HostCommand -StepLabel 'azure.internal forwarder' -Script @"
 `$pw = ConvertTo-SecureString 'P@ssW0rd1234!' -AsPlainText -Force

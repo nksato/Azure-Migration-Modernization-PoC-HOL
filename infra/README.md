@@ -16,19 +16,13 @@
   - 疑似オンプレ側（DC01 / DB01 / APP01 / VPN Gateway）のテンプレートとセットアップ スクリプト
   - `main.bicep`, `main.json`, `Deploy-Onprem.ps1`, `Convert-VmToArc.ps1`, `scripts/`
 
-- `infra/onprem-nested/`
-  - Nested Hyper-V 方式の疑似オンプレ環境（ホスト VM 上にゲスト VM を構築）
-  - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`, `README.md`
-
 - `infra/network/`
-  - VPN Gateway 配置・S2S 接続（`rg-onprem` ↔ `rg-hub` 双方向）
-  - Hub-Spoke ピアリング Gateway Transit 設定
-  - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`
+  - VPN 接続・ハイブリッド DNS 設定（`rg-onprem` ↔ `rg-hub` 双方向 S2S VPN + DNS）
 
-- `infra/network-nested/`
-  - VPN Gateway 配置・S2S 接続（`rg-onprem-nested` ↔ `rg-hub` 双方向）
-  - スタンドアロン / 既存 Hub GW 共用の両モードに対応
-  - `main.bicep`, `main.bicepparam`, `modules/`, `scripts/`
+- `infra/nested/`
+  - Nested Hyper-V 方式の疑似オンプレ環境（参考実装）
+  - `onprem/` — ホスト VM 上にゲスト VM を構築するテンプレート
+  - `network/` — `rg-onprem-nested` ↔ `rg-hub` 双方向 S2S VPN + DNS
 
 - `infra/tmp/`
   - 旧構成由来の疑似オンプレ / アプリ関連ファイルを一時退避した領域

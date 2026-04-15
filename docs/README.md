@@ -35,7 +35,7 @@
 
 | ファイル | 内容 | 作業時間 | 備考 |
 |---|---|---|---|
-| [`handson/1.6-cloud-vpn-connect.md`](./handson/1.6-cloud-vpn-connect.md) | クラウド VPN 接続の構成 | 5〜10 分 | CLI コマンド数個。VPN Gateway 作成済み前提 |
+| [`handson/1.6-cloud-vpn-connect.md`](./handson/1.6-cloud-vpn-connect.md) | クラウド VPN 接続の構成 | 5〜10 分  + 待ち 30〜45 分 | CLI コマンド数個。VPN Gateway 作成と設定の解説 |
 | [`handson/1.7-cloud-hybrid-dns.md`](./handson/1.7-cloud-hybrid-dns.md) | ハイブリッド DNS の構成 | 5〜10 分 | CLI コマンド 3 つ（IP 取得・フォワーダー追加・確認） |
 | [`architecture-vpn-s2s-bidirectional.md`](./architecture/architecture-vpn-s2s-bidirectional.md) | Azure 同士の S2S VPN 双方向設定の解説 | — | リファレンス |
 | [`architecture-expressroute.md`](./architecture/architecture-expressroute.md) | ExpressRoute 接続の設計・設定（VPN との比較） | — | リファレンス |

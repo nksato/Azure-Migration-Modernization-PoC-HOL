@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Reset-VpnConnection.ps1
 # VPN 接続の軽量リセット - Connection と LGW のみ削除し、VPN Gateway は保持
 #
@@ -6,11 +6,11 @@
 # VPN Gateway と Public IP は再作成コストが高い (~30-45 分) ため保持します。
 #
 # 削除対象:
-#   [1/2] VPN Connection (cn-onprem-nested-to-hub, cn-hub-to-onprem-nested)
-#   [2/2] Local Network Gateway (lgw-hub, lgw-onprem-nested)
+#   [1/2] VPN Connection (cn-onprem-to-hub, cn-hub-to-onprem)
+#   [2/2] Local Network Gateway (lgw-hub, lgw-onprem)
 #
 # 保持するリソース:
-#   - vgw-onprem + vgw-onprem-pip1     (rg-onprem-nested)
+#   - vgw-onprem + vgw-onprem-pip1     (rg-onprem)
 #   - vpngw-hub + vpngw-hub-pip1        (rg-hub)
 #   - GatewaySubnet                     (両 VNet)
 #   - Hub-Spoke Peering 設定
@@ -25,8 +25,16 @@
 # =============================================================================
 
 param(
-    [string]$OnpremResourceGroup = 'rg-onprem-nested',
+    [string]$OnpremResourceGroup = 'rg-onprem',
     [string]$HubResourceGroup = 'rg-hub',
+    [string]$OnpremGatewayName = 'vgw-onprem',
+    [string]$HubGatewayName = 'vpngw-hub',
+    [string]$OnpremPipName = 'vgw-onprem-pip1',
+    [string]$HubPipName = 'vpngw-hub-pip1',
+    [string]$OnpremConnectionName = 'cn-onprem-to-hub',
+    [string]$HubConnectionName = 'cn-hub-to-onprem',
+    [string]$OnpremLgwName = 'lgw-hub',
+    [string]$HubLgwName = 'lgw-onprem',
     [switch]$SkipConfirmation
 )
 
@@ -60,16 +68,16 @@ Write-Host '=== VPN 接続リセット ===' -ForegroundColor Cyan
 Write-Host ''
 Write-Host '[事前確認] VPN Gateway を確認中...' -ForegroundColor Yellow
 
-$onpremGw = az network vnet-gateway show -g $OnpremResourceGroup -n vgw-onprem --query 'name' -o tsv 2>$null
-$hubGw    = az network vnet-gateway show -g $HubResourceGroup -n vpngw-hub --query 'name' -o tsv 2>$null
+$onpremGw = az network vnet-gateway show -g $OnpremResourceGroup -n $OnpremGatewayName --query 'name' -o tsv 2>$null
+$hubGw    = az network vnet-gateway show -g $HubResourceGroup -n $HubGatewayName --query 'name' -o tsv 2>$null
 
 if (-not $onpremGw -and -not $hubGw) {
     Write-Host '  VPN Gateway が見つかりません。リセット不要です。' -ForegroundColor DarkGray
     return
 }
 
-Write-Host "  vgw-onprem  ($OnpremResourceGroup): $(if ($onpremGw) { '検出' } else { '未検出' })" -ForegroundColor $(if ($onpremGw) { 'Green' } else { 'DarkGray' })
-Write-Host "  vpngw-hub   ($HubResourceGroup): $(if ($hubGw) { '検出' } else { '未検出' })" -ForegroundColor $(if ($hubGw) { 'Green' } else { 'DarkGray' })
+Write-Host "  $OnpremGatewayName  ($OnpremResourceGroup): $(if ($onpremGw) { '検出' } else { '未検出' })" -ForegroundColor $(if ($onpremGw) { 'Green' } else { 'DarkGray' })
+Write-Host "  $HubGatewayName   ($HubResourceGroup): $(if ($hubGw) { '検出' } else { '未検出' })" -ForegroundColor $(if ($hubGw) { 'Green' } else { 'DarkGray' })
 
 # =============================================================================
 # 状態確認: 接続リソースのチェック
@@ -77,16 +85,16 @@ Write-Host "  vpngw-hub   ($HubResourceGroup): $(if ($hubGw) { '検出' } else {
 Write-Host ''
 Write-Host '[状態確認] 接続リソースを確認中...' -ForegroundColor Yellow
 
-$cnOnprem = az network vpn-connection show -g $OnpremResourceGroup -n cn-onprem-nested-to-hub --query '{name:name, status:connectionStatus}' -o json 2>$null | ConvertFrom-Json
-$cnHub    = az network vpn-connection show -g $HubResourceGroup -n cn-hub-to-onprem-nested --query '{name:name, status:connectionStatus}' -o json 2>$null | ConvertFrom-Json
-$lgwHub   = az network local-gateway show -g $OnpremResourceGroup -n lgw-hub --query 'name' -o tsv 2>$null
-$lgwOnprem = az network local-gateway show -g $HubResourceGroup -n lgw-onprem-nested --query 'name' -o tsv 2>$null
+$cnOnprem = az network vpn-connection show -g $OnpremResourceGroup -n $OnpremConnectionName --query '{name:name, status:connectionStatus}' -o json 2>$null | ConvertFrom-Json
+$cnHub    = az network vpn-connection show -g $HubResourceGroup -n $HubConnectionName --query '{name:name, status:connectionStatus}' -o json 2>$null | ConvertFrom-Json
+$lgwHub   = az network local-gateway show -g $OnpremResourceGroup -n $OnpremLgwName --query 'name' -o tsv 2>$null
+$lgwOnprem = az network local-gateway show -g $HubResourceGroup -n $HubLgwName --query 'name' -o tsv 2>$null
 
 $resources = @()
-if ($cnOnprem)  { $resources += "cn-onprem-nested-to-hub  ($OnpremResourceGroup) [$($cnOnprem.status)]" }
-if ($cnHub)     { $resources += "cn-hub-to-onprem-nested  ($HubResourceGroup) [$($cnHub.status)]" }
-if ($lgwHub)    { $resources += "lgw-hub                  ($OnpremResourceGroup)" }
-if ($lgwOnprem) { $resources += "lgw-onprem-nested        ($HubResourceGroup)" }
+if ($cnOnprem)  { $resources += "$OnpremConnectionName  ($OnpremResourceGroup) [$($cnOnprem.status)]" }
+if ($cnHub)     { $resources += "$HubConnectionName  ($HubResourceGroup) [$($cnHub.status)]" }
+if ($lgwHub)    { $resources += "$OnpremLgwName           ($OnpremResourceGroup)" }
+if ($lgwOnprem) { $resources += "$HubLgwName        ($HubResourceGroup)" }
 
 if ($resources.Count -eq 0) {
     Write-Host '  接続リソースが見つかりません。VPN は既にクリーン状態です。' -ForegroundColor Green
@@ -105,8 +113,8 @@ foreach ($r in $resources) {
 }
 Write-Host ''
 Write-Host '保持するリソース:' -ForegroundColor DarkGray
-Write-Host "  - vgw-onprem + vgw-onprem-pip1   ($OnpremResourceGroup)"
-Write-Host "  - vpngw-hub + vpngw-hub-pip1      ($HubResourceGroup)"
+Write-Host "  - $OnpremGatewayName + $OnpremPipName   ($OnpremResourceGroup)"
+Write-Host "  - $HubGatewayName + $HubPipName      ($HubResourceGroup)"
 Write-Host ''
 
 if (-not $SkipConfirmation) {
@@ -117,8 +125,6 @@ if (-not $SkipConfirmation) {
     }
 }
 
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
 # =============================================================================
 # [1/2] VPN Connection の削除
 # =============================================================================
@@ -127,21 +133,21 @@ Write-Host '[1/2] VPN Connection を削除中...' -ForegroundColor Yellow
 
 if ($cnOnprem) {
     Remove-AzResourceSafe `
-        -Command "az network vpn-connection delete -g $OnpremResourceGroup -n cn-onprem-nested-to-hub --no-wait -o none" `
-        -ResourceDescription "cn-onprem-nested-to-hub ($OnpremResourceGroup)"
+        -Command "az network vpn-connection delete -g $OnpremResourceGroup -n $OnpremConnectionName --no-wait -o none" `
+        -ResourceDescription "$OnpremConnectionName ($OnpremResourceGroup)"
 }
 
 if ($cnHub) {
     Remove-AzResourceSafe `
-        -Command "az network vpn-connection delete -g $HubResourceGroup -n cn-hub-to-onprem-nested --no-wait -o none" `
-        -ResourceDescription "cn-hub-to-onprem-nested ($HubResourceGroup)"
+        -Command "az network vpn-connection delete -g $HubResourceGroup -n $HubConnectionName --no-wait -o none" `
+        -ResourceDescription "$HubConnectionName ($HubResourceGroup)"
 }
 
 # Connection の削除完了を待機
 if ($cnOnprem -or $cnHub) {
     Write-Host '  削除完了を待機中...' -ForegroundColor Gray
-    if ($cnOnprem) { az network vpn-connection wait -g $OnpremResourceGroup -n cn-onprem-nested-to-hub --deleted 2>$null }
-    if ($cnHub)    { az network vpn-connection wait -g $HubResourceGroup -n cn-hub-to-onprem-nested --deleted 2>$null }
+    if ($cnOnprem) { az network vpn-connection wait -g $OnpremResourceGroup -n $OnpremConnectionName --deleted 2>$null }
+    if ($cnHub)    { az network vpn-connection wait -g $HubResourceGroup -n $HubConnectionName --deleted 2>$null }
     Write-Host '  VPN Connection を削除しました。' -ForegroundColor Green
 }
 
@@ -153,29 +159,25 @@ Write-Host '[2/2] Local Network Gateway を削除中...' -ForegroundColor Yellow
 
 if ($lgwHub) {
     Remove-AzResourceSafe `
-        -Command "az network local-gateway delete -g $OnpremResourceGroup -n lgw-hub -o none" `
-        -ResourceDescription "lgw-hub ($OnpremResourceGroup)"
+        -Command "az network local-gateway delete -g $OnpremResourceGroup -n $OnpremLgwName -o none" `
+        -ResourceDescription "$OnpremLgwName ($OnpremResourceGroup)"
 }
 
 if ($lgwOnprem) {
     Remove-AzResourceSafe `
-        -Command "az network local-gateway delete -g $HubResourceGroup -n lgw-onprem-nested -o none" `
-        -ResourceDescription "lgw-onprem-nested ($HubResourceGroup)"
+        -Command "az network local-gateway delete -g $HubResourceGroup -n $HubLgwName -o none" `
+        -ResourceDescription "$HubLgwName ($HubResourceGroup)"
 }
 
 # =============================================================================
 # 結果サマリー
 # =============================================================================
-$stopwatch.Stop()
-$elapsed = $stopwatch.Elapsed
-
 Write-Host ''
 Write-Host '=== VPN 接続リセット完了 ===' -ForegroundColor Green
-Write-Host "  所要時間: $($elapsed.ToString('mm\:ss'))" -ForegroundColor White
 Write-Host ''
 Write-Host '残存 VPN Gateway (再接続可能):' -ForegroundColor White
-if ($onpremGw) { Write-Host "  - vgw-onprem   ($OnpremResourceGroup)" }
-if ($hubGw)    { Write-Host "  - vpngw-hub    ($HubResourceGroup)" }
+if ($onpremGw) { Write-Host "  - $OnpremGatewayName   ($OnpremResourceGroup)" }
+if ($hubGw)    { Write-Host "  - $HubGatewayName    ($HubResourceGroup)" }
 Write-Host ''
 Write-Host '再接続するには:' -ForegroundColor White
 Write-Host '  $env:VPN_SHARED_KEY = ''<your-shared-key>'''

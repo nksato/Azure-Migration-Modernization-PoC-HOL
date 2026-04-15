@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Nested Hyper-V 環境のハイブリッド DNS 構成を検証する
 .DESCRIPTION
@@ -7,13 +7,15 @@
 
     検証項目:
       1. DNS Private Resolver (dnspr-hub) 状態
-      2. DNS Forwarding Ruleset (frs-onprem) — contoso.local -> Host IP
+      2. DNS Forwarding Ruleset (frs-hub) — contoso.local -> Host IP
       3. Hyper-V ホスト DNS Server + 条件付きフォワーダー
       4. vm-ad01 条件付きフォワーダー (privatelink.* -> Hub DNS Resolver)
       5. 名前解決: Host -> contoso.local (Host -> vm-ad01)
       6. 名前解決: vm-ad01 -> privatelink.* (On-prem -> Cloud)
       7. 名前解決: vm-app01 -> privatelink.* (End-to-End)
-      8. オプション: EnableCloudVmResolution (azure.internal)
+      8. 名前解決: Cloud -> On-prem (DNS Resolver 経由)
+      9. オプション: EnableCloudVmResolution (azure.internal)
+     10. オプション: LinkSpokeVnets (Spoke VNet リンク + 名前解決)
 
     前提:
       - Azure CLI ログイン済み (az login)
@@ -33,8 +35,9 @@ param(
     [string]$HostVmName = 'vm-onprem-nested-hv01',
     [string]$DomainName = 'contoso.local',
     [string]$DcIp = '192.168.100.10',
-    [string]$RulesetName = 'frs-onprem',
-    [switch]$EnableCloudVmResolution
+    [string]$RulesetName = 'frs-hub',
+    [switch]$EnableCloudVmResolution,
+    [switch]$LinkSpokeVnets
 )
 
 $ErrorActionPreference = 'Continue'
@@ -161,10 +164,15 @@ Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 $hostDnsOut = Invoke-HostCommand @"
 `$dns = Get-WindowsFeature DNS
 Write-Output ('DNS_INSTALLED=' + `$dns.Installed)
-`$z = Get-DnsServerZone -Name '$DomainName' -ErrorAction SilentlyContinue
-if (`$z) {
-    Write-Output ('HOST_ZONE_TYPE=' + `$z.ZoneType)
-    Write-Output ('HOST_MASTER_SERVERS=' + (`$z.MasterServers -join ','))
+if (`$dns.Installed) {
+    `$z = Get-DnsServerZone -Name '$DomainName' -ErrorAction SilentlyContinue
+    if (`$z) {
+        Write-Output ('HOST_ZONE_TYPE=' + `$z.ZoneType)
+        Write-Output ('HOST_MASTER_SERVERS=' + (`$z.MasterServers -join ','))
+    } else {
+        Write-Output 'HOST_ZONE_TYPE='
+        Write-Output 'HOST_MASTER_SERVERS='
+    }
 } else {
     Write-Output 'HOST_ZONE_TYPE='
     Write-Output 'HOST_MASTER_SERVERS='
@@ -187,9 +195,9 @@ Write-Host "  リモートコマンド実行中 (PowerShell Direct)..." -Foregro
 
 $privateLinkZones = @(
     'privatelink.database.windows.net'
-    'privatelink.blob.core.windows.net'
-    'privatelink.vaultcore.azure.net'
-    'privatelink.azurewebsites.net'
+    # 'privatelink.blob.core.windows.net'     # Spoke3/4 展開時に有効化
+    # 'privatelink.vaultcore.azure.net'        # Spoke3/4 展開時に有効化
+    # 'privatelink.azurewebsites.net'          # Spoke4 展開時に有効化
 )
 
 $adFwdOut = Invoke-HostCommand @'
@@ -385,6 +393,68 @@ Invoke-Command -VMName 'vm-ad01' -Credential $cred -ScriptBlock {
         Write-Host "  スキップ: $cloudVmDnsZone ゾーン未検出 (Setup-HybridDns.ps1 -EnableCloudVmResolution 未実行)" -ForegroundColor DarkGray
     }
 }
+
+# ============================================================
+# 10. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
+# ============================================================
+Write-Host "`n=== 10. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
+
+if (-not $LinkSpokeVnets) {
+    Write-Host "  スキップ (-LinkSpokeVnets 未指定)" -ForegroundColor DarkGray
+} else {
+
+$rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name $RulesetName `
+    --resource-group $HubResourceGroup -o json 2>$null
+$rulesetLinks = if ($rulesetLinksJson) { $rulesetLinksJson | ConvertFrom-Json } else { @() }
+$rulesetLinkCount = if ($rulesetLinks) { $rulesetLinks.Count } else { 0 }
+
+if ($rulesetLinkCount -ge 2) {
+    # Hub + Spoke が紐付いている → -LinkSpokeVnets 実行済み
+    Test-Bool "Ruleset VNet リンク数 >= 2 (Hub + Spoke) (実際: $rulesetLinkCount)" $true
+
+    $spokeOnlyLinks = $rulesetLinks | Where-Object { ($_.virtualNetwork.id -split '/')[-1] -ne 'vnet-hub' }
+    foreach ($sl in $spokeOnlyLinks) {
+        $svn = ($sl.virtualNetwork.id -split '/')[-1]
+        Write-Host "         Spoke リンク: $($sl.name) → $svn" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  スキップ: Spoke VNet リンク未検出 (-LinkSpokeVnets 未実行)" -ForegroundColor DarkGray
+}
+
+# Spoke VM が存在すれば DomainName 名前解決テスト
+$spokeVmExists = az vm show -g rg-spoke1 -n vm-spoke1-web --query 'name' -o tsv 2>$null
+if ($spokeVmExists) {
+    Write-Host "  vm-spoke1-web から $DomainName の名前解決を確認..." -ForegroundColor Gray
+
+    $spokeScript = @"
+`$r = Resolve-DnsName '$DomainName' -DnsOnly -ErrorAction SilentlyContinue
+Write-Output ('SPOKE_AD_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
+"@
+    $tmpFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.ps1'
+    try {
+        $spokeScript | Set-Content -Path $tmpFile -Encoding UTF8
+        $spokeJson = az vm run-command invoke `
+            --resource-group 'rg-spoke1' --name 'vm-spoke1-web' `
+            --command-id RunPowerShellScript --scripts "@$tmpFile" -o json 2>$null
+        $spokeOut = ''
+        if ($spokeJson) {
+            $sr = ($spokeJson -join '') | ConvertFrom-Json
+            $spokeOut = ($sr.value | Where-Object { $_.code -like '*stdout*' }).message
+        }
+    } finally {
+        Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+    }
+
+    $spokeResolve = Get-Val $spokeOut 'SPOKE_AD_RESOLVE'
+    Test-Val "vm-spoke1-web → $DomainName 解決" $spokeResolve 'OK'
+    if ($spokeResolve -ne 'OK') {
+        Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [SKIP] Spoke VM (vm-spoke1-web) 未デプロイ — 名前解決テストスキップ" -ForegroundColor DarkGray
+}
+
+} # -LinkSpokeVnets guard
 
 # ============================================================
 # 設定情報サマリ
