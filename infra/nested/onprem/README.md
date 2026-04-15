@@ -54,6 +54,10 @@ Nested Hyper-V のゲスト VM は Azure VM ではないため、Azure Marketpla
 - **Evaluation Center**: https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server
 - **Visual Studio サブスクリプション**: https://my.visualstudio.com/Downloads
 
+> **ISO → VHD 変換**: ISO はインストールメディアのため、そのままでは使用できません。固定サイズ VHD への変換が必要です。
+> - [Convert-WindowsImage を使用した VHD の作成](https://learn.microsoft.com/ja-jp/microsoft-desktop-optimization-pack/app-v/appv-auto-provision-a-vm)
+> - [DISM イメージ管理コマンド](https://learn.microsoft.com/ja-jp/windows-hardware/manufacture/desktop/dism-image-management-command-line-options-s14?view=windows-11)
+
 > **注意**: Azure VM のライセンスはゲスト VM をカバーしません。Nested Hyper-V 上で Windows Server を実行する場合、上記いずれかの方法で適切なライセンスを確保してください。
 
 ## デプロイ手順
@@ -76,7 +80,9 @@ az deployment group create `
 
 > `adminUsername` は `main.bicepparam` で変更可能です。
 >
-> **注意**: ここで設定する `adminPassword` は **Hyper-V ホスト VM**（Bastion RDP 接続用）のパスワードです。ゲスト VM（vm-ad01 等）のパスワードとは別です。ゲスト VM のパスワードはステップ 8 の OOBE 時に `P@ssW0rd1234!` を設定してください。
+> **注意**: ここで設定する `adminPassword` は **Hyper-V ホスト VM**（Bastion RDP 接続用）のパスワードです。ゲスト VM（vm-ad01 等）のパスワードとは別です。
+> - **一括セットアップ**: ゲスト VM のパスワードは `Setup-NestedEnvironment.ps1` が `unattend.xml` 経由で自動設定します（`P@ssW0rd1234!`）。
+> - **ステップ実行**: ステップ 8 の OOBE 時に手動で `P@ssW0rd1234!` を設定してください。
 
 ### 3. Hyper-V ホスト VM への接続
 
@@ -188,6 +194,8 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 
 ### 8. ゲスト OS セットアップ
 
+> **ヒント**: 一括セットアップ（`Setup-NestedEnvironment.ps1`）を使用する場合、以下のステップ 8 は不要です。一括セットアップでは OOBE が `unattend.xml` で自動化されます。「[一括セットアップ（リモート PC から実行）](#一括セットアップリモート-pc-から実行)」を参照してください。
+
 Bastion RDP でホスト VM に接続し、各 VM を起動して OOBE（初期セットアップ）を完了した後、以下のスクリプトを順に実行します。
 
 > **重要**: OOBE で設定する Administrator パスワードは `P@ssW0rd1234!` (本 HOL 内スクリプト内にハードコードしている値)にしてください。後続のスクリプトがこのパスワードで PowerShell Direct 接続を行います。
@@ -254,6 +262,113 @@ Hyper-V マネージャーで各 VM に接続し OOBE（初期セットアップ
 
 > ⚠️ **本番環境では使用しないでください。** PoC / ハンズオン用の構成です。本番では Azure Key Vault 等からの取得を推奨します。
 
+## 一括セットアップ（リモート PC から実行）
+
+`Setup-NestedEnvironment.ps1` は、ネットワーク構成・VM 作成・OOBE 自動化・固定 IP・AD DS・ドメイン参加・検証まで（Phase 1〜8）を一括実行するスクリプトです。
+
+`unattend.xml` を VHDX に注入して OOBE を自動化するため、手動での OOBE 操作は不要です。
+
+> **前提**:
+> - ステップ 1〜2 のデプロイと、VM の再起動（Hyper-V 有効化）が完了していること
+> - Windows Server VHD を入手済みであること
+
+### (1) セットアップスクリプトを VM に配置
+
+ローカル PC からスクリプトを Base64 エンコードし、Managed Run Command で VM 上にフォルダごと作成します。
+
+```powershell
+# スクリプトを Base64 エンコード
+$scriptPath = "scripts/host/Setup-NestedEnvironment.ps1"
+$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($scriptPath))
+
+# Base64 を埋め込んだ一時スクリプトを作成
+$deployScript = "$env:TEMP\deploy-to-vm.ps1"
+@"
+New-Item -Path C:\NestedSetup -ItemType Directory -Force | Out-Null
+`$b64 = '$b64'
+[IO.File]::WriteAllBytes('C:\NestedSetup\Setup-NestedEnvironment.ps1', [Convert]::FromBase64String(`$b64))
+Write-Output "File written: `$((Get-Item 'C:\NestedSetup\Setup-NestedEnvironment.ps1').Length) bytes"
+"@ | Set-Content -Path $deployScript -Encoding UTF8
+
+# Managed Run Command で VM 上に配置
+az vm run-command create `
+    --resource-group rg-onprem-nested `
+    --vm-name vm-onprem-nested-hv01 `
+    --name deployScript `
+    --script "@$deployScript" `
+    --async-execution false
+```
+
+> **注意**: スクリプトに日本語が含まれるため、UTF-8 BOM 付きで保存されている必要があります。BOM なしの場合、Windows PowerShell 5.1 でパースエラーになります。
+
+### (2) 配置結果を確認
+
+```powershell
+az vm run-command invoke `
+    --resource-group rg-onprem-nested `
+    --name vm-onprem-nested-hv01 `
+    --command-id RunPowerShellScript `
+    --scripts "Get-ChildItem C:\NestedSetup | Format-Table Name, Length, LastWriteTime -AutoSize"
+```
+
+### (3) Run Command リソースのクリーンアップ
+
+配置に使用した Managed Run Command リソースを削除します。
+
+```powershell
+az vm run-command delete `
+    --resource-group rg-onprem-nested `
+    --vm-name vm-onprem-nested-hv01 `
+    --name deployScript --yes
+```
+
+### (4) VHD イメージのアップロード
+
+VHD のアップロードはセットアップスクリプト実行前に完了させてください（Phase 2 でアップロード済みディスクを検出します）。
+
+```powershell
+.\scripts\Upload-VHDs.ps1 `
+    -VhdPathWs2022 "C:\path\to\ws2022.vhd" `
+    -VhdPathWs2019 "C:\path\to\ws2019.vhd"
+```
+
+### (5) セットアップスクリプトの実行
+
+Bastion RDP でホスト VM に接続し、**管理者権限の PowerShell** で `C:\NestedSetup` から実行します。
+
+```powershell
+cd C:\NestedSetup
+.\Setup-NestedEnvironment.ps1
+```
+
+スクリプトが Phase 1〜8 を順に実行します。OOBE は `unattend.xml` により自動化されるため、手動操作は不要です。
+
+> **途中再開**: フェーズ途中で失敗した場合、`-StartFromPhase` で再開できます。
+> ```powershell
+> .\Setup-NestedEnvironment.ps1 -StartFromPhase 5
+> ```
+
+> **パスワード変更**: セットアップ完了時にゲスト VM のパスワードを変更する場合:
+> ```powershell
+> .\Setup-NestedEnvironment.ps1 -NewPassword 'MyN3wP@ss!'
+> ```
+
+> **確認スキップ**: `-Force` で開始前の確認プロンプトをスキップできます。
+> ```powershell
+> .\Setup-NestedEnvironment.ps1 -Force
+> ```
+
+### (6) アップロードディスクのクリーンアップ
+
+セットアップ完了後、不要になったアップロード用 Managed Disk を削除します（スクリプト実行後に表示されるコマンドを参照）。
+
+```powershell
+az vm disk detach -g rg-onprem-nested --vm-name vm-onprem-nested-hv01 -n disk-upload-ws2022
+az vm disk detach -g rg-onprem-nested --vm-name vm-onprem-nested-hv01 -n disk-upload-ws2019
+az disk delete -g rg-onprem-nested -n disk-upload-ws2022 --yes
+az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
+```
+
 ## ファイル構成
 
 ```
@@ -274,6 +389,7 @@ Hyper-V マネージャーで各 VM に接続し OOBE（初期セットアップ
 │   ├── Upload-VHDs.ps1         # VHD → Managed Disk アップロード (ローカル PC)
 │   ├── Verify-OnpremSetup.ps1  # 環境検証 (ローカル PC)
 │   └── host/                   # ホスト VM 上で実行するスクリプト
+│       ├── Setup-NestedEnvironment.ps1  # 一括セットアップ (Phase 1-8)
 │       ├── Setup-NestedNetwork.ps1  # ネスト VM 用ネットワーク構成
 │       ├── Create-NestedVMs.ps1     # ネスト VM 自動作成
 │       ├── Configure-StaticIPs.ps1  # ゲスト VM 固定 IP 設定
@@ -293,5 +409,5 @@ Hyper-V マネージャーで各 VM に接続し OOBE（初期セットアップ
 
 ## VPN 接続
 
-VPN 関連のテンプレート・スクリプトは `infra/network-nested/` に分離されています。
-詳細は [infra/network-nested/](../network-nested/) を参照してください。
+VPN 関連のテンプレート・スクリプトは `infra/nested/network/` に分離されています。
+詳細は [infra/nested/network/](../network/) を参照してください。

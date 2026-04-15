@@ -128,6 +128,7 @@ module onpremVpnGateway 'br/public:avm/res/network/virtual-network-gateway:0.10.
     skuName: vpnGatewaySku
     virtualNetworkResourceId: onpremVnetId
     clusterSettings: { clusterMode: 'activePassiveNoBgp' }
+    domainNameLabel: ['vgw-onprem-${uniqueString(rgOnprem.id)}']
     tags: commonTags
   }
   dependsOn: [

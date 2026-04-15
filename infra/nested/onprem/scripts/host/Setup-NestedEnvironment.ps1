@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Setup-NestedEnvironment.ps1
 # Run on Hyper-V host VM (NOT from remote PC):
 #   All-in-one script to set up the nested on-prem environment.
@@ -952,8 +952,7 @@ Write-Host ''
 Write-Host "  Log file: $($cfg.LogFile)"
 Write-Host ''
 Write-Host '  VMs:'
-Get-VM | Where-Object { $_.Name -in $nestedVMs.Name } |
-    Format-Table Name, State, @{N='MemoryGB'; E={$_.MemoryStartup/1GB}}, ProcessorCount -AutoSize
+Get-VM | Format-Table | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
 
 # --- Cleanup reminder: uploaded managed disks are no longer needed ---
 $usedLuns = $nestedVMs | ForEach-Object { $cfg.OSImages[$_.OSVersion].Lun } | Sort-Object -Unique

@@ -15,15 +15,15 @@
           -> Hub DNS Resolver (Inbound) -> Private DNS Zone
 
     Steps:
-      [1/9] [Cloud]   DNS Forwarding Ruleset on Hub DNS Resolver
-      [2/9] [Cloud]   Forwarding rule: contoso.local -> Hyper-V host IP
-      [3/9] [Cloud]   Link ruleset to Hub VNet
-      [4/9] [Cloud]   Link ruleset to Spoke VNets (peered to Hub)
-      [5/9] [On-prem] Install DNS Server role on Hyper-V host (run-command)
-      [6/9] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS (run-command)
-      [7/9] [On-prem] Host conditional forwarder: contoso.local -> vm-ad01 (run-command)
-      [8/9] [On-prem] vm-ad01 conditional forwarders: privatelink.* -> Hub DNS Resolver (run-command + PowerShell Direct)
-      [9/9] Verification
+      [1/8] [Cloud]   DNS Forwarding Ruleset on Hub DNS Resolver
+      [2/8] [Cloud]   Forwarding rule: contoso.local -> Hyper-V host IP
+      [3/8] [Cloud]   Link ruleset to Hub VNet
+      [--]  [Cloud]   Link ruleset to Spoke VNets (optional: -LinkSpokeVnets)
+      [4/8] [On-prem] Install DNS Server role on Hyper-V host (run-command)
+      [5/8] [On-prem] Host DNS client: 127.0.0.1 + Azure DNS (run-command)
+      [6/8] [On-prem] Host conditional forwarder: contoso.local -> vm-ad01 (run-command)
+      [7/8] [On-prem] vm-ad01 conditional forwarders: privatelink.* -> Hub DNS Resolver (run-command + PowerShell Direct)
+      [8/8] Verification
 
     Prerequisites:
       - Azure CLI logged in (az login)

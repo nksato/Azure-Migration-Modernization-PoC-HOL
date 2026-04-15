@@ -33,7 +33,7 @@ rg-onprem-nested                    rg-hub
 
 ```
 Cloud → contoso.local:
-  Spoke VM → Hub DNS Resolver (Outbound) → Forwarding Ruleset (frs-onprem)
+  Spoke VM → Hub DNS Resolver (Outbound) → Forwarding Ruleset (frs-hub)
     → VPN → Host (vm-onprem-nested-hv01:53) → vm-ad01 (192.168.100.10)
 
 On-prem → privatelink.*:
@@ -125,15 +125,24 @@ VPN 接続が確立された後、Hybrid DNS を構成する。
 
 | ステップ | 実行先 | 内容 |
 |---------|--------|------|
-| [1] | Cloud | DNS Forwarding Ruleset (`frs-onprem`) 作成 |
+| [1] | Cloud | DNS Forwarding Ruleset (`frs-hub`) 作成 |
 | [2] | Cloud | Forwarding Rule 追加（`contoso.local` → Host IP） |
-| [3] | Cloud | Ruleset に VNet リンク（Hub + 全 Spoke） |
-| [4] | Cloud | Spoke VNet の DNS 設定を Hub DNS Resolver IP に変更 |
-| [5] | On-prem | Host に DNS Server ロールをインストール |
-| [6] | On-prem | Host の DNS クライアントに vm-ad01 IP を追加 |
-| [7] | On-prem | Host に条件付きフォワーダー（`contoso.local` → vm-ad01） |
-| [8] | On-prem | vm-ad01 に条件付きフォワーダー（`privatelink.*` → Hub DNS Resolver） |
-| [9] | 検証 | 名前解決テスト（contoso.local, privatelink.*） |
+| [3] | Cloud | Ruleset を Hub VNet にリンク |
+| [4] | On-prem | Host に DNS Server ロールをインストール (run-command) |
+| [5] | On-prem | Host DNS クライアント: `127.0.0.1` + Azure DNS (run-command) |
+| [6] | On-prem | Host に条件付きフォワーダー（`contoso.local` → vm-ad01）(run-command) |
+| [7] | On-prem | vm-ad01 に条件付きフォワーダー（`privatelink.*` → Hub DNS Resolver）(run-command) |
+| [8] | 検証 | 名前解決テスト（contoso.local, privatelink.*） |
+
+#### Spoke VNet への Ruleset リンク（オプション）
+
+Spoke VNet への Forwarding Ruleset リンクを追加する場合:
+
+```powershell
+.\Setup-HybridDns.ps1 -LinkSpokeVnets
+```
+
+Hub とピアリングされている全 Spoke VNet に Ruleset をリンクする。
 
 #### Cloud VM 名前解決（オプション）
 
@@ -143,12 +152,18 @@ Spoke VM の名前を on-prem から解決したい場合:
 .\Setup-HybridDns.ps1 -EnableCloudVmResolution
 ```
 
-追加ステップ [10]-[11] で `azure.internal` の Private DNS Zone と条件付きフォワーダーを構成する。
+`azure.internal` の Private DNS Zone と条件付きフォワーダーを構成する。
 
 ### 4. DNS 構成の確認
 
 ```powershell
 .\scripts\Verify-HybridDns.ps1
+```
+
+Spoke VNet リンクも検証する場合:
+
+```powershell
+.\scripts\Verify-HybridDns.ps1 -LinkSpokeVnets
 ```
 
 Cloud VM 名前解決も検証する場合:
