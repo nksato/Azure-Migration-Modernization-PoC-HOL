@@ -15,6 +15,11 @@
 param(
     [string]$OnpremResourceGroup = 'rg-onprem',
     [string]$HubResourceGroup = 'rg-hub',
+    [string]$HubDnsResolverName = 'dnspr-hub',
+    [string]$RulesetName = 'frs-hub',
+    [string]$OnpremVmName = 'vm-onprem-ad',
+    [string]$DomainName = 'lab.local',
+    [string]$DcIp = '10.0.1.4',
     [switch]$EnableCloudVmResolution,
     [switch]$LinkSpokeVnets
 )
@@ -25,14 +30,19 @@ $total = 0; $passed = 0
 # --- ヘルパー ---
 
 function Invoke-VmCommand ([string]$ResourceGroup, [string]$VmName, [string]$Script) {
-    $oneLiner = ($Script -split "`r?`n" | Where-Object { $_.Trim() }) -join '; '
-    $json = az vm run-command invoke `
-        --resource-group $ResourceGroup --name $VmName `
-        --command-id RunPowerShellScript --scripts $oneLiner -o json 2>&1
-    $r = ($json | Where-Object { $_ -is [string] }) -join '' | ConvertFrom-Json
-    $stderr = ($r.value | Where-Object { $_.code -like '*stderr*' }).message
-    if ($stderr) { Write-Host "         stderr: $stderr" -ForegroundColor DarkYellow }
-    ($r.value | Where-Object { $_.code -like '*stdout*' }).message
+    $tmpFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.ps1'
+    try {
+        $Script | Set-Content -Path $tmpFile -Encoding UTF8
+        $json = az vm run-command invoke `
+            --resource-group $ResourceGroup --name $VmName `
+            --command-id RunPowerShellScript --scripts "@$tmpFile" -o json 2>&1
+        $r = ($json | Where-Object { $_ -is [string] }) -join '' | ConvertFrom-Json
+        $stderr = ($r.value | Where-Object { $_.code -like '*stderr*' }).message
+        if ($stderr) { Write-Host "         stderr: $stderr" -ForegroundColor DarkYellow }
+        ($r.value | Where-Object { $_.code -like '*stdout*' }).message
+    } finally {
+        Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-Val ([string]$Output, [string]$Key) {
@@ -65,17 +75,17 @@ function Test-Bool ([string]$Label, [bool]$Value) {
 # ============================================================
 Write-Host "`n=== 1. DNS Private Resolver ===" -ForegroundColor Cyan
 
-$resolverState = az dns-resolver show -g $HubResourceGroup -n dnspr-hub `
+$resolverState = az dns-resolver show -g $HubResourceGroup -n $HubDnsResolverName `
     --query "provisioningState" -o tsv 2>$null
-Test-Val 'dnspr-hub プロビジョニング' $resolverState 'Succeeded'
+Test-Val "$HubDnsResolverName プロビジョニング" $resolverState 'Succeeded'
 
 $inboundIp = az dns-resolver inbound-endpoint show -g $HubResourceGroup `
-    --dns-resolver-name dnspr-hub --name inbound `
+    --dns-resolver-name $HubDnsResolverName --name inbound `
     --query "ipConfigurations[0].privateIpAddress" -o tsv 2>$null
 Test-NotEmpty 'Inbound Endpoint IP' $inboundIp
 
 $outboundState = az dns-resolver outbound-endpoint show -g $HubResourceGroup `
-    --dns-resolver-name dnspr-hub --name outbound `
+    --dns-resolver-name $HubDnsResolverName --name outbound `
     --query "provisioningState" -o tsv 2>$null
 Test-Val 'Outbound Endpoint' $outboundState 'Succeeded'
 
@@ -84,30 +94,31 @@ Test-Val 'Outbound Endpoint' $outboundState 'Succeeded'
 # ============================================================
 Write-Host "`n=== 2. DNS Forwarding Ruleset (クラウド → オンプレ) ===" -ForegroundColor Cyan
 
-$rulesetState = az dns-resolver forwarding-ruleset show -g $HubResourceGroup -n dnsrs-hub `
+$rulesetState = az dns-resolver forwarding-ruleset show -g $HubResourceGroup -n $RulesetName `
     --query "provisioningState" -o tsv 2>$null
-Test-Val 'dnsrs-hub プロビジョニング' $rulesetState 'Succeeded'
+Test-Val "$RulesetName プロビジョニング" $rulesetState 'Succeeded'
 
 # 転送ルール一覧を取得
-$rulesJson = az dns-resolver forwarding-rule list -g $HubResourceGroup --ruleset-name dnsrs-hub `
+$rulesJson = az dns-resolver forwarding-rule list -g $HubResourceGroup --ruleset-name $RulesetName `
     --query "[].{name:name, domain:domainName, state:forwardingRuleState, target:targetDnsServers[0].ipAddress}" `
     -o json 2>$null
 if ($rulesJson) {
     $rules = $rulesJson | ConvertFrom-Json
-    $labRule = $rules | Where-Object { $_.domain -match 'lab\.local' }
+    $domainPattern = [regex]::Escape($DomainName)
+    $labRule = $rules | Where-Object { $_.domain -match $domainPattern }
     if ($labRule) {
         Test-Val  '転送ルール状態'         $labRule.state  'Enabled'
-        Test-Val  '転送先 (DC01)'          $labRule.target '10.0.1.4'
+        Test-Val  "転送先 ($OnpremVmName)" $labRule.target $DcIp
         Write-Host "         ドメイン: $($labRule.domain)" -ForegroundColor Gray
     } else {
-        Test-Val 'lab.local 転送ルール' '(未検出)' 'Enabled'
+        Test-Val "$DomainName 転送ルール" '(未検出)' 'Enabled'
     }
 } else {
-    Test-Val 'dnsrs-hub 転送ルール' '(未検出)' 'Enabled'
+    Test-Val "$RulesetName 転送ルール" '(未検出)' 'Enabled'
 }
 
 # VNet リンク
-$vnetLinks = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
+$vnetLinks = az dns-resolver vnet-link list --ruleset-name $RulesetName `
     --resource-group $HubResourceGroup -o json 2>$null | ConvertFrom-Json
 $vnetLinkCount = if ($vnetLinks) { $vnetLinks.Count } else { 0 }
 Test-Bool "Ruleset VNet リンク数 >= 1 (Hub 必須、Spoke は -LinkSpokeVnets で追加) (実際: $vnetLinkCount)" ($vnetLinkCount -ge 1)
@@ -124,75 +135,73 @@ if ($vnetLinks) {
 Write-Host "`n=== 3. DC01 条件付きフォワーダー (オンプレ → クラウド) ===" -ForegroundColor Cyan
 Write-Host "  リモートコマンド実行中..." -ForegroundColor Gray
 
-$fwdOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
-$zn = 'privatelink.database.windows.net'
-$z = Get-DnsServerZone -Name $zn -ErrorAction SilentlyContinue
-if ($z) { Write-Output ('ZONE_TYPE=' + $z.ZoneType); Write-Output ('MASTER_SERVERS=' + ($z.MasterServers -join ',')) } else { Write-Output 'ZONE_TYPE='; Write-Output 'MASTER_SERVERS=' }
+$privateLinkZones = @(
+    'privatelink.database.windows.net'
+    # 'privatelink.blob.core.windows.net'     # Spoke3/4 展開時に有効化
+    # 'privatelink.vaultcore.azure.net'        # Spoke3/4 展開時に有効化
+    # 'privatelink.azurewebsites.net'          # Spoke4 展開時に有効化
+)
+
+$fwdOut = Invoke-VmCommand $OnpremResourceGroup $OnpremVmName @'
+$zones = Get-DnsServerZone | Where-Object { $_.ZoneType -eq 'Forwarder' }
+foreach ($z in $zones) {
+    Write-Output ("ZONE=$($z.ZoneName)|TYPE=$($z.ZoneType)|MASTERS=$($z.MasterServers -join ',')")
+}
 '@
 
-$zoneType = Get-Val $fwdOut 'ZONE_TYPE'
-$masterServers = Get-Val $fwdOut 'MASTER_SERVERS'
-Test-Val      '条件付きフォワーダー種別' $zoneType      'Forwarder'
-Test-NotEmpty '転送先 IP'                $masterServers
-
-if ($inboundIp -and $masterServers) {
-    $match = $masterServers -match [regex]::Escape($inboundIp)
-    Test-Bool "転送先が Inbound IP ($inboundIp) と一致" $match
-} else {
-    Test-Bool '転送先が Inbound IP と一致' $false
+foreach ($zone in $privateLinkZones) {
+    $line = ($fwdOut -split "`n") | Where-Object { $_ -match "ZONE=$([regex]::Escape($zone))" } | Select-Object -First 1
+    if ($line -and $line -match 'MASTERS=(.+)') {
+        $masters = $Matches[1].Trim()
+        $matchIp = $masters -match [regex]::Escape($inboundIp)
+        Test-Bool "$zone -> $masters (Inbound IP 一致: $matchIp)" $matchIp
+    } else {
+        Test-Bool "$zone 条件付きフォワーダー" $false
+    }
 }
 
 # ============================================================
-# 4. 設定情報サマリ
+# 4. 名前解決: オンプレ → クラウド
 # ============================================================
-Write-Host "`n=== 4. 設定情報サマリ ===" -ForegroundColor Cyan
-Write-Host "  DNS Resolver Inbound IP  : $inboundIp" -ForegroundColor Gray
-Write-Host "  Forwarding Ruleset       : dnsrs-hub" -ForegroundColor Gray
-Write-Host "  転送ルール (→ オンプレ)  : lab.local → 10.0.1.4" -ForegroundColor Gray
-Write-Host "  条件付きフォワーダー     : privatelink.database.windows.net → $masterServers" -ForegroundColor Gray
+Write-Host "`n=== 4. 名前解決: オンプレ → クラウド ===" -ForegroundColor Cyan
+Write-Host "  $OnpremVmName から名前解決テスト実行中..." -ForegroundColor Gray
 
-# ============================================================
-# 5. 名前解決: オンプレ → クラウド
-# ============================================================
-Write-Host "`n=== 5. 名前解決: オンプレ → クラウド ===" -ForegroundColor Cyan
-Write-Host "  DC01 から名前解決テスト実行中..." -ForegroundColor Gray
-
-$resolveOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
+$resolveOut = Invoke-VmCommand $OnpremResourceGroup $OnpremVmName @'
 $r1 = Resolve-DnsName 'privatelink.database.windows.net' -DnsOnly -ErrorAction SilentlyContinue
 Write-Output ('PLINK_RESOLVE=' + $(if ($r1) {'OK'} else {'NG'}))
 '@
 
 $plinkResult = Get-Val $resolveOut 'PLINK_RESOLVE'
-Test-Val 'DC01 → privatelink.database.windows.net 解決' $plinkResult 'OK'
+Test-Val "$OnpremVmName → privatelink.database.windows.net 解決" $plinkResult 'OK'
 if ($plinkResult -ne 'OK') {
     Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
 }
 
 # ============================================================
-# 6. 名前解決: クラウド → オンプレ
+# 5. 名前解決: クラウド → オンプレ
 # ============================================================
-Write-Host "`n=== 6. 名前解決: クラウド → オンプレ ===" -ForegroundColor Cyan
+Write-Host "`n=== 5. 名前解決: クラウド → オンプレ ===" -ForegroundColor Cyan
 
-# DC01 から DNS Resolver Inbound IP を -Server 指定して
-# Forwarding Ruleset → Outbound → DC01 のチェーンが動作するかを検証
-Write-Host "  DC01 → DNS Resolver 経由で検証中..." -ForegroundColor Gray
+# OnPrem VM から DNS Resolver Inbound IP を -Server 指定して
+# Forwarding Ruleset → Outbound → OnPrem DC のチェーンが動作するかを検証
+Write-Host "  $OnpremVmName → DNS Resolver 経由で検証中..." -ForegroundColor Gray
 
-$fallbackOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @"
-`$r = Resolve-DnsName 'lab.local' -Server '$inboundIp' -DnsOnly -ErrorAction SilentlyContinue
+$fallbackOut = Invoke-VmCommand $OnpremResourceGroup $OnpremVmName @"
+`$r = Resolve-DnsName '$DomainName' -Server '$inboundIp' -DnsOnly -ErrorAction SilentlyContinue
 Write-Output ('FALLBACK_RESOLVE=' + `$(if (`$r) {'OK'} else {'NG'}))
 "@
 
 $fallbackResult = Get-Val $fallbackOut 'FALLBACK_RESOLVE'
-Test-Val 'DC01 → lab.local (-Server DNS Resolver) 解決' $fallbackResult 'OK'
-Write-Host "         経路: DC01 → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC01" -ForegroundColor Gray
+Test-Val "$OnpremVmName → $DomainName (-Server DNS Resolver) 解決" $fallbackResult 'OK'
+Write-Host "         経路: $OnpremVmName → DNS Resolver ($inboundIp) → Forwarding Ruleset → Outbound → DC" -ForegroundColor Gray
 if ($fallbackResult -ne 'OK') {
     Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
 }
 
 # ============================================================
-# 7. オプション検証: EnableCloudVmResolution (azure.internal)
+# 6. オプション検証: EnableCloudVmResolution (azure.internal)
 # ============================================================
-Write-Host "`n=== 7. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
+Write-Host "`n=== 6. オプション検証: EnableCloudVmResolution ===" -ForegroundColor Cyan
 
 if (-not $EnableCloudVmResolution) {
     Write-Host "  スキップ (-EnableCloudVmResolution 未指定)" -ForegroundColor DarkGray
@@ -219,9 +228,9 @@ if ($azInternalState) {
     }
 
     # DC01 条件付きフォワーダー (azure.internal)
-    Write-Host "  DC01 の azure.internal 条件付きフォワーダーを確認中..." -ForegroundColor Gray
+    Write-Host "  $OnpremVmName の azure.internal 条件付きフォワーダーを確認中..." -ForegroundColor Gray
 
-    $azFwdOut = Invoke-VmCommand $OnpremResourceGroup 'vm-onprem-ad' @'
+    $azFwdOut = Invoke-VmCommand $OnpremResourceGroup $OnpremVmName @'
 $z = Get-DnsServerZone -Name 'azure.internal' -ErrorAction SilentlyContinue
 if ($z) { Write-Output ('AZ_ZONE_TYPE=' + $z.ZoneType); Write-Output ('AZ_MASTERS=' + ($z.MasterServers -join ',')) } else { Write-Output 'AZ_ZONE_TYPE='; Write-Output 'AZ_MASTERS=' }
 '@
@@ -241,15 +250,15 @@ if ($z) { Write-Output ('AZ_ZONE_TYPE=' + $z.ZoneType); Write-Output ('AZ_MASTER
 } # -EnableCloudVmResolution guard
 
 # ============================================================
-# 8. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
+# 7. オプション検証: LinkSpokeVnets (Forwarding Ruleset)
 # ============================================================
-Write-Host "`n=== 8. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
+Write-Host "`n=== 7. オプション検証: LinkSpokeVnets ===" -ForegroundColor Cyan
 
 if (-not $LinkSpokeVnets) {
     Write-Host "  スキップ (-LinkSpokeVnets 未指定)" -ForegroundColor DarkGray
 } else {
 
-$rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name dnsrs-hub `
+$rulesetLinksJson = az dns-resolver vnet-link list --ruleset-name $RulesetName `
     --resource-group $HubResourceGroup -o json 2>$null
 $rulesetLinks = if ($rulesetLinksJson) { $rulesetLinksJson | ConvertFrom-Json } else { @() }
 $rulesetLinkCount = if ($rulesetLinks) { $rulesetLinks.Count } else { 0 }
@@ -282,8 +291,8 @@ Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'})
     $spokeAdResult = Get-Val $spokeResolveOut 'SPOKE_AD_RESOLVE'
     $spokeDcResult = Get-Val $spokeResolveOut 'SPOKE_DC_RESOLVE'
     Test-Val      'vm-spoke1-web → lab.local 解決'       $spokeAdResult 'OK'
-    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  $spokeDcResult '10.0.1.4'
-    if ($spokeAdResult -ne 'OK' -or $spokeDcResult -ne '10.0.1.4') {
+    Test-Val      'vm-spoke1-web → DC01.lab.local 解決'  $spokeDcResult $DcIp
+    if ($spokeAdResult -ne 'OK' -or $spokeDcResult -ne $DcIp) {
         Write-Host '         ※ 名前解決に失敗した場合、まず IP アドレスを用いて到達性を確認してください' -ForegroundColor Yellow
     }
 } else {
@@ -291,6 +300,15 @@ Write-Output ('SPOKE_DC_RESOLVE=' + $(if ($dc) { $dc[0].IPAddress } else {'NG'})
 }
 
 } # -LinkSpokeVnets guard
+
+# ============================================================
+# 設定情報サマリ
+# ============================================================
+Write-Host "`n=== 設定情報サマリ ===" -ForegroundColor Cyan
+Write-Host "  DNS Resolver Inbound IP  : $inboundIp" -ForegroundColor Gray
+Write-Host "  Forwarding Ruleset       : $RulesetName" -ForegroundColor Gray
+Write-Host "  転送ルール (→ オンプレ)  : $DomainName → $DcIp" -ForegroundColor Gray
+Write-Host "  条件付きフォワーダー     : privatelink.* → $inboundIp (DNS Resolver)" -ForegroundColor Gray
 
 # ============================================================
 # サマリ

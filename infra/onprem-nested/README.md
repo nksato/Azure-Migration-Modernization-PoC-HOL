@@ -66,11 +66,11 @@ az group create --name rg-onprem-nested --location japaneast
 
 ### 2. デプロイ実行
 
-```bash
-az deployment group create \
-  --resource-group rg-onprem-nested \
-  --template-file main.bicep \
-  --parameters main.bicepparam \
+```powershell
+az deployment group create `
+  --resource-group rg-onprem-nested `
+  --template-file main.bicep `
+  --parameters main.bicepparam `
   --parameters adminPassword='<YOUR_PASSWORD>'
 ```
 
@@ -82,24 +82,34 @@ az deployment group create \
 
 デプロイ完了後、VM は自動的に再起動して Hyper-V が有効化されます。再起動完了後、Bastion 経由で接続します。
 
-```bash
-az network bastion rdp \
-  --name bas-onprem-nested \
-  --resource-group rg-onprem-nested \
+```powershell
+az network bastion rdp `
+  --name bas-onprem-nested `
+  --resource-group rg-onprem-nested `
   --target-resource-id <VM_RESOURCE_ID>
 ```
+
+> `<VM_RESOURCE_ID>` の例:
+> ```
+> /subscriptions/<サブスクリプションID>/resourceGroups/rg-onprem-nested/providers/Microsoft.Compute/virtualMachines/vm-onprem-nested-hv01
+> ```
 
 または Azure Portal から Bastion 経由で RDP 接続してください。
 
 ### 4. ネスト VM 用ネットワーク設定
 
-Hyper-V ホスト VM 上で管理者権限で実行します（Bastion RDP または `az vm run-command` のいずれかで実行可能）:
+Bastion RDP または `az vm run-command` のいずれかで実行可能です。
+
+**Bastion RDP で Hyper-V ホスト VM 上で実行する場合:**
 
 ```powershell
-# Bastion RDP で接続して実行する場合
 .\scripts\host\Setup-NestedNetwork.ps1
+```
 
-# az vm run-command で実行する場合 (ラッパースクリプト)
+**ローカル PC から `az vm run-command` で実行する場合:**
+
+```powershell
+# ラッパースクリプト
 .\01-Setup-Network.ps1
 
 # az vm run-command を直接実行する場合
@@ -125,20 +135,25 @@ az vm run-command invoke `
     -VhdPathWs2019 "C:\path\to\ws2019.vhd"
 ```
 
-> 動的 VHD や VHDX 形式の場合、事前に変換が必要です:
+> 動的 VHD や VHDX 形式の場合、事前に変換が必要です（**管理者権限の PowerShell** で実行。Hyper-V 機能の有効化が必要）:
 > ```powershell
 > Convert-VHD -Path .\dynamic.vhdx -DestinationPath .\fixed.vhd -VHDType Fixed
 > ```
 
 ### 6. ネスト VM の作成
 
-Hyper-V ホスト VM 上で管理者権限で実行します（VHDX 変換に数分かかるため、`az vm run-command` の場合はタイムアウトに注意）:
+VHDX 変換に数分かかるため、`az vm run-command` の場合はタイムアウトに注意してください。
+
+**Bastion RDP で Hyper-V ホスト VM 上で実行する場合:**
 
 ```powershell
-# Bastion RDP で接続して実行する場合
 .\scripts\host\Create-NestedVMs.ps1
+```
 
-# az vm run-command で実行する場合 (ラッパースクリプト、非同期)
+**ローカル PC から `az vm run-command` で実行する場合:**
+
+```powershell
+# ラッパースクリプト（非同期）
 .\02-Create-VMs.ps1
 
 # az vm run-command を直接実行する場合（非同期・タイムアウト 1 時間）
@@ -173,27 +188,54 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 
 ### 8. ゲスト OS セットアップ
 
-Bastion RDP でホスト VM に接続し、各 VM を起動して OOBE（初期セットアップ）を完了した後、以下のスクリプトを順に実行します。ステップ (3) 以降は Bastion 上で直接実行するか、`az vm run-command` で実行できます。
+Bastion RDP でホスト VM に接続し、各 VM を起動して OOBE（初期セットアップ）を完了した後、以下のスクリプトを順に実行します。
 
 > **重要**: OOBE で設定する Administrator パスワードは `P@ssW0rd1234!` (本 HOL 内スクリプト内にハードコードしている値)にしてください。後続のスクリプトがこのパスワードで PowerShell Direct 接続を行います。
 
+**(1) VM 起動**
+
+**Bastion RDP で Hyper-V ホスト VM 上で実行する場合:**
+
 ```powershell
-# (1) 各 VM を起動
 Start-VM vm-ad01, vm-app01, vm-sql01
+```
 
-# (2) Hyper-V マネージャーで各 VM に接続し OOBE を完了
+**ローカル PC から `az vm run-command` で実行する場合:**
 
+```powershell
+.\03-Start-VMs.ps1
+```
+
+**(2) OOBE（Bastion RDP でホスト VM 上で実行）:**
+
+Hyper-V マネージャーで各 VM に接続し OOBE（初期セットアップ）を完了します。
+
+**(3) 固定 IP 設定 → (4) AD DS インストール → (5) ドメイン参加** を順に実行します。
+
+**Bastion RDP で Hyper-V ホスト VM 上で実行する場合:**
+
+```powershell
 # (3) 固定 IP 設定
-.\scripts\host\Configure-StaticIPs.ps1       # Bastion 上で直接実行
-.\04-Configure-IPs.ps1                       # ラッパー (az vm run-command)
+.\scripts\host\Configure-StaticIPs.ps1
 
 # (4) AD DS インストール・DC 昇格 (vm-ad01 が自動再起動)
-.\scripts\host\Install-ADDS.ps1              # Bastion 上で直接実行
-.\05-Install-ADDS.ps1                        # ラッパー (az vm run-command)
+.\scripts\host\Install-ADDS.ps1
 
 # (5) ドメイン参加 (vm-app01, vm-sql01)
-.\scripts\host\Join-Domain.ps1               # Bastion 上で直接実行
-.\06-Join-Domain.ps1                         # ラッパー (az vm run-command)
+.\scripts\host\Join-Domain.ps1
+```
+
+**ローカル PC から `az vm run-command` で実行する場合:**
+
+```powershell
+# (3) 固定 IP 設定
+.\04-Configure-IPs.ps1
+
+# (4) AD DS インストール・DC 昇格 (vm-ad01 が自動再起動)
+.\05-Install-ADDS.ps1
+
+# (5) ドメイン参加 (vm-app01, vm-sql01)
+.\06-Join-Domain.ps1
 ```
 
 #### パスワード埋め込みスクリプトについて

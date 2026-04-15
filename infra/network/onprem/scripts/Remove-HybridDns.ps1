@@ -7,8 +7,8 @@
 
     削除対象:
       [1/4] [On-prem] DC01 条件付きフォワーダー (privatelink.database.windows.net, azure.internal)
-      [2/4] [Cloud]   Forwarding Ruleset VNet リンク (Hub + Spoke)
-      [3/4] [Cloud]   DNS Forwarding Ruleset (dnsrs-hub) — ルール含む
+      [2/4] [Cloud]   Forwarding Rule (lab.local) を削除 — 他のルールが残れば Ruleset は保持
+      [3/4] [Cloud]   残りルールなし → Ruleset + VNet リンク削除 / あり → Ruleset 保持
       [4/4] [Cloud]   Private DNS Zone: azure.internal (存在する場合のみ自動削除)
 
     ※ Hub DNS Resolver (dnspr-hub) は削除しない (他で共有)
@@ -27,7 +27,8 @@ param(
     [string]$HubResourceGroup = 'rg-hub',
     [string]$OnpremResourceGroup = 'rg-onprem',
     [string]$VmName = 'vm-onprem-ad',
-    [string]$RulesetName = 'dnsrs-hub',
+    [string]$DomainName = 'lab.local',
+    [string]$RulesetName = 'frs-hub',
     [switch]$SkipConfirmation
 )
 
@@ -35,6 +36,9 @@ $ErrorActionPreference = 'Stop'
 
 $privateLinkZones = @(
     'privatelink.database.windows.net'
+    # 'privatelink.blob.core.windows.net'     # Spoke3/4 展開時に有効化
+    # 'privatelink.vaultcore.azure.net'        # Spoke3/4 展開時に有効化
+    # 'privatelink.azurewebsites.net'          # Spoke4 展開時に有効化
 )
 $cloudVmDnsZone = 'azure.internal'
 
@@ -87,8 +91,6 @@ if (-not $SkipConfirmation) {
     }
 }
 
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
 # =============================================================================
 # [1/4] DC01: 条件付きフォワーダーを削除
 # =============================================================================
@@ -112,65 +114,90 @@ foreach (`$zone in `$zones) {
 "@
 
 Write-Host "  Executing on $VmName via run-command..." -ForegroundColor Gray
-az vm run-command invoke `
-    --resource-group $OnpremResourceGroup `
-    --name $VmName `
-    --command-id RunPowerShellScript `
-    --scripts $script `
-    --query "value[].message" -o tsv
+$tmpFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.ps1'
+try {
+    $script | Set-Content -Path $tmpFile -Encoding UTF8
+    $jsonText = az vm run-command invoke `
+        --resource-group $OnpremResourceGroup `
+        --name $VmName `
+        --command-id RunPowerShellScript `
+        --scripts "@$tmpFile" -o json 2>$null
+    if ($jsonText) {
+        $r = ($jsonText -join '') | ConvertFrom-Json
+        $stderr = ($r.value | Where-Object { $_.code -like '*stderr*' }).message
+        if ($stderr) { Write-Host "    stderr: $stderr" -ForegroundColor DarkYellow }
+        $stdout = ($r.value | Where-Object { $_.code -like '*stdout*' }).message
+        if ($stdout) { Write-Host $stdout }
+    } else {
+        Write-Host '    ERROR: run-command の出力がありません' -ForegroundColor Red
+    }
+} finally {
+    Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host '  DC01 conditional forwarders removed.' -ForegroundColor Green
 
 # =============================================================================
-# [2/4] Cloud: Forwarding Ruleset VNet リンク削除
+# [2/4] Cloud: Forwarding Rule 削除 + Ruleset 条件付き削除
 # =============================================================================
 Write-Host ''
-Write-Host '[2/4] [Cloud] Forwarding Ruleset VNet リンクを削除中...' -ForegroundColor Yellow
+Write-Host '[2/4] [Cloud] Forwarding Rule を削除中...' -ForegroundColor Yellow
 
+$rulesetDeleted = $false
 if ($existingRuleset) {
-    $linksJson = az dns-resolver vnet-link list --ruleset-name $RulesetName `
-        --resource-group $HubResourceGroup -o json 2>$null
-    if ($linksJson) {
-        $links = $linksJson | ConvertFrom-Json
-        foreach ($link in $links) {
-            Write-Host "  Removing link: $($link.name)..."
-            az dns-resolver vnet-link delete `
-                -g $HubResourceGroup --ruleset-name $RulesetName `
-                -n $link.name --yes -o none 2>$null
-            Write-Host "  $($link.name) removed."
-        }
+    # 自分の Forwarding Rule のみ削除
+    $ruleName = ($DomainName -replace '\.', '-')
+    $existingRule = az dns-resolver forwarding-rule show `
+        -g $HubResourceGroup --ruleset-name $RulesetName `
+        -n $ruleName --query 'name' -o tsv 2>$null
+    if ($existingRule) {
+        az dns-resolver forwarding-rule delete `
+            -g $HubResourceGroup --ruleset-name $RulesetName `
+            -n $ruleName --yes -o none
+        Write-Host "  ルール '$ruleName' を削除しました。"
     } else {
-        Write-Host '  No VNet links found. Skipping.'
+        Write-Host "  ルール '$ruleName' が見つかりません。スキップ。"
     }
-} else {
-    Write-Host "  Ruleset '$RulesetName' not found. Skipping."
-}
 
-# =============================================================================
-# [3/4] Cloud: Forwarding Ruleset 削除 (ルール含む)
-# =============================================================================
-Write-Host ''
-Write-Host "[3/4] [Cloud] Forwarding Ruleset '$RulesetName' を削除中..." -ForegroundColor Yellow
-
-if ($existingRuleset) {
-    # Delete forwarding rules first
-    $rulesJson = az dns-resolver forwarding-rule list `
+    # 残りルール数を確認
+    $remainingRulesJson = az dns-resolver forwarding-rule list `
         -g $HubResourceGroup --ruleset-name $RulesetName -o json 2>$null
-    if ($rulesJson) {
-        $rules = $rulesJson | ConvertFrom-Json
-        foreach ($rule in $rules) {
-            Write-Host "  Removing rule: $($rule.name)..."
-            az dns-resolver forwarding-rule delete `
-                -g $HubResourceGroup --ruleset-name $RulesetName `
-                -n $rule.name --yes -o none 2>$null
+    $remainingRules = if ($remainingRulesJson) { ($remainingRulesJson | ConvertFrom-Json) } else { @() }
+    $remainingCount = if ($remainingRules) { $remainingRules.Count } else { 0 }
+
+    if ($remainingCount -eq 0) {
+        Write-Host ''
+        Write-Host '[3/4] [Cloud] 残りルールなし — Ruleset と VNet リンクを削除中...' -ForegroundColor Yellow
+
+        # VNet リンク削除
+        $linksJson = az dns-resolver vnet-link list --ruleset-name $RulesetName `
+            --resource-group $HubResourceGroup -o json 2>$null
+        if ($linksJson) {
+            $links = $linksJson | ConvertFrom-Json
+            foreach ($link in $links) {
+                Write-Host "  Removing link: $($link.name)..."
+                az dns-resolver vnet-link delete `
+                    -g $HubResourceGroup --ruleset-name $RulesetName `
+                    -n $link.name --yes -o none 2>$null
+            }
+        }
+
+        # Ruleset 削除
+        az dns-resolver forwarding-ruleset delete `
+            -g $HubResourceGroup -n $RulesetName --yes -o none
+        Write-Host "  Ruleset '$RulesetName' を削除しました。"
+        $rulesetDeleted = $true
+    } else {
+        Write-Host ''
+        Write-Host "[3/4] [Cloud] 他環境のルールが残っています ($remainingCount 件) — Ruleset を保持します。" -ForegroundColor Yellow
+        foreach ($r in $remainingRules) {
+            Write-Host "  残存ルール: $($r.name) ($($r.domainName) -> $($r.targetDnsServers[0].ipAddress))" -ForegroundColor Gray
         }
     }
-
-    az dns-resolver forwarding-ruleset delete `
-        -g $HubResourceGroup -n $RulesetName --yes -o none
-    Write-Host "  Ruleset '$RulesetName' removed."
 } else {
-    Write-Host "  Ruleset '$RulesetName' not found. Skipping."
+    Write-Host "  Ruleset '$RulesetName' が見つかりません。スキップ。"
+    Write-Host ''
+    Write-Host "[3/4] [Cloud] Ruleset '$RulesetName' が見つかりません。スキップ。" -ForegroundColor Yellow
 }
 
 # =============================================================================
@@ -205,17 +232,19 @@ if ($existingZone) {
 # =============================================================================
 # 結果サマリー
 # =============================================================================
-$stopwatch.Stop()
-$elapsed = $stopwatch.Elapsed
-
 Write-Host ''
 Write-Host '=== Hybrid DNS Configuration Removed ===' -ForegroundColor Green
-Write-Host "  所要時間: $($elapsed.ToString('mm\:ss'))" -ForegroundColor White
 Write-Host ''
 Write-Host 'Removed:' -ForegroundColor White
 Write-Host "  - DC01 ($VmName) conditional forwarders"
-if ($existingRuleset) {
+if ($rulesetDeleted) {
     Write-Host "  - Forwarding Ruleset '$RulesetName' + VNet links + rules"
+} else {
+    $ruleName = ($DomainName -replace '\.', '-')
+    Write-Host "  - Forwarding Rule '$ruleName' ($DomainName)"
+    if ($existingRuleset) {
+        Write-Host "  - Ruleset '$RulesetName' は他のルールが残るため保持"
+    }
 }
 if ($cloudVmZoneRemoved) {
     Write-Host "  - Private DNS Zone '$cloudVmDnsZone' + VNet links"

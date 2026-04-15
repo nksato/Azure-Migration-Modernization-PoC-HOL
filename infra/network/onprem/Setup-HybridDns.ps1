@@ -1,10 +1,10 @@
 ﻿# ============================================================
 # Setup-HybridDns.ps1
 # ハイブリッド DNS 転送設定 (VPN 接続確立後に実行)
-# [1/4] オンプレ→クラウド: DC01 に privatelink.database.windows.net の条件付きフォワーダーを追加
+# [1/4] オンプレ→クラウド: DC01 に Private Link ゾーンの条件付きフォワーダーを追加
 # [2/4] クラウド→オンプレ: DNS Forwarding Ruleset で lab.local を DC01 へ転送
 # [3/4] オンプレ→クラウド VM: Private DNS Zone (azure.internal) + DC01 条件付きフォワーダー (オプション)
-# [4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke1〜4 VNet にもリンク (オプション)
+# [4/4] Spoke VNet リンク: Hub ピアリング先を自動検出し Ruleset をリンク (オプション)
 # ============================================================
 # 前提条件:
 #   - Step 4 (VPN Gateway 配置・接続) 完了済み
@@ -13,25 +13,33 @@
 #   .\Setup-HybridDns.ps1
 #   .\Setup-HybridDns.ps1 -OnpremResourceGroup rg-onprem -HubResourceGroup rg-hub
 #   .\Setup-HybridDns.ps1 -EnableCloudVmResolution      # Cloud VM の名前解決を有効化
-#   .\Setup-HybridDns.ps1 -LinkSpokeVnets              # Spoke VNet にも Ruleset をリンク
+#   .\Setup-HybridDns.ps1 -LinkSpokeVnets              # Hub ピアリング先 Spoke VNet に Ruleset をリンク
 # ============================================================
 
 param(
     [string]$OnpremResourceGroup = 'rg-onprem',
     [string]$HubResourceGroup = 'rg-hub',
+    [string]$HubVnetName = 'vnet-hub',
     [string]$DnsResolverName = 'dnspr-hub',
     [string]$InboundEndpointName = 'inbound',
     [string]$OutboundEndpointName = 'outbound',
+    [string]$RulesetName = 'frs-hub',
     [string]$VmName = 'vm-onprem-ad',
-    [string]$ForwardZone = 'privatelink.database.windows.net',
-    [string]$OnpremDnsTarget = '10.0.1.4',
-    [string]$OnpremDomain = 'lab.local',
+    [string]$DcIp = '10.0.1.4',
+    [string]$DomainName = 'lab.local',
     [string]$CloudDnsZone = 'azure.internal',
     [switch]$EnableCloudVmResolution,
     [switch]$LinkSpokeVnets
 )
 
 $ErrorActionPreference = 'Stop'
+
+$privateLinkZones = @(
+    'privatelink.database.windows.net'
+    # 'privatelink.blob.core.windows.net'     # Spoke3/4 展開時に有効化
+    # 'privatelink.vaultcore.azure.net'        # Spoke3/4 展開時に有効化
+    # 'privatelink.azurewebsites.net'          # Spoke4 展開時に有効化
+)
 
 # Azure CLI ログイン確認
 $account = az account show -o json 2>$null | ConvertFrom-Json
@@ -49,7 +57,7 @@ if ($EnableCloudVmResolution) {
     Write-Host '  [3/4] スキップ (use -EnableCloudVmResolution to enable)' -ForegroundColor DarkGray
 }
 if ($LinkSpokeVnets) {
-    Write-Host '  [4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke1〜4 VNet にリンク' -ForegroundColor Cyan
+    Write-Host '  [4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke VNet にリンク (ピアリング自動検出)' -ForegroundColor Cyan
 } else {
     Write-Host '  [4/4] スキップ (use -LinkSpokeVnets to enable)' -ForegroundColor DarkGray
 }
@@ -71,15 +79,56 @@ if (-not $dnsInboundIp) {
 Write-Host "  DNS Resolver inbound IP: $dnsInboundIp" -ForegroundColor Green
 
 # ============================================================
+# Hub VNet 情報取得 + Spoke VNet 自動検出
+# ============================================================
+$hubVnetId = az network vnet show `
+    --resource-group $HubResourceGroup `
+    --name $HubVnetName `
+    --query "id" -o tsv
+
+if (-not $hubVnetId) {
+    throw "Hub VNet not found: $HubResourceGroup/$HubVnetName"
+}
+Write-Host "  Hub VNet: $HubVnetName" -ForegroundColor Green
+
+# Hub にピアリングされた Spoke VNet を自動検出
+$spokeVnets = az network vnet peering list `
+    -g $HubResourceGroup --vnet-name $HubVnetName `
+    --query '[].{name: name, vnetId: remoteVirtualNetwork.id}' -o json | ConvertFrom-Json
+
+if (-not $spokeVnets) { $spokeVnets = @() }
+
+if ($spokeVnets.Count -gt 0) {
+    Write-Host "  Spoke VNets (ピアリング検出): $($spokeVnets.Count) 件" -ForegroundColor Green
+    foreach ($s in $spokeVnets) {
+        Write-Host "    - $(($s.vnetId -split '/')[-1])"
+    }
+} else {
+    Write-Host '  Spoke VNets: ピアリングなし' -ForegroundColor DarkGray
+}
+
+# ============================================================
 # [1/4] オンプレ→クラウド: DC01 に条件付きフォワーダーを追加
 # ============================================================
 Write-Host '[1/4] オンプレ → クラウド: DC01 に条件付きフォワーダーを追加中...' -ForegroundColor Yellow
-Write-Host "  $ForwardZone のクエリを DNS Resolver ($dnsInboundIp) へ転送します" -ForegroundColor Yellow
+Write-Host "  Private Link ゾーンのクエリを DNS Resolver ($dnsInboundIp) へ転送します" -ForegroundColor Yellow
 
 # DC01 に条件付きフォワーダーを追加
-Write-Host "  Adding conditional forwarder on $VmName for $ForwardZone..." -ForegroundColor Yellow
+$zonesArray = ($privateLinkZones | ForEach-Object { "'$_'" }) -join ','
 
-$script = "`$zone = Get-DnsServerZone -Name '$ForwardZone' -ErrorAction SilentlyContinue; if (`$zone) { Set-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' } else { Add-DnsServerConditionalForwarderZone -Name '$ForwardZone' -MasterServers '$dnsInboundIp' -ReplicationScope Forest }"
+$script = @"
+`$zones = @($zonesArray)
+foreach (`$z in `$zones) {
+    `$existing = Get-DnsServerZone -Name `$z -ErrorAction SilentlyContinue
+    if (`$existing) {
+        Set-DnsServerConditionalForwarderZone -Name `$z -MasterServers '$dnsInboundIp'
+        Write-Output "  `$z - updated."
+    } else {
+        Add-DnsServerConditionalForwarderZone -Name `$z -MasterServers '$dnsInboundIp' -ReplicationScope Forest
+        Write-Output "  `$z - created."
+    }
+}
+"@
 
 az vm run-command invoke `
     --resource-group $OnpremResourceGroup `
@@ -89,17 +138,17 @@ az vm run-command invoke `
     --query "value[].message" -o tsv
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to add conditional forwarder on $VmName."
+    Write-Error "Failed to add conditional forwarders on $VmName."
     exit 1
 }
 
-Write-Host '  Conditional forwarder configured.' -ForegroundColor Green
+Write-Host '  Conditional forwarders configured.' -ForegroundColor Green
 
 # ============================================================
 # [2/4] クラウド→オンプレ: DNS Forwarding Ruleset 作成
 # ============================================================
 Write-Host '[2/4] クラウド → オンプレ: DNS Forwarding Ruleset を作成中...' -ForegroundColor Yellow
-Write-Host "  $OnpremDomain のクエリを DC01 ($OnpremDnsTarget) へ転送します" -ForegroundColor Yellow
+Write-Host "  $DomainName のクエリを DC01 ($DcIp) へ転送します" -ForegroundColor Yellow
 
 # DNS Resolver の Outbound Endpoint ID を取得
 Write-Host '  Getting DNS Resolver outbound endpoint...' -ForegroundColor Yellow
@@ -115,40 +164,67 @@ if (-not $outboundEpId) {
 }
 Write-Host "  Outbound endpoint: $outboundEpId" -ForegroundColor Green
 
-# Hub VNet ID を取得
-$hubVnetId = az network vnet show `
-    --resource-group $HubResourceGroup `
-    --name 'vnet-hub' `
-    --query "id" -o tsv
+# DNS Forwarding Ruleset を作成 (既存ならスキップ)
+$existingRuleset = az dns-resolver forwarding-ruleset show `
+    -g $HubResourceGroup -n $RulesetName --query 'id' -o tsv 2>$null
+if ($existingRuleset) {
+    Write-Host "  Ruleset '$RulesetName' already exists. Skipping."
+} else {
+    Write-Host '  Creating DNS Forwarding Ruleset...' -ForegroundColor Yellow
+    $location = az group show --name $HubResourceGroup --query "location" -o tsv
+    az dns-resolver forwarding-ruleset create `
+        --resource-group $HubResourceGroup `
+        --name $RulesetName `
+        --location $location `
+        --outbound-endpoints "[{id:$outboundEpId}]" `
+        -o none
+    Write-Host "  Ruleset '$RulesetName' created."
+}
 
-# DNS Forwarding Ruleset を作成
-Write-Host '  Creating DNS Forwarding Ruleset...' -ForegroundColor Yellow
-az dns-resolver forwarding-ruleset create `
-    --resource-group $HubResourceGroup `
-    --name 'dnsrs-hub' `
-    --location (az group show --name $HubResourceGroup --query "location" -o tsv) `
-    --outbound-endpoints "[{id:$outboundEpId}]" `
-    --only-show-errors 2>$null
+# 転送ルール名をドメイン名から動的生成 (lab.local -> lab-local)
+$ruleName = ($DomainName -replace '\.', '-')
 
-# 転送ルール: lab.local → DC01
-Write-Host "  Creating forwarding rule: $OnpremDomain -> $OnpremDnsTarget..." -ForegroundColor Yellow
-az dns-resolver forwarding-rule create `
-    --resource-group $HubResourceGroup `
-    --ruleset-name 'dnsrs-hub' `
-    --name 'rule-lab-local' `
-    --domain-name "${OnpremDomain}." `
-    --forwarding-rule-state 'Enabled' `
-    --target-dns-servers "[{ip-address:$OnpremDnsTarget,port:53}]" `
-    --only-show-errors 2>$null
+# 転送ルール: DomainName → DC (既存なら更新)
+$existingRule = az dns-resolver forwarding-rule show `
+    -g $HubResourceGroup --ruleset-name $RulesetName `
+    -n $ruleName --query 'domainName' -o tsv 2>$null
+if ($existingRule) {
+    Write-Host "  Rule '$ruleName' already exists. Updating target..." -ForegroundColor Yellow
+    az dns-resolver forwarding-rule update `
+        -g $HubResourceGroup --ruleset-name $RulesetName `
+        -n $ruleName `
+        --target-dns-servers "[{ip-address:$DcIp,port:53}]" `
+        -o none
+    Write-Host "  Rule '$ruleName' updated."
+} else {
+    Write-Host "  Creating forwarding rule: $DomainName -> $DcIp..." -ForegroundColor Yellow
+    az dns-resolver forwarding-rule create `
+        --resource-group $HubResourceGroup `
+        --ruleset-name $RulesetName `
+        --name $ruleName `
+        --domain-name "${DomainName}." `
+        --forwarding-rule-state 'Enabled' `
+        --target-dns-servers "[{ip-address:$DcIp,port:53}]" `
+        -o none
+    Write-Host "  Rule '$ruleName' created."
+}
 
-# ルールセットを Hub VNet にリンク
-Write-Host '  Linking ruleset to Hub VNet...' -ForegroundColor Yellow
-az dns-resolver vnet-link create `
-    --resource-group $HubResourceGroup `
-    --ruleset-name 'dnsrs-hub' `
-    --name 'link-vnet-hub' `
-    --id $hubVnetId `
-    --only-show-errors 2>$null
+# ルールセットを Hub VNet にリンク (既存ならスキップ)
+$existingHubLink = az dns-resolver forwarding-ruleset list-by-virtual-network `
+    --resource-group $HubResourceGroup --virtual-network-name $HubVnetName `
+    --query "[?name=='$RulesetName'].id" -o tsv 2>$null
+if ($existingHubLink) {
+    Write-Host "  Hub VNet link already exists. Skipping."
+} else {
+    Write-Host "  Linking ruleset to $HubVnetName..." -ForegroundColor Yellow
+    az dns-resolver vnet-link create `
+        --resource-group $HubResourceGroup `
+        --ruleset-name $RulesetName `
+        --name "link-$HubVnetName" `
+        --id $hubVnetId `
+        -o none
+    Write-Host "  Hub VNet linked."
+}
 
 Write-Host '  Cloud to On-premises DNS forwarding configured.' -ForegroundColor Green
 
@@ -166,36 +242,30 @@ if ($EnableCloudVmResolution) {
         --only-show-errors 2>$null
 
     # Hub VNet にリンク (自動登録なし — Hub に VM は配置しない想定)
-    Write-Host '  Linking Private DNS Zone to vnet-hub...' -ForegroundColor Yellow
+    Write-Host "  Linking Private DNS Zone to $HubVnetName..." -ForegroundColor Yellow
     az network private-dns link vnet create `
         --resource-group $HubResourceGroup `
         --zone-name $CloudDnsZone `
-        --name 'link-vnet-hub' `
+        --name "link-$HubVnetName" `
         --virtual-network $hubVnetId `
         --registration-enabled false `
         --only-show-errors 2>$null
 
-    # Spoke VNet にリンク (自動登録有効 — VM の A レコードを自動作成)
-    $spokeVnetsForDns = @(
-        @{ rg = 'rg-spoke1'; vnet = 'vnet-spoke1'; link = 'link-vnet-spoke1' }
-        @{ rg = 'rg-spoke2'; vnet = 'vnet-spoke2'; link = 'link-vnet-spoke2' }
-        @{ rg = 'rg-spoke3'; vnet = 'vnet-spoke3'; link = 'link-vnet-spoke3' }
-        @{ rg = 'rg-spoke4'; vnet = 'vnet-spoke4'; link = 'link-vnet-spoke4' }
-    )
-    foreach ($spoke in $spokeVnetsForDns) {
-        $spokeVnetId = az network vnet show -g $spoke.rg -n $spoke.vnet --query "id" -o tsv 2>$null
-        if ($spokeVnetId) {
-            Write-Host "  Linking $CloudDnsZone to $($spoke.vnet) (registration enabled)..." -ForegroundColor Yellow
+    # Spoke VNet にリンク (自動登録有効 — VM の A レコードを自動作成、ピアリング自動検出)
+    if ($spokeVnets.Count -gt 0) {
+        foreach ($spoke in $spokeVnets) {
+            $spokeName = ($spoke.vnetId -split '/')[-1]
+            Write-Host "  Linking $CloudDnsZone to $spokeName (registration enabled)..." -ForegroundColor Yellow
             az network private-dns link vnet create `
                 --resource-group $HubResourceGroup `
                 --zone-name $CloudDnsZone `
-                --name $spoke.link `
-                --virtual-network $spokeVnetId `
+                --name "link-$spokeName" `
+                --virtual-network $spoke.vnetId `
                 --registration-enabled true `
                 --only-show-errors 2>$null
-        } else {
-            Write-Host "  $($spoke.vnet) not found, skipping link." -ForegroundColor DarkGray
         }
+    } else {
+        Write-Host '  ピアリングされた Spoke VNet なし。スキップ。' -ForegroundColor DarkGray
     }
 
     # DC01 に azure.internal の条件付きフォワーダーを追加
@@ -221,31 +291,26 @@ if ($EnableCloudVmResolution) {
 }
 
 # ============================================================
-# [4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke1〜4 VNet にリンク (オプション)
+# [4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke VNet にリンク (オプション、ピアリング自動検出)
 # ============================================================
 if ($LinkSpokeVnets) {
-    Write-Host '[4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke1〜4 VNet にリンク中...' -ForegroundColor Yellow
-    $spokeVnets = @(
-        @{ rg = 'rg-spoke1'; vnet = 'vnet-spoke1'; link = 'link-vnet-spoke1' }
-        @{ rg = 'rg-spoke2'; vnet = 'vnet-spoke2'; link = 'link-vnet-spoke2' }
-        @{ rg = 'rg-spoke3'; vnet = 'vnet-spoke3'; link = 'link-vnet-spoke3' }
-        @{ rg = 'rg-spoke4'; vnet = 'vnet-spoke4'; link = 'link-vnet-spoke4' }
-    )
-    foreach ($spoke in $spokeVnets) {
-        $spokeVnetId = az network vnet show -g $spoke.rg -n $spoke.vnet --query "id" -o tsv 2>$null
-        if ($spokeVnetId) {
-            Write-Host "  Linking ruleset to $($spoke.vnet)..." -ForegroundColor Yellow
+    Write-Host '[4/4] Spoke VNet リンク: Forwarding Ruleset を Spoke VNet にリンク中...' -ForegroundColor Yellow
+    if ($spokeVnets.Count -eq 0) {
+        Write-Host '  ピアリングされた Spoke VNet なし。スキップ。' -ForegroundColor DarkGray
+    } else {
+        foreach ($spoke in $spokeVnets) {
+            $spokeName = ($spoke.vnetId -split '/')[-1]
+            $linkName = "link-$spokeName"
+            Write-Host "  Linking ruleset to $spokeName..." -ForegroundColor Yellow
             az dns-resolver vnet-link create `
                 --resource-group $HubResourceGroup `
-                --ruleset-name 'dnsrs-hub' `
-                --name $spoke.link `
-                --id $spokeVnetId `
+                --ruleset-name $RulesetName `
+                --name $linkName `
+                --id $spoke.vnetId `
                 --only-show-errors 2>$null
-        } else {
-            Write-Host "  $($spoke.vnet) not found, skipping link." -ForegroundColor DarkGray
         }
+        Write-Host '  Spoke VNet linking configured.' -ForegroundColor Green
     }
-    Write-Host '  Spoke VNet linking configured.' -ForegroundColor Green
 } else {
     Write-Host '[4/4] Spoke VNet リンクスキップ (use -LinkSpokeVnets to enable).' -ForegroundColor DarkGray
 }
@@ -256,19 +321,19 @@ if ($LinkSpokeVnets) {
 Write-Host '' -ForegroundColor White
 Write-Host '=== Verification ===' -ForegroundColor Cyan
 
-Write-Host 'DC01 Conditional Forwarder:' -ForegroundColor White
+Write-Host 'DC01 Conditional Forwarders:' -ForegroundColor White
 az vm run-command invoke `
     --resource-group $OnpremResourceGroup `
     --name $VmName `
     --command-id RunPowerShellScript `
-    --scripts "Get-DnsServerZone -Name '$ForwardZone' | Format-List ZoneName,ZoneType,MasterServers" `
+    --scripts "Get-DnsServerZone | Where-Object { `$_.ZoneType -eq 'Forwarder' } | Format-List ZoneName,ZoneType,MasterServers" `
     --query "value[].message" -o tsv
 
 Write-Host '' -ForegroundColor White
 Write-Host 'DNS Forwarding Ruleset:' -ForegroundColor White
 az dns-resolver forwarding-rule list `
     --resource-group $HubResourceGroup `
-    --ruleset-name 'dnsrs-hub' `
+    --ruleset-name $RulesetName `
     --query "[].{Name:name, Domain:domainName, State:forwardingRuleState, Target:targetDnsServers[0].ipAddress}" `
     -o table
 
@@ -296,7 +361,7 @@ if ($LinkSpokeVnets) {
     Write-Host 'Spoke VNet Links (Forwarding Ruleset):' -ForegroundColor White
     az dns-resolver vnet-link list `
         --resource-group $HubResourceGroup `
-        --ruleset-name 'dnsrs-hub' `
+        --ruleset-name $RulesetName `
         --query "[].{Name:name, VNet:virtualNetwork.id}" `
         -o table
 }
