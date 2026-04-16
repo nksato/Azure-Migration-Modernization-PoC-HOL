@@ -51,7 +51,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| Web アプリ | Parts Unlimited |
+| Web アプリ | [Parts Unlimited](https://github.com/Microsoft/PartsUnlimitedE2E)（Microsoft 公式サンプル） |
 | フレームワーク | ASP.NET MVC 5 / .NET Framework 系 |
 | DB | SQL Server |
 | 接続形態 | APP01 → DB01 |

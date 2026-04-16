@@ -1,6 +1,7 @@
 # Azure Migration & Modernization PoC ハンズオンラボ
 
 オンプレミス環境を模した Windows Server、SQL Server、.NET Framework ワークロードの Web 3 層アプリケーションを題材に、**Azure への移行**と**モダナイゼーション**を段階的に体験できるハンズオンラボです。  
+移行対象アプリには Microsoft 公式サンプルの **[Parts Unlimited](https://github.com/Microsoft/PartsUnlimitedE2E)**（ASP.NET MVC / .NET Framework）を使用します。  
 疑似オンプレ環境（`DC01` / `DB01` / `APP01`）を準備し、Azure Arc・Azure Migrate・各種 PaaS を使いながら、複数の移行パターンを比較できます。
 
 ---
