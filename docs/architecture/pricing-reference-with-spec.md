@@ -364,7 +364,7 @@ Web サーバーは VM、データベースは Azure SQL Database に移行。
 
 ---
 
-## 参考リンク
+## 参考
 
 - [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/)
 - [Azure Retail Prices API](https://learn.microsoft.com/rest/api/cost-management/retail-prices/azure-retail-prices)

@@ -571,6 +571,33 @@ az deployment sub create -l japaneast -f main.bicep -p main.bicepparam
 
 ---
 
+## 備考: SQL Server のインストール
+
+セットアップ手順（ステップ 4.5〜4.7 / 一括セットアップ）には SQL Server のインストールは含まれていない。vm-sql01 への SQL Server インストールは、ドメイン参加完了後に別途実施する。
+
+### 方法 A: ホスト VM からスクリプトで実行（推奨）
+
+Bastion RDP でホスト VM に接続し、`Install-SqlServer.ps1` を実行する。PowerShell Direct 経由で vm-sql01 にインストールされる。
+
+```powershell
+# SQL Server 2022 Developer Edition をダウンロード＆インストール
+.\scripts\host\Install-SqlServer.ps1 -Version 2022
+
+# sa を無効化し、専用の管理者ログインを作成する場合
+.\scripts\host\Install-SqlServer.ps1 -Version 2022 -DisableSa -SqlAdminPassword 'Adm1nP@ss!'
+
+# ISO からインストールする場合（SQL Server 2025 等）
+.\scripts\host\Install-SqlServer.ps1 -IsoPath 'F:\ISO\SQLServer2025-x64-ENU-Dev.iso'
+```
+
+> `-Version` モードは Microsoft からブートストラッパーを自動ダウンロードする。`-IsoPath` モードは Visual Studio サブスクリプション等で取得した ISO を使用する。
+
+### 方法 B: ゲスト VM に直接インストール
+
+Hyper-V マネージャーで vm-sql01 に接続し、ゲスト OS 上で手動インストールする。ISO をマウントして `setup.exe` を実行するか、[SQL Server ダウンロードページ](https://www.microsoft.com/ja-jp/sql-server/sql-server-downloads)から Developer Edition インストーラーを取得して実行する。
+
+---
+
 ## 備考: 一括セットアップ（Hyper-V ホストから実行）
 
 `Setup-NestedEnvironment.ps1` は、ネットワーク構成・VM 作成・OOBE 自動化・固定 IP・AD DS・ドメイン参加・検証まで（ステップ 4.5〜4.7 相当）を一括実行するスクリプト。
@@ -669,7 +696,23 @@ az disk delete -g rg-onprem-nested -n disk-upload-ws2019 --yes
 
 ---
 
-## 参考情報
+## 注意点
+
+### ドメイン名 `.local` について
+
+既定のドメイン名 `contoso.local` は `.local` サフィックスを使用しています。Microsoft の公式ドキュメントでは `.local` の使用は非推奨とされていますが、本環境は **Windows のみ・閉域・一時的なラボ** であるため、影響は限定的と判断し採用しています。
+
+`.local` の既知の問題:
+
+- **mDNS (Multicast DNS) との競合**: `.local` は RFC 6762 で mDNS 用に予約されており、Linux / macOS クライアントで DNS 解決が失敗・遅延する場合がある (本環境は Windows のみのため該当なし)
+- **非ルーティング**: `.local` はインターネット上でルーティングされないため、パブリック CA による SSL 証明書の発行不可 (閉域環境のため該当なし)
+- **Entra Domain Services**: マネージドドメインでは `.local` が非推奨
+
+本番環境やマルチプラットフォーム環境では、所有ドメインのサブドメイン (例: `ad.contoso.com`) または RFC 2606 予約ドメイン (例: `corp.example.com`) の使用を推奨します。
+
+------
+
+## 参考
 
 - [応答ファイル (unattend.xml) の作成 - Microsoft Learn](https://learn.microsoft.com/ja-jp/windows-hardware/manufacture/desktop/update-windows-settings-and-scripts-create-your-own-answer-file-sxs?view=windows-11)
 - [Azure VPN Gateway ドキュメント](https://learn.microsoft.com/azure/vpn-gateway/)

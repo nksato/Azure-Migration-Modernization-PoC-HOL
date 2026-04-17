@@ -161,3 +161,27 @@ Bicep テンプレートのデプロイにより、以下の 1 ～ 3 は**自動
 - `infra/main.bicep` — 一括デプロイ用エントリポイント
 - `infra/onprem/Convert-VmToArc.ps1` — Azure Arc オンボーディング
 - `infra/onprem/scripts/*` — セットアップスクリプト群
+
+---
+
+## 注意点
+
+### ドメイン名 `.local` について
+
+既定のドメイン名 `lab.local` は `.local` サフィックスを使用しています。Microsoft の公式ドキュメントでは `.local` の使用は非推奨とされていますが、本環境は **Windows のみ・閉域・一時的なラボ** であるため、影響は限定的と判断し採用しています。
+
+`.local` の既知の問題:
+
+- **mDNS (Multicast DNS) との競合**: `.local` は RFC 6762 で mDNS 用に予約されており、Linux / macOS クライアントで DNS 解決が失敗・遅延する場合がある (本環境は Windows のみのため該当なし)
+- **非ルーティング**: `.local` はインターネット上でルーティングされないため、パブリック CA による SSL 証明書の発行不可 (閉域環境のため該当なし)
+- **Entra Domain Services**: マネージドドメインでは `.local` が非推奨
+
+本番環境やマルチプラットフォーム環境では、所有ドメインのサブドメイン (例: `ad.contoso.com`) または RFC 2606 予約ドメイン (例: `corp.example.com`) の使用を推奨します。
+
+---
+
+## 参考
+
+- [Naming conventions in Active Directory for computers, domains, sites, and OUs](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/naming-conventions-for-computer-domain-site-ou#domain-names)
+- [Entra Domain Services - DNS naming requirements](https://learn.microsoft.com/entra/identity/domain-services/template-create-instance#dns-naming-requirements)
+- [Deployment and operation of AD domains that use single-label DNS names](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/deployment-operation-ad-domains)
