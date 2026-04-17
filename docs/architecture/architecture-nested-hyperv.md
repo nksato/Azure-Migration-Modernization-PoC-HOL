@@ -483,6 +483,7 @@ Cloud VM 名前解決も検証する場合:
 | `scripts/host/Configure-StaticIPs.ps1` | ゲスト VM 固定 IP 設定 |
 | `scripts/host/Install-ADDS.ps1` | AD DS インストール・DC 昇格 |
 | `scripts/host/Join-Domain.ps1` | ドメイン参加 |
+| `scripts/host/Install-SqlServer.ps1` | SQL Server インストール (vm-sql01) |
 
 ### 7.2 VPN & DNS（`infra/nested/network/`）
 
@@ -547,6 +548,7 @@ az deployment sub create -l japaneast -f main.bicep -p main.bicepparam
 │       ├── Configure-StaticIPs.ps1  # ゲスト VM 固定 IP 設定
 │       ├── Install-ADDS.ps1         # AD DS インストール・DC 昇格
 │       ├── Join-Domain.ps1          # ドメイン参加
+│       ├── Install-SqlServer.ps1    # SQL Server インストール
 │       └── Setup-HybridDns.ps1      # ハイブリッド DNS 構成
 ```
 
