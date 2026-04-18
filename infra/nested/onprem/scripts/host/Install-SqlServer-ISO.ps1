@@ -210,6 +210,7 @@ try {
 
         $setupArgs = @(
             '/Q',
+            '/ENU',
             '/ACTION=Install',
             '/FEATURES=SQLEngine',
             "/INSTANCENAME=$InstanceName",
