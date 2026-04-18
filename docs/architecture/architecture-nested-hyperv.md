@@ -17,12 +17,24 @@ vnet-onprem-nested (10.1.0.0/16)
 └── snet-onprem-nested (10.1.1.0/24) ... NAT Gateway で送信インターネット
     ├── NAT Gateway (ng-onprem-nested) ... 送信インターネットアクセス
     └── Hyper-V Host VM (Windows Server 2022, Standard_E4s_v5)
-        ├── F: ドライブ (256 GB データディスク)
+        ├── OS ディスク (Managed Disk)
+        ├── F: ドライブ (256 GB データディスク / Managed Disk)
+        ├── VHD 受け渡し用ディスク (Managed Disk, 必要時のみ一時アタッチ)
+        │   ├── disk-upload-ws2022 (LUN 1)
+        │   └── disk-upload-ws2019 (LUN 2)
         ├── InternalNAT Switch (192.168.100.0/24)
         ├── vm-ad01  (WS2022) ... AD DS     192.168.100.10
         ├── vm-app01 (WS2019) ... App       192.168.100.11
         └── vm-sql01 (WS2019) ... SQL       192.168.100.12
 ```
+
+### 補足: Managed Disk の役割
+
+- `osdisk-vm-onprem-nested-hv01`: Hyper-V ホスト VM の OS ディスク
+- `datadisk-vm-onprem-nested-hv01`: Hyper-V 用の格納領域として利用する F: ドライブ
+- `disk-upload-ws2022` / `disk-upload-ws2019`: 作業 PC からアップロードした Windows Server VHD をホスト VM に受け渡すための一時ディスク
+- `Setup-NestedEnvironment.ps1` はこれらの受け渡し用ディスクを LUN で識別し、VHDX へ変換して nested Hyper-V ゲスト VM のベースイメージとして利用する
+- ゲスト VM 作成後、受け渡し用ディスクは不要になるため detach / delete できる
 
 ### 1.2 VPN 接続（onprem-nested ↔ Hub）
 
@@ -579,24 +591,82 @@ az deployment sub create -l japaneast -f main.bicep -p main.bicepparam
 
 ### 方法 A: ホスト VM からスクリプトで実行（推奨）
 
-Bastion RDP でホスト VM に接続し、`Install-SqlServer.ps1` を実行する。PowerShell Direct 経由で vm-sql01 にインストールされる。
+Bastion RDP でホスト VM に接続し、ホスト上のスクリプトを実行する。PowerShell Direct 経由で vm-sql01 にインストールされる。
+
+#### A-1. ブートストラッパーを使う場合（2019 / 2022）
 
 ```powershell
 # SQL Server 2022 Developer Edition をダウンロード＆インストール
 .\scripts\host\Install-SqlServer.ps1 -Version 2022
 
+# SQL Server 2019 Developer Edition をダウンロード＆インストール
+.\scripts\host\Install-SqlServer.ps1 -Version 2019
+
 # sa を無効化し、専用の管理者ログインを作成する場合
 .\scripts\host\Install-SqlServer.ps1 -Version 2022 -DisableSa -SqlAdminPassword 'Adm1nP@ss!'
-
-# ISO からインストールする場合（SQL Server 2025 等）
-.\scripts\host\Install-SqlServer.ps1 -IsoPath 'F:\ISO\SQLServer2025-x64-ENU-Dev.iso'
 ```
 
-> `-Version` モードは Microsoft からブートストラッパーを自動ダウンロードする。`-IsoPath` モードは Visual Studio サブスクリプション等で取得した ISO を使用する。
+> `Install-SqlServer.ps1` は Microsoft のブートストラッパーを使用するダウンロード専用スクリプト。
+
+#### A-2. ISO を使う場合（推奨代替）
+
+ホスト OS 上の ISO ファイルを Hyper-V の仮想 DVD ドライブとしてゲスト VM にマウントし、そのままインストーラを自動実行する。
+
+```powershell
+# ISO を vm-sql01 にマウントしてインストール
+.\scripts\host\Install-SqlServer-ISO.ps1 -IsoPath 'F:\ISO\SQLServer2025-x64-ENU-Dev.iso'
+
+# 例: SQL Server 2019 ISO を使う場合
+.\scripts\host\Install-SqlServer-ISO.ps1 -IsoPath 'F:\ISO\SQLServer2019-x64-ENU-Dev.iso' -Force
+```
+
+> `Install-SqlServer-ISO.ps1` は、ホスト側 ISO をゲスト VM の DVD ドライブへ割り当てる方式の専用スクリプト。ブートストラッパーが不安定な場合の回避策として有効。
 
 ### 方法 B: ゲスト VM に直接インストール
 
 Hyper-V マネージャーで vm-sql01 に接続し、ゲスト OS 上で手動インストールする。ISO をマウントして `setup.exe` を実行するか、[SQL Server ダウンロードページ](https://www.microsoft.com/ja-jp/sql-server/sql-server-downloads)から Developer Edition インストーラーを取得して実行する。
+
+<details>
+<summary>参考: ホスト VM へのインストールスクリプト配置例</summary>
+
+ローカル PC から `Install-SqlServer.ps1` を Base64 エンコードし、`az vm run-command invoke` でホスト VM の `C:\NestedSetup` に配置する例。
+
+```powershell
+# スクリプトを Base64 エンコード
+$scriptPath = ".\infra\nested\onprem\scripts\host\Install-SqlServer.ps1"
+$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($scriptPath))
+$deployScript = Join-Path $env:TEMP "deploy-install-sql.ps1"
+
+$content = @'
+New-Item -Path "C:\NestedSetup" -ItemType Directory -Force | Out-Null
+$payload = "B64"
+[IO.File]::WriteAllBytes("C:\NestedSetup\Install-SqlServer.ps1", [Convert]::FromBase64String($payload))
+Write-Output ((Get-Item "C:\NestedSetup\Install-SqlServer.ps1").Length.ToString() + " bytes written")
+'@
+
+$content = $content.Replace("B64", $b64)
+Set-Content -Path $deployScript -Value $content -Encoding UTF8
+
+az vm run-command invoke `
+  --resource-group rg-onprem-nested `
+  --name vm-onprem-nested-hv01 `
+  --command-id RunPowerShellScript `
+  --scripts "@$deployScript"
+```
+
+配置後の確認例:
+
+```powershell
+az vm run-command invoke `
+  --resource-group rg-onprem-nested `
+  --name vm-onprem-nested-hv01 `
+  --command-id RunPowerShellScript `
+  --scripts "Get-ChildItem C:\NestedSetup | Format-Table Name, Length, LastWriteTime -AutoSize"
+```
+
+</details>
+
+
 
 ---
 

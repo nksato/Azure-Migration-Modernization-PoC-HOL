@@ -1,21 +1,20 @@
 ﻿# =============================================================================
 # Install-SqlServer.ps1
 # Run on Hyper-V host VM (NOT from remote PC):
-#   Install SQL Server Developer Edition on a nested guest VM (vm-sql01).
+#   Install SQL Server Developer Edition on a nested guest VM (vm-sql01)
+#   by downloading the Microsoft bootstrapper and installation media.
 #
-# Two modes:
-#   1. -Version  : Download bootstrapper and install (2019 / 2022)
-#   2. -IsoPath  : Mount a pre-downloaded ISO and install (any version)
+# Note:
+#   - ISO-based installation has been split into Install-SqlServer-ISO.ps1
+#   - This script supports bootstrapper download mode only (2019 / 2022)
 #
 # Prerequisites:
 #   - Setup-NestedEnvironment.ps1 Phase 6 (domain join) completed
 #   - vm-sql01 is running and domain-joined
-#   - For -IsoPath: ISO file accessible from host (e.g. F:\ISO\*.iso)
 #
 # Usage:
 #   .\Install-SqlServer.ps1 -Version 2022
 #   .\Install-SqlServer.ps1 -Version 2019
-#   .\Install-SqlServer.ps1 -IsoPath 'F:\ISO\SQLServer2025-x64-ENU-Dev.iso'
 #   .\Install-SqlServer.ps1 -Version 2022 -InstanceName 'SQL2022' -SqlSaPassword 'MyP@ss1'
 #   .\Install-SqlServer.ps1 -Version 2022 -AdminPassword 'ChangedP@ss!'
 #   .\Install-SqlServer.ps1 -Version 2022 -DisableSa -SqlAdminPassword 'Adm1nP@ss!'
@@ -25,15 +24,11 @@
 
 #Requires -RunAsAdministrator
 
-[CmdletBinding(DefaultParameterSetName = 'Download')]
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory, ParameterSetName = 'Download')]
+    [Parameter(Mandatory)]
     [ValidateSet('2019', '2022')]
     [string]$Version,
-
-    [Parameter(Mandatory, ParameterSetName = 'ISO')]
-    [ValidateScript({ Test-Path $_ -PathType Leaf })]
-    [string]$IsoPath,
 
     [string]$VMName = 'vm-sql01',
 
@@ -60,6 +55,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+$scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$logDir = Join-Path $scriptRoot 'logs'
+New-Item -Path $logDir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
 # =============================================================================
 # Configuration
@@ -99,29 +98,18 @@ Write-Host ''
 Write-Host '  This script installs SQL Server Developer Edition on a guest VM.' -ForegroundColor Gray
 Write-Host ''
 Write-Host '  ---------------------------------------------------------------' -ForegroundColor DarkGray
-Write-Host '  [Mode 1] -Version (2019 / 2022)' -ForegroundColor White
+Write-Host '  [Mode] Bootstrapper Download (2019 / 2022)' -ForegroundColor White
 Write-Host '    Developer Edition bootstrapper を Microsoft から自動ダウンロードし、' -ForegroundColor Gray
 Write-Host '    サイレントインストールを実行します。' -ForegroundColor Gray
 Write-Host ''
 Write-Host '    例: .\Install-SqlServer.ps1 -Version 2022' -ForegroundColor DarkGray
-Write-Host ''
-Write-Host '  [Mode 2] -IsoPath (任意のバージョン / エディション)' -ForegroundColor White
-Write-Host '    Visual Studio Subscription 等で取得した ISO ファイルを指定します。' -ForegroundColor Gray
-Write-Host '    ISO はホスト上のパスを指定してください (ゲスト VM へ自動転送します)。' -ForegroundColor Gray
-Write-Host '    SQL Server 2025 等、ブートストラッパー非公開のバージョンはこちらを使用。' -ForegroundColor Gray
-Write-Host ''
-Write-Host '    例: .\Install-SqlServer.ps1 -IsoPath ''F:\ISO\SQLServer2025-Dev.iso''' -ForegroundColor DarkGray
+Write-Host '    ISO 利用時は .\Install-SqlServer-ISO.ps1 を使用してください。' -ForegroundColor DarkGray
 Write-Host '  ---------------------------------------------------------------' -ForegroundColor DarkGray
 Write-Host ''
 
-if ($PSCmdlet.ParameterSetName -eq 'Download') {
-    Write-Host "  Mode:       Download (Bootstrapper)" -ForegroundColor Yellow
-    Write-Host "  Version:    SQL Server $Version Developer Edition"
-    Write-Host "  URL:        $($cfg.BootstrapperUrl[$Version])"
-} else {
-    Write-Host "  Mode:       ISO" -ForegroundColor Yellow
-    Write-Host "  ISO:        $IsoPath"
-}
+Write-Host "  Mode:       Download (Bootstrapper)" -ForegroundColor Yellow
+Write-Host "  Version:    SQL Server $Version Developer Edition"
+Write-Host "  URL:        $($cfg.BootstrapperUrl[$Version])"
 Write-Host "  Target VM:  $VMName"
 Write-Host "  Instance:   $InstanceName"
 Write-Host "  Collation:  $Collation"
@@ -177,105 +165,66 @@ Write-Host '========================================='
 Write-Host '  Step 2: Prepare installation media'
 Write-Host '========================================='
 
-if ($PSCmdlet.ParameterSetName -eq 'Download') {
-    # --- Mode 1: Download bootstrapper on guest, then download media ---
-    Write-Host "  Downloading SQL Server $Version bootstrapper on $VMName..."
+# --- Download bootstrapper on guest, then download media ---
+Write-Host "  Downloading SQL Server $Version bootstrapper on $VMName..."
 
-    $setupExePath = Invoke-Command -VMName $VMName -Credential $cred -ScriptBlock {
-        param($TempPath, $Url, $Version)
+$setupExePath = Invoke-Command -VMName $VMName -Credential $cred -ScriptBlock {
+    param($TempPath, $Url, $Version)
 
-        New-Item -Path $TempPath -ItemType Directory -Force | Out-Null
-        $bootstrapper = "$TempPath\SQLServer${Version}-SSEI-Dev.exe"
+    New-Item -Path $TempPath -ItemType Directory -Force | Out-Null
+    $bootstrapper = "$TempPath\SQLServer${Version}-SSEI-Dev.exe"
 
-        if (-not (Test-Path $bootstrapper)) {
-            Write-Host "    Downloading bootstrapper..."
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -Uri $Url -OutFile $bootstrapper -UseBasicParsing
-            Write-Host "    Downloaded: $bootstrapper"
-        } else {
-            Write-Host "    Bootstrapper already exists. Skipping download."
+    if (-not (Test-Path $bootstrapper)) {
+        Write-Host "    Downloading bootstrapper..."
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $Url -OutFile $bootstrapper -UseBasicParsing
+        Write-Host "    Downloaded: $bootstrapper"
+    } else {
+        Write-Host "    Bootstrapper already exists. Skipping download."
+    }
+
+    # Download media via bootstrapper
+    $mediaPath = "$TempPath\Media"
+    if (-not (Test-Path "$mediaPath\setup.exe")) {
+        Write-Host "    Downloading SQL Server media (this may take 5-15 minutes)..."
+        $bootstrapperStdout = "$TempPath\bootstrapper-stdout.log"
+        $bootstrapperStderr = "$TempPath\bootstrapper-stderr.log"
+        $proc = Start-Process -FilePath $bootstrapper -ArgumentList @(
+            '/ACTION=Download',
+            "/MEDIAPATH=$mediaPath",
+            '/MEDIATYPE=CAB',
+            '/QUIET',
+            '/VERBOSE'
+        ) -Wait -PassThru -NoNewWindow `
+            -RedirectStandardOutput $bootstrapperStdout `
+            -RedirectStandardError $bootstrapperStderr
+        if ($proc.ExitCode -ne 0) {
+            throw "Bootstrapper download failed with exit code $($proc.ExitCode). Check $bootstrapperStdout and $bootstrapperStderr on the guest VM. For ISO-based installation, use Install-SqlServer-ISO.ps1 instead."
         }
 
-        # Download media via bootstrapper
-        $mediaPath = "$TempPath\Media"
-        if (-not (Test-Path "$mediaPath\setup.exe")) {
-            Write-Host "    Downloading SQL Server media (this may take 5-15 minutes)..."
-            $proc = Start-Process -FilePath $bootstrapper -ArgumentList @(
-                '/ACTION=Download',
-                "/MEDIAPATH=$mediaPath",
-                '/MEDIATYPE=Core',
-                '/QUIET'
-            ) -Wait -PassThru -NoNewWindow
-            if ($proc.ExitCode -ne 0) {
-                throw "Bootstrapper download failed with exit code $($proc.ExitCode)"
+        # Extract if downloaded as CAB/EXE package
+        $mediaExe = Get-ChildItem -Path $mediaPath -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($mediaExe) {
+            Write-Host "    Extracting media..."
+            $extractPath = "$TempPath\Extracted"
+            $proc = Start-Process -FilePath $mediaExe.FullName -ArgumentList "/Q /X:$extractPath" -Wait -PassThru -NoNewWindow
+            if (Test-Path "$extractPath\setup.exe") {
+                return "$extractPath\setup.exe"
             }
+        }
 
-            # Extract if downloaded as CAB/EXE package
-            $mediaExe = Get-ChildItem -Path $mediaPath -Filter '*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($mediaExe) {
-                Write-Host "    Extracting media..."
-                $extractPath = "$TempPath\Extracted"
-                $proc = Start-Process -FilePath $mediaExe.FullName -ArgumentList "/Q /X:$extractPath" -Wait -PassThru -NoNewWindow
-                if (Test-Path "$extractPath\setup.exe") {
-                    return "$extractPath\setup.exe"
-                }
-            }
-
-            if (Test-Path "$mediaPath\setup.exe") {
-                return "$mediaPath\setup.exe"
-            }
-
-            throw "setup.exe not found after download. Check $mediaPath"
-        } else {
-            Write-Host "    Media already downloaded."
+        if (Test-Path "$mediaPath\setup.exe") {
             return "$mediaPath\setup.exe"
         }
-    } -ArgumentList $cfg.TempPath, $cfg.BootstrapperUrl[$Version], $Version
 
-    Write-Host "  Setup path: $setupExePath" -ForegroundColor Green
+        throw "setup.exe not found after download. Check $mediaPath"
+    } else {
+        Write-Host "    Media already downloaded."
+        return "$mediaPath\setup.exe"
+    }
+} -ArgumentList $cfg.TempPath, $cfg.BootstrapperUrl[$Version], $Version
 
-} else {
-    # --- Mode 2: Copy ISO to guest and mount ---
-    Write-Host "  Copying ISO to $VMName..."
-
-    $isoFileName = [System.IO.Path]::GetFileName($IsoPath)
-    $isoBytes = [System.IO.File]::ReadAllBytes($IsoPath)
-    $isoSizeMB = [math]::Round($isoBytes.Length / 1MB, 1)
-    Write-Host "    ISO size: $isoSizeMB MB"
-
-    $setupExePath = Invoke-Command -VMName $VMName -Credential $cred -ScriptBlock {
-        param($TempPath, $IsoFileName, $IsoBytes)
-
-        New-Item -Path $TempPath -ItemType Directory -Force | Out-Null
-        $guestIsoPath = "$TempPath\$IsoFileName"
-
-        if (-not (Test-Path $guestIsoPath)) {
-            Write-Host "    Writing ISO to guest..."
-            [System.IO.File]::WriteAllBytes($guestIsoPath, $IsoBytes)
-            Write-Host "    Written: $guestIsoPath"
-        } else {
-            Write-Host "    ISO already exists on guest. Skipping copy."
-        }
-
-        # Mount ISO
-        Write-Host "    Mounting ISO..."
-        $mountResult = Mount-DiskImage -ImagePath $guestIsoPath -PassThru
-        $driveLetter = ($mountResult | Get-Volume).DriveLetter
-        if (-not $driveLetter) {
-            throw "ISO mounted but no drive letter assigned."
-        }
-
-        $setupPath = "${driveLetter}:\setup.exe"
-        if (-not (Test-Path $setupPath)) {
-            throw "setup.exe not found at $setupPath"
-        }
-
-        Write-Host "    Mounted at ${driveLetter}:" -ForegroundColor Green
-        return $setupPath
-    } -ArgumentList $cfg.TempPath, $isoFileName, $isoBytes
-
-    Write-Host "  Setup path: $setupExePath" -ForegroundColor Green
-}
+Write-Host "  Setup path: $setupExePath" -ForegroundColor Green
 
 # =============================================================================
 # Step 3: Install SQL Server (silent)
@@ -311,12 +260,15 @@ $installResult = Invoke-Command -VMName $VMName -Credential $cred -ScriptBlock {
         '/SQLSYSADMINACCOUNTS=BUILTIN\Administrators',
         '/TCPENABLED=1',
         '/IACCEPTSQLSERVERLICENSETERMS',
+        '/SUPPRESSPRIVACYSTATEMENTNOTICE',
         '/Q'
     )
 
     Write-Host "    Starting SQL Server setup..."
     $proc = Start-Process -FilePath $SetupExe -ArgumentList $setupArgs `
-        -Wait -PassThru -NoNewWindow -RedirectStandardOutput 'C:\SQLInstall\setup-stdout.log'
+        -Wait -PassThru -NoNewWindow `
+        -RedirectStandardOutput 'C:\SQLInstall\setup-stdout.log' `
+        -RedirectStandardError 'C:\SQLInstall\setup-stderr.log'
 
     return @{ ExitCode = $proc.ExitCode; Skipped = $false }
 } -ArgumentList $setupExePath, $InstanceName, $SqlSaPassword, $Collation
@@ -428,25 +380,6 @@ if ($verifyResult.Installed) {
     Write-Host "  [PASS] Edition:  $($verifyResult.Edition)" -ForegroundColor Green
 } else {
     Write-Host "  [FAIL] SQL Server service not found." -ForegroundColor Red
-}
-
-# =============================================================================
-# Step 6: Cleanup (ISO mode only - dismount)
-# =============================================================================
-if ($PSCmdlet.ParameterSetName -eq 'ISO') {
-    Write-Host ''
-    Write-Host '========================================='
-    Write-Host '  Step 6: Cleanup (dismount ISO)'
-    Write-Host '========================================='
-
-    Invoke-Command -VMName $VMName -Credential $cred -ScriptBlock {
-        param($TempPath, $IsoFileName)
-        $guestIsoPath = "$TempPath\$IsoFileName"
-        if (Test-Path $guestIsoPath) {
-            Dismount-DiskImage -ImagePath $guestIsoPath -ErrorAction SilentlyContinue
-            Write-Host "    Dismounted: $guestIsoPath"
-        }
-    } -ArgumentList $cfg.TempPath, $isoFileName
 }
 
 # =============================================================================

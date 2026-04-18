@@ -45,6 +45,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$logDir = Join-Path $scriptRoot 'logs'
+$runStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+New-Item -Path $logDir -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+
 # =============================================================================
 # Configuration (edit here only)
 # =============================================================================
@@ -69,7 +74,8 @@ $cfg = @{
     # --- Paths ---
     VhdxPath         = 'F:\Hyper-V\Virtual Hard Disks'
     VmPath           = 'F:\Hyper-V\Virtual Machines'
-    LogFile          = 'F:\Hyper-V\setup-progress.log'
+    LogFile          = Join-Path $logDir 'setup-progress.log'
+    TranscriptFile   = Join-Path $logDir "Setup-NestedEnvironment-$runStamp.log"
 
     # --- OS images (LUN mapping for uploaded VHDs) ---
     # Upload-VHDs.ps1 attaches VHDs as Managed Disks at these LUNs.
@@ -99,6 +105,14 @@ $cfg = @{
         DcPromotionRebootGuardSec    = 30    # Phase 5: DC reboot takes longer to initiate
         DomainJoinRebootGuardSec     = 15    # Phase 6: wait for restart to begin
     }
+}
+
+$script:TranscriptStarted = $false
+try {
+    Start-Transcript -Path $cfg.TranscriptFile -Force | Out-Null
+    $script:TranscriptStarted = $true
+} catch {
+    Write-Warning "Transcript logging could not be started: $($_.Exception.Message)"
 }
 
 # --- Nested VM definitions ---
@@ -149,10 +163,11 @@ Write-Host '  Setup-NestedEnvironment' -ForegroundColor Cyan
 Write-Host ('=' * 60) -ForegroundColor Cyan
 Write-Host ''
 Write-Host "  Domain:       $($cfg.DomainName) ($($cfg.DomainNetBIOS))"
-Write-Host "  Password:     $($cfg.SetupPassword)"
+Write-Host '  Password:     ********'
 Write-Host "  Network:      $($cfg.NatPrefix) (GW: $($cfg.GatewayIP))"
+Write-Host "  Transcript:   $($cfg.TranscriptFile)"
 if ($NewPassword) {
-    Write-Host "  New Password: $NewPassword (will be changed in Phase 7)" -ForegroundColor Yellow
+    Write-Host '  New Password: ******** (will be changed in Phase 7)' -ForegroundColor Yellow
 }
 Write-Host ''
 Write-Host '  VMs:'
@@ -273,13 +288,14 @@ function Wait-ForVM (
 # =============================================================================
 # Phase 1: Network setup (NAT + DHCP)
 # =============================================================================
+try {
 if ($StartFromPhase -le 1) {
     Write-Phase 1 'Network setup (NAT + DHCP)'
 
     # Create Internal VM Switch
     Write-Host '  [1/4] Creating Internal VM Switch...'
     if (-not (Get-VMSwitch -Name $cfg.SwitchName -ErrorAction SilentlyContinue)) {
-        New-VMSwitch -Name $cfg.SwitchName -SwitchType Internal
+        New-VMSwitch -Name $cfg.SwitchName -SwitchType Internal | Out-Null
         Write-Host '    Created.'
     } else {
         Write-Host '    Already exists. Skipping.'
@@ -291,7 +307,7 @@ if ($StartFromPhase -le 1) {
     $existingIP = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
         Where-Object { $_.IPAddress -eq $cfg.GatewayIP }
     if (-not $existingIP) {
-        New-NetIPAddress -IPAddress $cfg.GatewayIP -PrefixLength $cfg.PrefixLength -InterfaceIndex $adapter.ifIndex
+        New-NetIPAddress -IPAddress $cfg.GatewayIP -PrefixLength $cfg.PrefixLength -InterfaceIndex $adapter.ifIndex | Out-Null
         Write-Host '    Assigned.'
     } else {
         Write-Host '    Already assigned. Skipping.'
@@ -300,7 +316,7 @@ if ($StartFromPhase -le 1) {
     # Create NAT
     Write-Host "  [3/4] Creating NAT: $($cfg.NatName)"
     if (-not (Get-NetNat -Name $cfg.NatName -ErrorAction SilentlyContinue)) {
-        New-NetNat -Name $cfg.NatName -InternalIPInterfaceAddressPrefix $cfg.NatPrefix
+        New-NetNat -Name $cfg.NatName -InternalIPInterfaceAddressPrefix $cfg.NatPrefix | Out-Null
         Write-Host '    Created.'
     } else {
         Write-Host '    Already exists. Skipping.'
@@ -315,8 +331,8 @@ if ($StartFromPhase -le 1) {
             -StartRange $cfg.DhcpScopeStart `
             -EndRange $cfg.DhcpScopeEnd `
             -SubnetMask $cfg.DhcpSubnetMask `
-            -State Active
-        Set-DhcpServerv4OptionValue -Router $cfg.GatewayIP
+            -State Active | Out-Null
+        Set-DhcpServerv4OptionValue -Router $cfg.GatewayIP | Out-Null
         Write-Host '    Configured.'
     } else {
         Write-Host '    Already exists. Skipping.'
@@ -968,3 +984,12 @@ foreach ($dn in $diskNames) {
     Write-Host "  az disk delete -g rg-onprem-nested -n $dn --yes"
 }
 Write-Host ''
+}
+finally {
+    if ($script:TranscriptStarted) {
+        try {
+            Stop-Transcript | Out-Null
+        } catch {
+        }
+    }
+}
